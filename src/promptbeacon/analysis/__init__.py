@@ -20,7 +20,7 @@ from promptbeacon.analysis.statistics import (
     calculate_statistical_summary,
     calculate_trend,
     calculate_volatility,
-    test_significance,
+    check_significance,
 )
 
 __all__ = [
@@ -38,7 +38,7 @@ __all__ = [
     "calculate_statistical_summary",
     "calculate_trend",
     "calculate_volatility",
-    "test_significance",
+    "check_significance",
     # Explainer
     "explain_change",
     "generate_explanations",

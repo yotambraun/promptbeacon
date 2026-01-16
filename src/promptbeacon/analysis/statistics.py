@@ -170,12 +170,12 @@ def calculate_volatility(
     )
 
 
-def test_significance(
+def check_significance(
     before_scores: list[float],
     after_scores: list[float],
     threshold: float = 0.05,
 ) -> SignificanceTest:
-    """Test if the change between two periods is statistically significant.
+    """Check if the change between two periods is statistically significant.
 
     Uses a simple difference of means test.
 

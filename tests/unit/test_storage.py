@@ -103,12 +103,17 @@ class TestDatabase:
         assert count >= 2
 
     def test_compare_with_previous(self, db, sample_report):
-        # Save two reports
+        from datetime import timedelta
+
+        # Save first report (older)
         db.save_report(sample_report)
 
-        # Modify score for second report
+        # Modify score and timestamp for second report (newer)
         modified_report = sample_report.model_copy(
-            update={"visibility_score": 80.0}
+            update={
+                "visibility_score": 80.0,
+                "timestamp": sample_report.timestamp + timedelta(hours=1),
+            }
         )
         db.save_report(modified_report)
 

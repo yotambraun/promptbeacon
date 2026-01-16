@@ -12,7 +12,7 @@ from promptbeacon.analysis.statistics import (
     calculate_statistical_summary,
     calculate_volatility,
     calculate_trend,
-    test_significance,
+    check_significance,
 )
 from promptbeacon.analysis.explainer import (
     generate_explanations,
@@ -168,7 +168,7 @@ class TestStatistics:
         before = [60, 62, 58, 61, 59]
         after = [80, 82, 78, 81, 79]
 
-        result = test_significance(before, after)
+        result = check_significance(before, after)
 
         assert result.is_significant is True
         assert result.effect_size is not None
