@@ -1,0 +1,52 @@
+============================================================
+PromptBeacon - Basic Brand Visibility Scan
+============================================================
+
+API Key found: sk-proj-****...****
+Scanning visibility for: Nike
+----------------------------------------
+
+Querying LLM providers...
+
+============================================================
+RESULTS
+============================================================
+
+📊 Visibility Score: 73.5/100
+📝 Total Mentions: 12
+⏱️  Scan Duration: 8.2s
+💰 Estimated Cost: $0.0018
+
+📈 Sentiment Breakdown:
+   ✅ Positive: 66.7%
+   ➖ Neutral:  25.0%
+   ❌ Negative: 8.3%
+
+💡 Key Insights:
+   🟢 [visibility] Nike has strong visibility in LLM responses
+   🟢 [sentiment] Nike is mentioned predominantly in positive contexts
+   🟡 [recommendations] Nike is actively recommended in 4 responses
+
+🎯 Recommendations:
+   🟡 [MEDIUM] Build recommendation-worthy content
+   🟢 [LOW] Investigate low visibility on anthropic
+
+📄 Sample LLM Responses:
+
+   --- Response 1 (openai/gpt-4o-mini) ---
+   Prompt: What are the best running shoes brands?...
+   Response: When it comes to running shoes, several brands stand out for their quality and innovation. Nike is
+             widely considered one of the top choices, known for their Air and ZoomX technology. Other excellent
+             brands include ASICS, Brooks, New Balance, and Hoka One One...
+   Mentions found: 1
+
+   --- Response 2 (openai/gpt-4o-mini) ---
+   Prompt: Can you recommend a good athletic wear company?...
+   Response: For athletic wear, I'd recommend Nike as a top choice - they offer excellent quality across running
+             shoes, training apparel, and sports equipment. Their Dri-FIT technology is particularly popular.
+             Other great options include Adidas, Under Armour, and Lululemon...
+   Mentions found: 1
+
+============================================================
+Scan complete!
+============================================================
