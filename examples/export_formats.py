@@ -76,6 +76,7 @@ def main():
     # DataFrame Export (if pandas available)
     try:
         from promptbeacon import to_dataframe
+
         print("📈 DataFrame Export:")
         df = to_dataframe(report)
         print(f"   Shape: {df.shape}")

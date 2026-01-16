@@ -101,7 +101,7 @@ def main():
         for i, result in enumerate(successful[:2], 1):
             print(f"\n   --- Response {i} ({result.provider}/{result.model}) ---")
             print(f"   Prompt: {result.prompt[:60]}...")
-            response_preview = result.response[:200].replace('\n', ' ')
+            response_preview = result.response[:200].replace("\n", " ")
             print(f"   Response: {response_preview}...")
             if result.mentions:
                 print(f"   Mentions found: {len(result.mentions)}")

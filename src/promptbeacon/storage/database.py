@@ -196,9 +196,7 @@ class Database:
         except Exception as e:
             raise StorageError(f"Failed to save report: {e}") from e
 
-    def get_history(
-        self, brand: str, days: int = 30
-    ) -> HistoryReport:
+    def get_history(self, brand: str, days: int = 30) -> HistoryReport:
         """Get historical data for a brand.
 
         Args:
@@ -252,7 +250,9 @@ class Database:
 
             # Calculate volatility
             volatility = None
-            vol_result = conn.execute(GET_VOLATILITY_QUERY, [brand, start_date]).fetchone()
+            vol_result = conn.execute(
+                GET_VOLATILITY_QUERY, [brand, start_date]
+            ).fetchone()
             if vol_result and vol_result[1]:
                 volatility = vol_result[1]
 
@@ -402,9 +402,7 @@ class Database:
             ids = [row[0] for row in scan_ids]
 
             for scan_id in ids:
-                conn.execute(
-                    "DELETE FROM brand_mentions WHERE scan_id = ?", [scan_id]
-                )
+                conn.execute("DELETE FROM brand_mentions WHERE scan_id = ?", [scan_id])
                 conn.execute(
                     "DELETE FROM provider_results WHERE scan_id = ?", [scan_id]
                 )
@@ -412,7 +410,9 @@ class Database:
                     "DELETE FROM competitor_scores WHERE scan_id = ?", [scan_id]
                 )
 
-            result = conn.execute(DELETE_OLD_SCANS_QUERY, [brand, cutoff_date]).fetchall()
+            result = conn.execute(
+                DELETE_OLD_SCANS_QUERY, [brand, cutoff_date]
+            ).fetchall()
             return len(result)
 
         except Exception as e:

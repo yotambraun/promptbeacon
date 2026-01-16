@@ -77,7 +77,9 @@ def sample_competitor_score(sample_sentiment):
 
 
 @pytest.fixture
-def sample_report(sample_provider_result, sample_sentiment, sample_metrics, sample_competitor_score):
+def sample_report(
+    sample_provider_result, sample_sentiment, sample_metrics, sample_competitor_score
+):
     """Create a sample report."""
     return Report(
         brand="TestBrand",

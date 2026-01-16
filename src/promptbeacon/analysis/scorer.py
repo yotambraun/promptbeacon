@@ -49,7 +49,9 @@ def calculate_visibility_score(
     # Collect all mentions for the brand
     all_mentions = []
     for result in results:
-        brand_mentions = [m for m in result.mentions if m.brand_name.lower() == brand.lower()]
+        brand_mentions = [
+            m for m in result.mentions if m.brand_name.lower() == brand.lower()
+        ]
         all_mentions.extend(brand_mentions)
 
     successful_results = [r for r in results if r.success]
@@ -88,7 +90,9 @@ def calculate_visibility_score(
             prominence = calculate_mention_prominence(result.response, brand)
             position_scores.append(prominence * 60)
 
-    position_score = sum(position_scores) / len(position_scores) if position_scores else 0
+    position_score = (
+        sum(position_scores) / len(position_scores) if position_scores else 0
+    )
 
     # Factor 4: Recommendation rate
     recommendations = sum(1 for m in all_mentions if m.is_recommendation)
@@ -124,7 +128,9 @@ def calculate_metrics(
     # Collect all mentions
     all_mentions = []
     for result in results:
-        brand_mentions = [m for m in result.mentions if m.brand_name.lower() == brand.lower()]
+        brand_mentions = [
+            m for m in result.mentions if m.brand_name.lower() == brand.lower()
+        ]
         all_mentions.extend(brand_mentions)
 
     # Calculate metrics
@@ -203,7 +209,9 @@ def compare_to_competitors(
     if not competitor_scores:
         return {"share_of_voice": 100.0, "rank": 1, "gap_to_leader": 0.0}
 
-    all_scores = [brand_score] + [c.visibility_score for c in competitor_scores.values()]
+    all_scores = [brand_score] + [
+        c.visibility_score for c in competitor_scores.values()
+    ]
     total = sum(all_scores)
 
     share_of_voice = (brand_score / total * 100) if total > 0 else 0

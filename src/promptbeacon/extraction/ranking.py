@@ -16,7 +16,9 @@ class RankingResult(BaseModel):
     total_ranked: int = Field(default=0, ge=0)
     context: str = ""
     confidence: float = Field(default=0.7, ge=0.0, le=1.0)
-    ranking_type: Literal["numbered", "ordered", "recommended", "mentioned"] = "mentioned"
+    ranking_type: Literal["numbered", "ordered", "recommended", "mentioned"] = (
+        "mentioned"
+    )
 
 
 class RankingAnalysis(BaseModel):
@@ -58,7 +60,10 @@ def extract_rankings(
             for brand in all_brands:
                 if brand.lower() in text.lower():
                     has_explicit_ranking = True
-                    if brand not in brand_positions or position < brand_positions[brand]:
+                    if (
+                        brand not in brand_positions
+                        or position < brand_positions[brand]
+                    ):
                         brand_positions[brand] = position
                         rankings.append(
                             RankingResult(
@@ -109,14 +114,14 @@ def extract_rankings(
                 if brand.lower() in text.lower() and brand not in brand_positions:
                     brand_positions[brand] = 1
                     rankings.append(
-                            RankingResult(
-                                brand=brand,
-                                position=1,
-                                context=text.strip()[:200],
-                                confidence=0.8,
-                                ranking_type=ranking_type,
-                            )
+                        RankingResult(
+                            brand=brand,
+                            position=1,
+                            context=text.strip()[:200],
+                            confidence=0.8,
+                            ranking_type=ranking_type,
                         )
+                    )
 
     # For brands not found in rankings, record their first mention position
     for brand in all_brands:

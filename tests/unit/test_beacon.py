@@ -1,6 +1,5 @@
 """Tests for Beacon class."""
 
-
 import pytest
 
 from promptbeacon.beacon import Beacon

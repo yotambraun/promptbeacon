@@ -1,6 +1,5 @@
 """Tests for core schemas."""
 
-
 import pytest
 
 from promptbeacon.core.schemas import (

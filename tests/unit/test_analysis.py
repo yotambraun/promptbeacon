@@ -1,6 +1,5 @@
 """Tests for analysis module."""
 
-
 from promptbeacon.analysis.explainer import (
     generate_explanations,
     generate_recommendations,

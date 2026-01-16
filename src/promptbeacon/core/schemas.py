@@ -38,8 +38,12 @@ class ProviderResult(BaseModel):
         default_factory=list, description="Brand mentions extracted from response"
     )
     latency_ms: float = Field(..., ge=0, description="Response latency in milliseconds")
-    cost_usd: float | None = Field(default=None, ge=0, description="Estimated cost in USD")
-    error: str | None = Field(default=None, description="Error message if request failed")
+    cost_usd: float | None = Field(
+        default=None, ge=0, description="Estimated cost in USD"
+    )
+    error: str | None = Field(
+        default=None, description="Error message if request failed"
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     @computed_field
@@ -137,7 +141,9 @@ class Report(BaseModel):
     visibility_score: float = Field(
         ..., ge=0.0, le=100.0, description="Overall visibility score"
     )
-    mention_count: int = Field(..., ge=0, description="Total mentions across all queries")
+    mention_count: int = Field(
+        ..., ge=0, description="Total mentions across all queries"
+    )
     sentiment_breakdown: SentimentBreakdown = Field(default_factory=SentimentBreakdown)
     competitor_comparison: dict[str, CompetitorScore] = Field(
         default_factory=dict, description="Competitor visibility scores"
@@ -168,7 +174,9 @@ class Report(BaseModel):
         """Rate of successful provider queries."""
         if not self.provider_results:
             return 0.0
-        return sum(1 for r in self.provider_results if r.success) / len(self.provider_results)
+        return sum(1 for r in self.provider_results if r.success) / len(
+            self.provider_results
+        )
 
 
 class HistoricalDataPoint(BaseModel):

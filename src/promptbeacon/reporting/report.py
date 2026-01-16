@@ -84,14 +84,18 @@ class ReportBuilder:
             Short summary suitable for dashboards.
         """
         sentiment = self._report.sentiment_breakdown
-        primary_sentiment = "positive" if sentiment.positive > 0.5 else (
-            "negative" if sentiment.negative > 0.5 else "neutral"
+        primary_sentiment = (
+            "positive"
+            if sentiment.positive > 0.5
+            else ("negative" if sentiment.negative > 0.5 else "neutral")
         )
 
         score_rating = (
-            "strong" if self._report.visibility_score >= 70 else
-            "moderate" if self._report.visibility_score >= 40 else
-            "low"
+            "strong"
+            if self._report.visibility_score >= 70
+            else "moderate"
+            if self._report.visibility_score >= 40
+            else "low"
         )
 
         return (

@@ -66,14 +66,20 @@ def main():
         print("-" * 40)
         print(f"{'Brand':<20} {'Score':<10} {'Mentions':<10}")
         print("-" * 40)
-        print(f"{brand:<20} {report.visibility_score:<10.1f} {report.mention_count:<10}")
+        print(
+            f"{brand:<20} {report.visibility_score:<10.1f} {report.mention_count:<10}"
+        )
 
         for name, score in report.competitor_comparison.items():
-            print(f"{name:<20} {score.visibility_score:<10.1f} {score.mention_count:<10}")
+            print(
+                f"{name:<20} {score.visibility_score:<10.1f} {score.mention_count:<10}"
+            )
 
         # Determine leader
         all_scores = [(brand, report.visibility_score)]
-        all_scores.extend([(n, s.visibility_score) for n, s in report.competitor_comparison.items()])
+        all_scores.extend(
+            [(n, s.visibility_score) for n, s in report.competitor_comparison.items()]
+        )
         leader = max(all_scores, key=lambda x: x[1])
 
         print("-" * 40)

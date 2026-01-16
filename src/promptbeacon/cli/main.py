@@ -56,7 +56,9 @@ def scan(
     ] = None,
     providers: Annotated[
         list[str] | None,
-        typer.Option("--provider", "-p", help="LLM providers to use (openai, anthropic, google)"),
+        typer.Option(
+            "--provider", "-p", help="LLM providers to use (openai, anthropic, google)"
+        ),
     ] = None,
     categories: Annotated[
         list[str] | None,
@@ -155,7 +157,9 @@ def compare(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        progress.add_task(description=f"Comparing {brand} with competitors...", total=None)
+        progress.add_task(
+            description=f"Comparing {brand} with competitors...", total=None
+        )
         try:
             report = beacon.scan()
         except Exception as e:

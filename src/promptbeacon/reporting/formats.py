@@ -52,7 +52,9 @@ def to_dataframe(report: Report):
     try:
         import pandas as pd
     except ImportError:
-        raise ImportError("pandas is required for DataFrame export: pip install pandas") from None
+        raise ImportError(
+            "pandas is required for DataFrame export: pip install pandas"
+        ) from None
 
     # Create main metrics row
     main_data = {
@@ -88,22 +90,26 @@ def to_mentions_dataframe(report: Report):
     try:
         import pandas as pd
     except ImportError:
-        raise ImportError("pandas is required for DataFrame export: pip install pandas") from None
+        raise ImportError(
+            "pandas is required for DataFrame export: pip install pandas"
+        ) from None
 
     mentions_data = []
     for result in report.provider_results:
         for mention in result.mentions:
-            mentions_data.append({
-                "brand_name": mention.brand_name,
-                "sentiment": mention.sentiment,
-                "position": mention.position,
-                "context": mention.context,
-                "confidence": mention.confidence,
-                "is_recommendation": mention.is_recommendation,
-                "provider": result.provider,
-                "model": result.model,
-                "prompt": result.prompt,
-            })
+            mentions_data.append(
+                {
+                    "brand_name": mention.brand_name,
+                    "sentiment": mention.sentiment,
+                    "position": mention.position,
+                    "context": mention.context,
+                    "confidence": mention.confidence,
+                    "is_recommendation": mention.is_recommendation,
+                    "provider": result.provider,
+                    "model": result.model,
+                    "prompt": result.prompt,
+                }
+            )
 
     return pd.DataFrame(mentions_data)
 
@@ -160,12 +166,14 @@ def to_markdown(report: Report) -> str:
     ]
 
     if report.competitor_comparison:
-        lines.extend([
-            "## Competitor Comparison",
-            "",
-            "| Brand | Visibility Score | Mentions |",
-            "|-------|-----------------|----------|",
-        ])
+        lines.extend(
+            [
+                "## Competitor Comparison",
+                "",
+                "| Brand | Visibility Score | Mentions |",
+                "|-------|-----------------|----------|",
+            ]
+        )
         # Add the target brand
         lines.append(
             f"| **{report.brand}** | **{report.visibility_score:.1f}** | "
@@ -178,23 +186,29 @@ def to_markdown(report: Report) -> str:
         lines.append("")
 
     if report.explanations:
-        lines.extend([
-            "## Key Insights",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Key Insights",
+                "",
+            ]
+        )
         for exp in report.explanations:
-            impact_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(exp.impact, "")
+            impact_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(
+                exp.impact, ""
+            )
             lines.append(f"- {impact_emoji} **{exp.category}**: {exp.message}")
             if exp.evidence:
                 for evidence in exp.evidence[:2]:
-                    lines.append(f"  - *\"{evidence[:100]}...\"*")
+                    lines.append(f'  - *"{evidence[:100]}..."*')
         lines.append("")
 
     if report.recommendations:
-        lines.extend([
-            "## Recommendations",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Recommendations",
+                "",
+            ]
+        )
         for rec in report.recommendations:
             priority_badge = {
                 "high": "🔴 HIGH",
@@ -208,12 +222,14 @@ def to_markdown(report: Report) -> str:
                 lines.append(f"\n**Expected Impact**: {rec.expected_impact}")
             lines.append("")
 
-    lines.extend([
-        "---",
-        "",
-        f"*Scan Duration: {report.scan_duration_seconds:.1f}s | "
-        f"Providers: {', '.join(report.providers_used)}*",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            f"*Scan Duration: {report.scan_duration_seconds:.1f}s | "
+            f"Providers: {', '.join(report.providers_used)}*",
+        ]
+    )
 
     if report.total_cost_usd:
         lines.append(f"\n*Estimated Cost: ${report.total_cost_usd:.4f}*")
@@ -231,9 +247,11 @@ def to_html(report: Report) -> str:
         HTML string representation.
     """
     score_color = (
-        "#22c55e" if report.visibility_score >= 70 else
-        "#eab308" if report.visibility_score >= 40 else
-        "#ef4444"
+        "#22c55e"
+        if report.visibility_score >= 70
+        else "#eab308"
+        if report.visibility_score >= 40
+        else "#ef4444"
     )
 
     html = f"""<!DOCTYPE html>
@@ -258,7 +276,7 @@ def to_html(report: Report) -> str:
 </head>
 <body>
     <h1>Brand Visibility Report: {report.brand}</h1>
-    <p style="color: #6b7280;">Generated: {report.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+    <p style="color: #6b7280;">Generated: {report.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")}</p>
 
     <div class="metric">
         <div class="metric-label">Visibility Score</div>
@@ -308,8 +326,8 @@ def to_html(report: Report) -> str:
     <hr>
     <p style="color: #6b7280; font-size: 0.9em;">
         Scan Duration: {report.scan_duration_seconds:.1f}s |
-        Providers: {', '.join(report.providers_used)}
-        {f' | Estimated Cost: ${report.total_cost_usd:.4f}' if report.total_cost_usd else ''}
+        Providers: {", ".join(report.providers_used)}
+        {f" | Estimated Cost: ${report.total_cost_usd:.4f}" if report.total_cost_usd else ""}
     </p>
 </body>
 </html>"""

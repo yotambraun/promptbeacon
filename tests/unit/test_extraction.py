@@ -1,6 +1,5 @@
 """Tests for extraction module."""
 
-
 from promptbeacon.extraction.mentions import (
     analyze_mention_sentiment,
     calculate_mention_prominence,
@@ -104,7 +103,9 @@ class TestRankingExtraction:
         2. Adidas
         3. New Balance
         """
-        result = extract_rankings(response, "Nike", competitors=["Adidas", "New Balance"])
+        result = extract_rankings(
+            response, "Nike", competitors=["Adidas", "New Balance"]
+        )
 
         assert result.has_explicit_ranking is True
         assert result.top_brand == "Nike"

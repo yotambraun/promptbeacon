@@ -44,7 +44,9 @@ class BeaconConfig(BaseModel):
     """Configuration for a Beacon instance."""
 
     brand: str = Field(..., min_length=1, description="The brand to monitor")
-    competitors: list[str] = Field(default_factory=list, description="Competitor brands")
+    competitors: list[str] = Field(
+        default_factory=list, description="Competitor brands"
+    )
     providers: list[Provider] = Field(
         default_factory=lambda: [Provider.OPENAI],
         description="LLM providers to query",
@@ -61,7 +63,9 @@ class BeaconConfig(BaseModel):
     )
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=1024, ge=1, le=32768)
-    timeout: float = Field(default=30.0, ge=1.0, description="Request timeout in seconds")
+    timeout: float = Field(
+        default=30.0, ge=1.0, description="Request timeout in seconds"
+    )
     max_retries: int = Field(default=3, ge=0, le=10)
     concurrent_requests: int = Field(default=5, ge=1, le=50)
 

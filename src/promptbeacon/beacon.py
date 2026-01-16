@@ -263,7 +263,9 @@ class Beacon:
         # Generate prompts
         prompts = self._get_prompts()
         if not prompts:
-            raise ConfigurationError("No prompts generated. Check categories configuration.")
+            raise ConfigurationError(
+                "No prompts generated. Check categories configuration."
+            )
 
         # Query all providers concurrently
         results: list[ProviderResult] = []
@@ -280,7 +282,9 @@ class Beacon:
             semaphore = asyncio.Semaphore(self._config.concurrent_requests)
 
             async def query_with_semaphore(
-                prompt: str, sem: asyncio.Semaphore = semaphore, cli: LiteLLMClient = client
+                prompt: str,
+                sem: asyncio.Semaphore = semaphore,
+                cli: LiteLLMClient = client,
             ) -> ProviderResult:
                 async with sem:
                     return await self._query_provider(cli, prompt)

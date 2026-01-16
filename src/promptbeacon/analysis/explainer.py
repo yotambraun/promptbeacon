@@ -269,7 +269,9 @@ def generate_recommendations(
         )
 
     recommendation_count = sum(1 for m in brand_mentions if m.is_recommendation)
-    recommendation_rate = recommendation_count / len(brand_mentions) if brand_mentions else 0
+    recommendation_rate = (
+        recommendation_count / len(brand_mentions) if brand_mentions else 0
+    )
 
     if recommendation_rate < 0.2:
         recommendations.append(
