@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from promptbeacon.core.schemas import (
     BrandMention,
     Explanation,
@@ -146,7 +148,7 @@ def _explain_provider_differences(
     brand: str,
 ) -> list[Explanation]:
     """Generate explanations for differences between providers."""
-    explanations = []
+    explanations: list[Explanation] = []
 
     # Group by provider
     by_provider: dict[str, list[ProviderResult]] = {}
@@ -171,8 +173,12 @@ def _explain_provider_differences(
     # Find significant differences
     rates = list(provider_mention_rates.values())
     if max(rates) - min(rates) > 0.3:
-        best_provider = max(provider_mention_rates, key=provider_mention_rates.get)
-        worst_provider = min(provider_mention_rates, key=provider_mention_rates.get)
+        best_provider = max(
+            provider_mention_rates, key=lambda k: provider_mention_rates[k]
+        )
+        worst_provider = min(
+            provider_mention_rates, key=lambda k: provider_mention_rates[k]
+        )
         explanations.append(
             Explanation(
                 category="provider_variance",
@@ -303,7 +309,7 @@ def generate_recommendations(
             )
             provider_scores[provider] = mentions / len(provider_results)
 
-        worst_provider = min(provider_scores, key=provider_scores.get)
+        worst_provider = min(provider_scores, key=lambda k: provider_scores[k])
         if provider_scores[worst_provider] < 0.3:
             recommendations.append(
                 Recommendation(
@@ -343,7 +349,7 @@ def explain_change(
     Returns:
         List of explanations for the change.
     """
-    explanations = []
+    explanations: list[Explanation] = []
     change = current_score - previous_score
 
     if abs(change) < 2:
@@ -356,7 +362,7 @@ def explain_change(
             )
         )
     elif change > 0:
-        impact = "high" if change > 10 else "medium"
+        impact: Literal["high", "medium", "low"] = "high" if change > 10 else "medium"
         explanations.append(
             Explanation(
                 category="change",
@@ -366,13 +372,15 @@ def explain_change(
             )
         )
     else:
-        impact = "high" if change < -10 else "medium"
+        impact_neg: Literal["high", "medium", "low"] = (
+            "high" if change < -10 else "medium"
+        )
         explanations.append(
             Explanation(
                 category="change",
                 message=f"Visibility decreased by {abs(change):.1f} points",
                 evidence=[],
-                impact=impact,
+                impact=impact_neg,
             )
         )
 

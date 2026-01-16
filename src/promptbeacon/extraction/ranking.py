@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+RankingType = Literal["numbered", "ordered", "recommended", "mentioned"]
+
 
 class RankingResult(BaseModel):
     """Result of ranking extraction."""
@@ -16,9 +18,7 @@ class RankingResult(BaseModel):
     total_ranked: int = Field(default=0, ge=0)
     context: str = ""
     confidence: float = Field(default=0.7, ge=0.0, le=1.0)
-    ranking_type: Literal["numbered", "ordered", "recommended", "mentioned"] = (
-        "mentioned"
-    )
+    ranking_type: RankingType = "mentioned"
 
 
 class RankingAnalysis(BaseModel):
@@ -102,13 +102,13 @@ def extract_rankings(
                         )
 
     # Look for recommendation patterns
-    rec_patterns = [
+    rec_patterns: list[tuple[str, RankingType]] = [
         (r"(recommend|suggest|top pick|best choice)[:\s]+([^\n.]+)", "recommended"),
         (r"(first choice|my pick|go-to)[:\s]+([^\n.]+)", "recommended"),
     ]
 
-    for pattern, ranking_type in rec_patterns:
-        matches = re.findall(pattern, response, re.IGNORECASE)
+    for rec_pattern, rec_ranking_type in rec_patterns:
+        matches = re.findall(rec_pattern, response, re.IGNORECASE)
         for _, text in matches:
             for brand in all_brands:
                 if brand.lower() in text.lower() and brand not in brand_positions:
@@ -119,19 +119,18 @@ def extract_rankings(
                             position=1,
                             context=text.strip()[:200],
                             confidence=0.8,
-                            ranking_type=ranking_type,
+                            ranking_type=rec_ranking_type,
                         )
                     )
 
     # For brands not found in rankings, record their first mention position
     for brand in all_brands:
         if brand not in brand_positions:
-            pattern = re.compile(re.escape(brand), re.IGNORECASE)
-            match = pattern.search(response)
+            brand_pattern = re.compile(re.escape(brand), re.IGNORECASE)
+            match = brand_pattern.search(response)
             if match:
                 # Calculate relative position based on character position
                 char_pos = match.start()
-                int((char_pos / max(len(response), 1)) * 10) + 1
                 rankings.append(
                     RankingResult(
                         brand=brand,
@@ -147,7 +146,7 @@ def extract_rankings(
     # Determine top brand
     top_brand = None
     if brand_positions:
-        top_brand = min(brand_positions, key=brand_positions.get)
+        top_brand = min(brand_positions, key=lambda k: brand_positions[k])
 
     return RankingAnalysis(
         rankings=rankings,

@@ -78,7 +78,7 @@ def calculate_visibility_score(
     )
 
     # Factor 3: Position score (earlier mentions = better)
-    position_scores = []
+    position_scores: list[float] = []
     for result in successful_results:
         rankings = extract_rankings(result.response, brand)
         if rankings.brand_positions.get(brand):

@@ -86,6 +86,7 @@ def analyze_response_sentiment(response: str) -> SentimentAnalysisResult:
     found_negative = [word for word in negative_signals if word in response_lower]
 
     total_score = positive_score + negative_score
+    overall: Literal["positive", "neutral", "negative"]
     if total_score == 0:
         breakdown = SentimentBreakdown(positive=0.0, neutral=1.0, negative=0.0)
         overall = "neutral"

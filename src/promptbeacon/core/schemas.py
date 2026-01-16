@@ -46,13 +46,13 @@ class ProviderResult(BaseModel):
     )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def success(self) -> bool:
         """Whether the request was successful."""
         return self.error is None
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def mention_count(self) -> int:
         """Number of brand mentions in this result."""
@@ -162,13 +162,13 @@ class Report(BaseModel):
     scan_duration_seconds: float = Field(default=0.0, ge=0)
     total_cost_usd: float | None = Field(default=None, ge=0)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def providers_used(self) -> list[str]:
         """List of providers used in this scan."""
         return list({r.provider for r in self.provider_results})
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def success_rate(self) -> float:
         """Rate of successful provider queries."""
@@ -197,7 +197,7 @@ class HistoryReport(BaseModel):
     average_score: float | None = Field(default=None, ge=0.0, le=100.0)
     volatility: float | None = Field(default=None, ge=0.0)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def visibility_trend(self) -> list[float]:
         """List of visibility scores over time."""
@@ -217,7 +217,7 @@ class ScanComparison(BaseModel):
         default_factory=list, description="Explanations for changes"
     )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def change_direction(self) -> Literal["up", "down", "stable"]:
         """Direction of score change."""

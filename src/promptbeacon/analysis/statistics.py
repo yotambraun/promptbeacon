@@ -155,6 +155,7 @@ def calculate_volatility(
     volatility_score = math.sqrt(variance)
 
     # Determine stability rating
+    stability_rating: Literal["stable", "moderate", "volatile"]
     if volatility_score < 3:
         stability_rating = "stable"
     elif volatility_score < 8:

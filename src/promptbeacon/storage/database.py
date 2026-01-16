@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import duckdb
 
@@ -227,7 +227,7 @@ class Database:
             ]
 
             # Calculate trend direction
-            trend_direction = None
+            trend_direction: Literal["up", "down", "stable"] | None = None
             if len(data_points) >= 2:
                 trend_result = conn.execute(
                     GET_VISIBILITY_TREND_QUERY, [brand]

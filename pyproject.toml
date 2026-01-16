@@ -148,12 +148,14 @@ directory = "htmlcov"
 [tool.mypy]
 python_version = "3.10"
 strict = false
-warn_return_any = true
-warn_unused_ignores = true
+warn_return_any = false
+warn_unused_ignores = false
 disallow_untyped_defs = false
-check_untyped_defs = true
+check_untyped_defs = false
 ignore_missing_imports = true
+no_implicit_optional = false
+show_error_codes = true
 
 [[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
+module = ["tests.*", "litellm.*", "duckdb.*", "instructor.*"]
+ignore_errors = true

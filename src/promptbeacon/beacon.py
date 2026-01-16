@@ -6,7 +6,15 @@ import asyncio
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Self
+else:
+    try:
+        from typing import Self
+    except ImportError:
+        from typing_extensions import Self
 
 from promptbeacon.analysis.explainer import (
     generate_explanations,
