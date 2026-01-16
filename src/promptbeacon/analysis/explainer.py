@@ -16,7 +16,7 @@ def generate_explanations(
     results: list[ProviderResult],
     brand: str,
     visibility_score: float,
-    competitors: list[str] | None = None,
+    _competitors: list[str] | None = None,
 ) -> list[Explanation]:
     """Generate explanations for visibility patterns.
 
@@ -193,7 +193,7 @@ def generate_recommendations(
     brand: str,
     visibility_score: float,
     sentiment: SentimentBreakdown,
-    competitors: list[str] | None = None,
+    _competitors: list[str] | None = None,
 ) -> list[Recommendation]:
     """Generate actionable recommendations for improving visibility.
 
@@ -325,9 +325,9 @@ def generate_recommendations(
 def explain_change(
     previous_score: float,
     current_score: float,
-    previous_results: list[ProviderResult] | None = None,
-    current_results: list[ProviderResult] | None = None,
-    brand: str = "",
+    _previous_results: list[ProviderResult] | None = None,
+    _current_results: list[ProviderResult] | None = None,
+    _brand: str = "",
 ) -> list[Explanation]:
     """Generate explanations for score changes between scans.
 

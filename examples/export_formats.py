@@ -15,10 +15,13 @@ Usage:
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from promptbeacon import Beacon, Provider, to_json, to_csv, to_markdown
+from promptbeacon import Beacon, Provider, to_csv, to_json, to_markdown  # noqa: E402
+
 
 def main():
     print("=" * 60)

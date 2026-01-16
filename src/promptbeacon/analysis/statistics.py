@@ -173,7 +173,7 @@ def calculate_volatility(
 def check_significance(
     before_scores: list[float],
     after_scores: list[float],
-    threshold: float = 0.05,
+    _threshold: float = 0.05,
 ) -> SignificanceTest:
     """Check if the change between two periods is statistically significant.
 

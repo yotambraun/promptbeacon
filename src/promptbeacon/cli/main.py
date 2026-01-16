@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -43,7 +43,7 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
         except ValueError:
             raise typer.BadParameter(
                 f"Invalid provider: {v}. Choose from: openai, anthropic, google"
-            )
+            ) from None
     return providers
 
 
@@ -51,15 +51,15 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
 def scan(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     competitors: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         typer.Option("--competitor", "-c", help="Competitor brands to compare"),
     ] = None,
     providers: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         typer.Option("--provider", "-p", help="LLM providers to use (openai, anthropic, google)"),
     ] = None,
     categories: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         typer.Option("--category", "-t", help="Categories/topics to analyze"),
     ] = None,
     prompt_count: Annotated[
@@ -67,7 +67,7 @@ def scan(
         typer.Option("--prompts", "-n", help="Number of prompts per category"),
     ] = 10,
     storage: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--storage", "-s", help="Path to DuckDB storage file"),
     ] = None,
     output_format: Annotated[
@@ -111,7 +111,7 @@ def scan(
             report = beacon.scan()
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     # Output results
     if output_format == OutputFormat.json:
@@ -130,7 +130,7 @@ def compare(
         typer.Option("--against", "-a", help="Competitor brands to compare against"),
     ],
     providers: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         typer.Option("--provider", "-p", help="LLM providers to use"),
     ] = None,
     output_format: Annotated[
@@ -160,7 +160,7 @@ def compare(
             report = beacon.scan()
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
         console.print(to_json(report))
@@ -178,7 +178,7 @@ def history(
         typer.Option("--days", "-d", help="Number of days of history"),
     ] = 30,
     storage: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--storage", "-s", help="Path to DuckDB storage file"),
     ] = None,
     output_format: Annotated[
@@ -200,7 +200,7 @@ def history(
         history_report = beacon.get_history(days)
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
         console.print(history_report.model_dump_json(indent=2))

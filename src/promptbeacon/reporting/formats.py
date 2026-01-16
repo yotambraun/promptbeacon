@@ -52,7 +52,7 @@ def to_dataframe(report: Report):
     try:
         import pandas as pd
     except ImportError:
-        raise ImportError("pandas is required for DataFrame export: pip install pandas")
+        raise ImportError("pandas is required for DataFrame export: pip install pandas") from None
 
     # Create main metrics row
     main_data = {
@@ -88,7 +88,7 @@ def to_mentions_dataframe(report: Report):
     try:
         import pandas as pd
     except ImportError:
-        raise ImportError("pandas is required for DataFrame export: pip install pandas")
+        raise ImportError("pandas is required for DataFrame export: pip install pandas") from None
 
     mentions_data = []
     for result in report.provider_results:
@@ -149,8 +149,8 @@ def to_markdown(report: Report) -> str:
         "",
         "## Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Visibility Score | **{report.visibility_score:.1f}**/100 |",
         f"| Total Mentions | {report.mention_count} |",
         f"| Positive Sentiment | {report.sentiment_breakdown.positive:.1%} |",

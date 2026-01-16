@@ -1,7 +1,7 @@
 """Tests for core schemas."""
 
+
 import pytest
-from datetime import datetime
 
 from promptbeacon.core.schemas import (
     BrandMention,

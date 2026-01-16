@@ -106,10 +106,9 @@ def extract_rankings(
         matches = re.findall(pattern, response, re.IGNORECASE)
         for _, text in matches:
             for brand in all_brands:
-                if brand.lower() in text.lower():
-                    if brand not in brand_positions:
-                        brand_positions[brand] = 1
-                        rankings.append(
+                if brand.lower() in text.lower() and brand not in brand_positions:
+                    brand_positions[brand] = 1
+                    rankings.append(
                             RankingResult(
                                 brand=brand,
                                 position=1,
@@ -127,7 +126,7 @@ def extract_rankings(
             if match:
                 # Calculate relative position based on character position
                 char_pos = match.start()
-                relative_pos = int((char_pos / max(len(response), 1)) * 10) + 1
+                int((char_pos / max(len(response), 1)) * 10) + 1
                 rankings.append(
                     RankingResult(
                         brand=brand,

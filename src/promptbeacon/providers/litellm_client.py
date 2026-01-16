@@ -2,25 +2,25 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import Any
 
 import litellm
 from litellm import acompletion, completion
 from litellm.exceptions import (
+    APIError,
     AuthenticationError,
     RateLimitError,
-    APIError,
 )
 
-from promptbeacon.core.config import Provider, get_api_key, has_api_key
+from promptbeacon.core.config import Provider, has_api_key
 from promptbeacon.core.exceptions import (
     ProviderAPIError,
     ProviderAuthenticationError,
     ProviderRateLimitError,
 )
 from promptbeacon.providers.base import BaseLLMClient, LLMResponse
-
 
 # Model mapping for each provider
 PROVIDER_MODELS: dict[Provider, str] = {
@@ -121,10 +121,8 @@ class LiteLLMClient(BaseLLMClient):
             # Calculate cost if available
             cost_usd = None
             if hasattr(response, "usage") and response.usage:
-                try:
+                with contextlib.suppress(Exception):
                     cost_usd = litellm.completion_cost(completion_response=response)
-                except Exception:
-                    pass
 
             # Extract usage
             usage = None
@@ -205,10 +203,8 @@ class LiteLLMClient(BaseLLMClient):
             # Calculate cost if available
             cost_usd = None
             if hasattr(response, "usage") and response.usage:
-                try:
+                with contextlib.suppress(Exception):
                     cost_usd = litellm.completion_cost(completion_response=response)
-                except Exception:
-                    pass
 
             # Extract usage
             usage = None

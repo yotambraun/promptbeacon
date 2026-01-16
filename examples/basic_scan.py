@@ -14,13 +14,14 @@ Usage:
 """
 
 import os
-from pathlib import Path
 
 # Load environment variables from .env file if it exists
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from promptbeacon import Beacon, Provider
+from promptbeacon import Beacon, Provider  # noqa: E402
+
 
 def main():
     print("=" * 60)

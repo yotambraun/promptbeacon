@@ -11,31 +11,22 @@ import duckdb
 
 from promptbeacon.core.exceptions import StorageError
 from promptbeacon.core.schemas import (
-    BrandMention,
-    CompetitorScore,
     HistoricalDataPoint,
     HistoryReport,
-    ProviderResult,
     Report,
     ScanComparison,
     SentimentBreakdown,
 )
 from promptbeacon.storage.models import (
     SCHEMA_SQL,
-    BrandMentionRecord,
-    CompetitorScoreRecord,
-    ProviderResultRecord,
     ScanRecord,
 )
 from promptbeacon.storage.queries import (
     DELETE_OLD_SCANS_QUERY,
     GET_AVERAGE_VISIBILITY_QUERY,
-    GET_BRAND_MENTIONS_QUERY,
-    GET_COMPETITOR_SCORES_QUERY,
     GET_HISTORY_QUERY,
     GET_LATEST_SCAN_QUERY,
     GET_PREVIOUS_SCAN_QUERY,
-    GET_PROVIDER_RESULTS_QUERY,
     GET_SCAN_COUNT_QUERY,
     GET_VISIBILITY_TREND_QUERY,
     GET_VOLATILITY_QUERY,

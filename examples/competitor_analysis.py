@@ -14,10 +14,13 @@ Usage:
 """
 
 import os
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from promptbeacon import Beacon, Provider
+from promptbeacon import Beacon, Provider  # noqa: E402
+
 
 def main():
     print("=" * 60)

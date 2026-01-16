@@ -1,9 +1,9 @@
 """Tests for Beacon class."""
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
-from promptbeacon.beacon import Beacon, DEFAULT_PROMPTS
+import pytest
+
+from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import Provider
 from promptbeacon.core.exceptions import ConfigurationError
 

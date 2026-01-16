@@ -1,20 +1,19 @@
 """Tests for extraction module."""
 
-import pytest
 
 from promptbeacon.extraction.mentions import (
-    extract_mentions,
-    count_brand_mentions,
-    calculate_mention_prominence,
     analyze_mention_sentiment,
+    calculate_mention_prominence,
+    count_brand_mentions,
+    extract_mentions,
+)
+from promptbeacon.extraction.ranking import (
+    calculate_position_score,
+    extract_rankings,
 )
 from promptbeacon.extraction.sentiment import (
     analyze_response_sentiment,
     calculate_sentiment_score,
-)
-from promptbeacon.extraction.ranking import (
-    extract_rankings,
-    calculate_position_score,
 )
 
 

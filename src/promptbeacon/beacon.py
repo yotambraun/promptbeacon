@@ -8,7 +8,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Self
 
-from promptbeacon.analysis.explainer import generate_explanations, generate_recommendations
+from promptbeacon.analysis.explainer import (
+    generate_explanations,
+    generate_recommendations,
+)
 from promptbeacon.analysis.scorer import (
     calculate_competitor_scores,
     calculate_metrics,
@@ -22,13 +25,10 @@ from promptbeacon.core.schemas import (
     ProviderResult,
     Report,
     ScanComparison,
-    SentimentBreakdown,
-    VisibilityMetrics,
 )
 from promptbeacon.extraction.mentions import extract_mentions
 from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_providers
 from promptbeacon.storage.database import Database
-
 
 # Default prompts for brand visibility analysis
 DEFAULT_PROMPTS = [
@@ -279,9 +279,11 @@ class Beacon:
             # Run prompts concurrently with semaphore for rate limiting
             semaphore = asyncio.Semaphore(self._config.concurrent_requests)
 
-            async def query_with_semaphore(prompt: str) -> ProviderResult:
-                async with semaphore:
-                    return await self._query_provider(client, prompt)
+            async def query_with_semaphore(
+                prompt: str, sem: asyncio.Semaphore = semaphore, cli: LiteLLMClient = client
+            ) -> ProviderResult:
+                async with sem:
+                    return await self._query_provider(cli, prompt)
 
             provider_results = await asyncio.gather(
                 *[query_with_semaphore(p) for p in prompts],

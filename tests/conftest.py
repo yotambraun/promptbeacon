@@ -1,7 +1,8 @@
 """Pytest configuration and fixtures."""
 
-import pytest
 from datetime import datetime
+
+import pytest
 
 from promptbeacon.core.schemas import (
     BrandMention,

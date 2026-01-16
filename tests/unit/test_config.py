@@ -1,14 +1,13 @@
 """Tests for configuration module."""
 
-import os
 import pytest
 
 from promptbeacon.core.config import (
     BeaconConfig,
     Provider,
     get_api_key,
-    has_api_key,
     get_default_storage_path,
+    has_api_key,
 )
 
 

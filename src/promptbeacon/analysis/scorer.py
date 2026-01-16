@@ -5,14 +5,12 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from promptbeacon.core.schemas import (
-    BrandMention,
     CompetitorScore,
     ProviderResult,
-    SentimentBreakdown,
     VisibilityMetrics,
 )
 from promptbeacon.extraction.mentions import calculate_mention_prominence
-from promptbeacon.extraction.ranking import extract_rankings, get_average_position
+from promptbeacon.extraction.ranking import extract_rankings
 from promptbeacon.extraction.sentiment import aggregate_mention_sentiment
 
 
