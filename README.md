@@ -3,10 +3,10 @@
 **Track how AI sees your brand.** Monitor your brand's visibility across ChatGPT, Claude, Gemini, and other LLMs.
 
 [![PyPI version](https://badge.fury.io/py/promptbeacon.svg)](https://badge.fury.io/py/promptbeacon)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/promptbeacon.svg)](https://pypi.org/project/promptbeacon/)
+[![Downloads](https://static.pepy.tech/badge/promptbeacon)](https://pepy.tech/project/promptbeacon)
 [![CI](https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg)](https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/yotambraun/promptbeacon/branch/main/graph/badge.svg)](https://codecov.io/gh/yotambraun/promptbeacon)
 
 ---
@@ -237,7 +237,7 @@ Contributions welcome! See [TODO.md](TODO.md) for the roadmap.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgements
 
