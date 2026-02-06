@@ -27,6 +27,28 @@ class BrandMention(BaseModel):
     )
 
 
+class Citation(BaseModel):
+    """A single citation found in an LLM response."""
+
+    url: str | None = Field(default=None, description="URL if one was cited")
+    source_name: str = Field(..., description="Name of the cited source")
+    context: str = Field(
+        default="", description="Surrounding text where the citation appeared"
+    )
+    brand_associated: str | None = Field(
+        default=None,
+        description="Brand name nearest to this citation, if any",
+    )
+
+
+class CitationSummary(BaseModel):
+    """Aggregated citation summary for a report."""
+
+    total_citations: int = Field(default=0, ge=0)
+    unique_domains: list[str] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)
+
+
 class ProviderResult(BaseModel):
     """Result from a single LLM provider query."""
 
@@ -36,6 +58,9 @@ class ProviderResult(BaseModel):
     response: str = Field(..., description="The LLM's response")
     mentions: list[BrandMention] = Field(
         default_factory=list, description="Brand mentions extracted from response"
+    )
+    citations: list[Citation] = Field(
+        default_factory=list, description="Citations extracted from response"
     )
     latency_ms: float = Field(..., ge=0, description="Response latency in milliseconds")
     cost_usd: float | None = Field(
@@ -89,6 +114,35 @@ class CompetitorScore(BaseModel):
     sentiment: SentimentBreakdown
 
 
+class ScoreBreakdown(BaseModel):
+    """Breakdown of the four factors that compose the visibility score."""
+
+    mention_frequency: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Mention frequency sub-score (0-100 before weighting)",
+    )
+    sentiment: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Sentiment sub-score (0-100 before weighting)",
+    )
+    position: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Position / prominence sub-score (0-100 before weighting)",
+    )
+    recommendation: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Recommendation rate sub-score (0-100 before weighting)",
+    )
+
+
 class VisibilityMetrics(BaseModel):
     """Core visibility metrics for a brand."""
 
@@ -105,6 +159,9 @@ class VisibilityMetrics(BaseModel):
     sentiment: SentimentBreakdown = Field(default_factory=SentimentBreakdown)
     confidence_interval: tuple[float, float] | None = Field(
         default=None, description="95% confidence interval for visibility score"
+    )
+    score_breakdown: ScoreBreakdown | None = Field(
+        default=None, description="Breakdown of the four scoring factors"
     )
 
 
@@ -157,6 +214,10 @@ class Report(BaseModel):
     )
     recommendations: list[Recommendation] = Field(
         default_factory=list, description="Actionable recommendations"
+    )
+    citation_summary: CitationSummary = Field(
+        default_factory=CitationSummary,
+        description="Aggregated citations from all provider responses",
     )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     scan_duration_seconds: float = Field(default=0.0, ge=0)

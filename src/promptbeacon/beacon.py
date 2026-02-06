@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,7 @@ from promptbeacon.analysis.explainer import (
     generate_recommendations,
 )
 from promptbeacon.analysis.scorer import (
+    ScoringWeights,
     calculate_competitor_scores,
     calculate_metrics,
     calculate_visibility_score,
@@ -29,14 +31,21 @@ from promptbeacon.analysis.statistics import calculate_confidence_interval
 from promptbeacon.core.config import BeaconConfig, Provider
 from promptbeacon.core.exceptions import ConfigurationError, ScanError
 from promptbeacon.core.schemas import (
+    Citation,
+    CitationSummary,
     HistoryReport,
     ProviderResult,
     Report,
     ScanComparison,
 )
+from promptbeacon.extraction.citations import extract_citations
 from promptbeacon.extraction.mentions import extract_mentions
+from promptbeacon.prompts.templates import get_industry_prompts
 from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_providers
+from promptbeacon.storage.cache import ResponseCache
 from promptbeacon.storage.database import Database
+
+logger = logging.getLogger(__name__)
 
 # Default prompts for brand visibility analysis
 DEFAULT_PROMPTS = [
@@ -84,6 +93,8 @@ class Beacon:
         self._config = BeaconConfig(brand=brand)
         self._database: Database | None = None
         self._custom_prompts: list[str] | None = None
+        self._scoring_weights: ScoringWeights | None = None
+        self._cache: ResponseCache | None = None
 
     @property
     def brand(self) -> str:
@@ -94,6 +105,28 @@ class Beacon:
     def config(self) -> BeaconConfig:
         """The current configuration."""
         return self._config
+
+    def with_aliases(self, *aliases: str) -> Self:
+        """Add alternative names for the brand.
+
+        Aliases are matched in LLM responses and counted as mentions of
+        the primary brand.  For example, ``"Nike Inc"`` and
+        ``"Nike Corporation"`` would both count as Nike mentions.
+
+        Args:
+            *aliases: Alternative brand names.
+
+        Returns:
+            Self for chaining.
+        """
+        flat_aliases = []
+        for a in aliases:
+            if isinstance(a, (list, tuple)):
+                flat_aliases.extend(a)
+            else:
+                flat_aliases.append(a)
+        self._config = self._config.model_copy(update={"brand_aliases": flat_aliases})
+        return self
 
     def with_competitors(self, *competitors: str) -> Self:
         """Add competitors to track.
@@ -225,6 +258,76 @@ class Beacon:
         self._custom_prompts = prompts
         return self
 
+    def with_industry(self, industry: str) -> Self:
+        """Use industry-specific prompt templates.
+
+        Replaces the default prompts with templates tuned for a specific
+        industry vertical. Available industries: ecommerce, saas, finance,
+        healthcare, travel, food, tech.
+
+        Args:
+            industry: Industry name (case-insensitive).
+
+        Returns:
+            Self for chaining.
+
+        Raises:
+            ValueError: If the industry is not recognized.
+        """
+        self._custom_prompts = get_industry_prompts(industry)
+        return self
+
+    def with_scoring_weights(
+        self,
+        mention_frequency: float = 0.3,
+        sentiment: float = 0.25,
+        position: float = 0.25,
+        recommendation: float = 0.2,
+    ) -> Self:
+        """Customise the weights used when calculating the visibility score.
+
+        The four weights control how much each signal contributes to the
+        final 0-100 score.  They should sum to 1.0 for a meaningful result.
+
+        Args:
+            mention_frequency: Weight for how often the brand is mentioned.
+            sentiment: Weight for sentiment polarity.
+            position: Weight for ranking / early-mention prominence.
+            recommendation: Weight for explicit recommendation signals.
+
+        Returns:
+            Self for chaining.
+        """
+        self._scoring_weights = ScoringWeights(
+            mention_frequency=mention_frequency,
+            sentiment=sentiment,
+            position=position,
+            recommendation=recommendation,
+        )
+        return self
+
+    def with_cache(
+        self,
+        cache_dir: str | Path | None = None,
+        ttl_seconds: int = 86400,
+    ) -> Self:
+        """Enable response caching to skip identical LLM queries.
+
+        Cached responses are stored as JSON files keyed by a SHA-256 hash
+        of (prompt, provider, model).
+
+        Args:
+            cache_dir: Directory for cache files.
+                Defaults to ``~/.promptbeacon/cache/``.
+            ttl_seconds: Time-to-live in seconds. Defaults to 24 hours.
+
+        Returns:
+            Self for chaining.
+        """
+        dir_path = Path(cache_dir).expanduser() if cache_dir else None
+        self._cache = ResponseCache(cache_dir=dir_path, ttl_seconds=ttl_seconds)
+        return self
+
     def _get_prompts(self) -> list[str]:
         """Generate the list of prompts to use."""
         base_prompts = self._custom_prompts or DEFAULT_PROMPTS
@@ -308,19 +411,24 @@ class Beacon:
                     if result.cost_usd:
                         total_cost += result.cost_usd
                 elif isinstance(result, Exception):
-                    # Log error but continue
-                    pass
+                    logger.warning("Provider query failed: %s", result)
 
         if not results:
             raise ScanError("All provider queries failed. Check API keys and network.")
 
         # Calculate metrics
-        visibility_score = calculate_visibility_score(results, self._config.brand)
-        metrics = calculate_metrics(results, self._config.brand)
+        visibility_score = calculate_visibility_score(
+            results, self._config.brand, weights=self._scoring_weights
+        )
+        metrics = calculate_metrics(
+            results, self._config.brand, weights=self._scoring_weights
+        )
 
         # Calculate confidence interval
         scores = [
-            calculate_visibility_score([r], self._config.brand)
+            calculate_visibility_score(
+                [r], self._config.brand, weights=self._scoring_weights
+            )
             for r in results
             if r.success
         ]
@@ -349,6 +457,15 @@ class Beacon:
             self._config.competitors,
         )
 
+        # Aggregate citations across all results
+        all_citations = [c for r in results for c in r.citations]
+        unique_domains = sorted({c.source_name for c in all_citations if c.url})
+        citation_summary = CitationSummary(
+            total_citations=len(all_citations),
+            unique_domains=unique_domains,
+            citations=all_citations,
+        )
+
         # Build report
         scan_duration = time.time() - start_time
         report = Report(
@@ -361,6 +478,7 @@ class Beacon:
             metrics=metrics,
             explanations=explanations,
             recommendations=recommendations,
+            citation_summary=citation_summary,
             timestamp=datetime.utcnow(),
             scan_duration_seconds=round(scan_duration, 2),
             total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
@@ -386,27 +504,70 @@ class Beacon:
             ProviderResult with the response.
         """
         try:
-            response = await client.complete(
-                prompt=prompt,
-                temperature=self._config.temperature,
-                max_tokens=self._config.max_tokens,
-            )
+            # Check cache first
+            cached_content: str | None = None
+            if self._cache:
+                cached_content = self._cache.get(
+                    prompt, client.provider_name, client.model
+                )
+
+            if cached_content is not None:
+                response_content = cached_content
+                latency_ms = 0.0
+                cost_usd = None
+                provider_name = client.provider_name
+                model_name = client.model
+            else:
+                response = await client.complete(
+                    prompt=prompt,
+                    temperature=self._config.temperature,
+                    max_tokens=self._config.max_tokens,
+                )
+                response_content = response.content
+                latency_ms = response.latency_ms
+                cost_usd = response.cost_usd
+                provider_name = response.provider
+                model_name = response.model
+
+                # Store in cache
+                if self._cache:
+                    self._cache.set(
+                        prompt, client.provider_name, client.model, response_content
+                    )
 
             # Extract mentions from response
             extraction = extract_mentions(
-                response.content,
+                response_content,
                 self._config.brand,
                 self._config.competitors,
+                aliases=self._config.brand_aliases or None,
             )
 
+            # Extract citations
+            all_brands = (
+                [self._config.brand]
+                + (self._config.brand_aliases or [])
+                + (self._config.competitors or [])
+            )
+            citation_result = extract_citations(response_content, brands=all_brands)
+
             return ProviderResult(
-                provider=response.provider,
-                model=response.model,
+                provider=provider_name,
+                model=model_name,
                 prompt=prompt,
-                response=response.content,
+                response=response_content,
                 mentions=extraction.mentions,
-                latency_ms=response.latency_ms,
-                cost_usd=response.cost_usd,
+                citations=[
+                    Citation(
+                        url=c.url,
+                        source_name=c.source_name,
+                        context=c.context,
+                        brand_associated=c.brand_associated,
+                    )
+                    for c in citation_result.citations
+                ],
+                latency_ms=latency_ms,
+                cost_usd=cost_usd,
                 timestamp=datetime.utcnow(),
             )
 

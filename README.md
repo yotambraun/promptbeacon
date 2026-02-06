@@ -1,6 +1,7 @@
 # PromptBeacon
 
-**Track how AI sees your brand.** Monitor your brand's visibility across ChatGPT, Claude, Gemini, and other LLMs.
+**The open-source Generative Engine Optimization (GEO) toolkit for Python.**
+Track how AI sees your brand across ChatGPT, Claude, Gemini, Mistral, and more.
 
 [![PyPI version](https://badge.fury.io/py/promptbeacon.svg)](https://badge.fury.io/py/promptbeacon)
 [![Downloads](https://static.pepy.tech/badge/promptbeacon)](https://pepy.tech/project/promptbeacon)
@@ -11,27 +12,68 @@
 
 ---
 
+> **The AI visibility space is dominated by $99-300+/month SaaS tools.**
+> PromptBeacon is the **only open-source alternative** — free, local-first, and extensible.
+
+## What It Does
+
+```
+Prompt: "What are the best running shoe brands?"
+
+     ChatGPT                    Claude                     Gemini
+        |                         |                          |
+        v                         v                          v
+  "Nike is a top              "I'd recommend             "Popular brands
+   choice for..."              Nike and..."               include Nike..."
+        |                         |                          |
+        +------------+------------+------------+-------------+
+                     |
+              PromptBeacon
+                     |
+     +---------------+----------------+
+     |               |                |
+  Visibility    Sentiment         Citations
+  Score: 78/100  82% positive    nike.com (3x)
+                                 runnersworld.com
+```
+
+**Three lines of code. Six providers. One score.**
+
+```python
+from promptbeacon import Beacon
+
+report = Beacon("Nike").scan()
+print(f"Visibility: {report.visibility_score}/100")  # 78.3
+```
+
 ## Why PromptBeacon?
 
-As AI assistants become the new search engines, brands need to understand how they appear in AI-generated responses. PromptBeacon provides:
+As AI assistants replace search engines, your brand's AI visibility is your new SEO.
+PromptBeacon answers the questions that matter:
 
-- **Visibility Scoring**: Measure how often and prominently your brand is mentioned (0-100 scale)
-- **Sentiment Analysis**: Understand if AI talks about your brand positively, neutrally, or negatively
-- **Competitor Benchmarking**: Compare your visibility against competitors
-- **Explainable Insights**: Not just "score dropped 5%" but *why* with actual quotes
-- **Statistical Rigor**: Confidence intervals, volatility scoring, significance testing
-- **Local-First**: All data stays on your machine with DuckDB storage
+- **"How visible is my brand?"** — 0-100 score based on mention frequency, sentiment, position, and recommendation rate
+- **"What do LLMs say about me?"** — Sentiment analysis with negation detection ("not great" = negative)
+- **"How do I compare to competitors?"** — Side-by-side benchmarking across providers
+- **"Why did my score change?"** — Evidence-based explanations with actual quotes from LLM responses
+- **"Which sources does the AI cite?"** — Citation tracking: URLs, "According to X" patterns, brand associations
+- **"Is my score statistically reliable?"** — Confidence intervals, volatility scoring, significance testing
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-Provider** | Query OpenAI, Anthropic, and Google simultaneously |
+| **6 LLM Providers** | OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity — query them all simultaneously |
+| **Citation Tracking** | See which sources LLMs cite when discussing your brand |
+| **Brand Aliases** | "Nike Inc", "Nike Corporation" all count as Nike mentions |
+| **Industry Templates** | Pre-built prompts for ecommerce, SaaS, finance, healthcare, travel, food, tech |
+| **Response Caching** | Skip identical queries with file-based caching (configurable TTL) |
+| **Score Breakdown** | See which of the 4 scoring factors (mentions, sentiment, position, recommendations) drags your score |
 | **Fluent API** | Chainable, readable Python interface |
 | **Historical Tracking** | DuckDB-powered local storage for trend analysis |
-| **CLI Interface** | Full command-line support for automation |
-| **Export Formats** | JSON, CSV, Markdown, HTML, pandas DataFrame |
-| **Async Support** | Built for performance with async-first design |
+| **CLI + Python** | Full command-line and programmatic access |
+| **5 Export Formats** | JSON, CSV, Markdown, HTML, pandas DataFrame |
+| **Async-First** | Built for performance with concurrent provider queries |
+| **Local-First** | All data stays on your machine — no cloud, no subscription |
 
 ## Installation
 
@@ -39,153 +81,165 @@ As AI assistants become the new search engines, brands need to understand how th
 pip install promptbeacon
 ```
 
-With [uv](https://github.com/astral-sh/uv) (recommended):
+Or with [uv](https://github.com/astral-sh/uv) (recommended):
 
 ```bash
 uv add promptbeacon
 ```
 
+## Prerequisites
+
+You need at least one LLM provider API key:
+
+```bash
+export OPENAI_API_KEY="sk-..."          # https://platform.openai.com/api-keys
+export ANTHROPIC_API_KEY="sk-ant-..."   # https://console.anthropic.com/settings/keys
+export GOOGLE_API_KEY="..."             # https://aistudio.google.com/apikey
+```
+
+Verify your setup:
+
+```bash
+promptbeacon providers
+```
+
 ## Quick Start
 
-### Simple Usage
+### 3-Line Scan
 
 ```python
 from promptbeacon import Beacon
 
-beacon = Beacon("Nike")
-report = beacon.scan()
-
+report = Beacon("Nike").scan()
 print(f"Visibility: {report.visibility_score}/100")
 print(f"Mentions: {report.mention_count}")
 print(f"Sentiment: {report.sentiment_breakdown.positive:.0%} positive")
 ```
 
-### Competitor Analysis
+### Full Competitive Analysis
 
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = (
+report = (
     Beacon("Nike")
+    .with_aliases("Nike Inc", "Nike Corporation")       # count all name variants
     .with_competitors("Adidas", "Puma", "New Balance")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-    .with_categories("running shoes", "athletic wear", "sports brand")
-    .with_prompt_count(20)
+    .with_industry("ecommerce")                          # industry-tuned prompts
+    .with_cache()                                        # skip duplicate queries
+    .with_storage("~/.promptbeacon/nike.db")             # track history
+    .scan()
 )
 
-report = beacon.scan()
+# Visibility score with factor breakdown
+print(f"Score: {report.visibility_score}/100")
+bd = report.metrics.score_breakdown
+print(f"  Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
+print(f"  Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
 
-# Compare against competitors
+# Competitor comparison
 for name, score in report.competitor_comparison.items():
     print(f"{name}: {score.visibility_score:.1f}")
+
+# Citations the LLM used
+for cit in report.citation_summary.citations[:5]:
+    print(f"  Source: {cit.source_name} -> {cit.brand_associated}")
+
+# Evidence-based recommendations
+for rec in report.recommendations[:3]:
+    print(f"[{rec.priority.upper()}] {rec.action}")
 ```
 
 ### Historical Tracking
 
 ```python
-from promptbeacon import Beacon
-
 beacon = Beacon("Nike").with_storage("~/.promptbeacon/data.db")
-
-# Scan and auto-save
 report = beacon.scan()
 
-# Get 30-day trends
 history = beacon.get_history(days=30)
 print(f"Trend: {history.trend_direction}")  # up, down, or stable
 
-# Compare with previous scan
 diff = beacon.compare_with_previous()
 if diff:
     print(f"Change: {diff.score_change:+.1f} points")
 ```
 
-### Actionable Insights
-
-```python
-# Get explanations for your visibility
-for exp in report.explanations:
-    print(f"[{exp.impact.upper()}] {exp.message}")
-
-# Get prioritized recommendations
-for rec in report.recommendations:
-    print(f"[{rec.priority}] {rec.action}")
-    print(f"  Why: {rec.rationale}")
-```
-
 ## CLI Usage
 
 ```bash
-# Basic scan
+# Quick 3-prompt scan (fast check)
+promptbeacon quick "Nike"
+
+# Full scan
 promptbeacon scan "Nike"
 
-# With competitors
+# With competitors and multiple providers
 promptbeacon scan "Nike" -c "Adidas" -c "Puma" -p openai -p anthropic
 
-# Compare brands
+# Compare brands head-to-head
 promptbeacon compare "Nike" --against "Adidas" --against "Puma"
 
-# View history
+# View 30-day history
 promptbeacon history "Nike" --days 30
 
-# Output formats
+# Export as JSON or Markdown
 promptbeacon scan "Nike" --format json
 promptbeacon scan "Nike" --format markdown
 
-# Check provider status
+# Check which providers are configured
 promptbeacon providers
 ```
 
-## Configuration
+## Supported Providers
 
-### Environment Variables
+| Provider | Default Model | Env Variable |
+|----------|---------------|--------------|
+| OpenAI | gpt-4o-mini | `OPENAI_API_KEY` |
+| Anthropic | claude-3-5-haiku-20241022 | `ANTHROPIC_API_KEY` |
+| Google | gemini-2.0-flash | `GOOGLE_API_KEY` |
+| Mistral | mistral-small-latest | `MISTRAL_API_KEY` |
+| Cohere | command-r | `COHERE_API_KEY` |
+| Perplexity | sonar | `PERPLEXITY_API_KEY` |
 
-```bash
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
-```
+## API at a Glance
 
-### Default Models
-
-| Provider | Model |
-|----------|-------|
-| OpenAI | gpt-4o-mini |
-| Anthropic | claude-3-haiku-20240307 |
-| Google | gemini-1.5-flash |
-
-## API Reference
-
-### Beacon Class
+### Beacon Configuration
 
 ```python
-beacon = Beacon(brand: str)
+beacon = Beacon("Nike")
 ```
 
 | Method | Description |
 |--------|-------------|
-| `.with_competitors(*brands)` | Add competitor brands |
-| `.with_providers(*providers)` | Set LLM providers |
-| `.with_categories(*topics)` | Set analysis categories |
-| `.with_prompt_count(n)` | Prompts per category |
-| `.with_storage(path)` | Enable DuckDB storage |
-| `.with_temperature(t)` | LLM temperature (0-2) |
+| `.with_competitors(*brands)` | Add competitor brands to track |
+| `.with_aliases(*names)` | Alternative brand names (counted as primary) |
+| `.with_providers(*providers)` | Set LLM providers to query |
+| `.with_industry(name)` | Use industry-specific prompt templates |
+| `.with_categories(*topics)` | Set custom analysis categories |
+| `.with_prompt_count(n)` | Number of prompts per category |
+| `.with_cache(ttl_seconds=...)` | Enable response caching |
+| `.with_storage(path)` | Enable DuckDB historical storage |
+| `.with_scoring_weights(...)` | Customise visibility score weights |
+| `.with_prompts(list)` | Use fully custom prompt templates |
+| `.with_temperature(t)` | LLM temperature (0.0-2.0) |
 | `.with_timeout(seconds)` | Request timeout |
 | `.scan()` | Run synchronous scan |
 | `.scan_async()` | Run async scan |
-| `.get_history(days)` | Get historical data |
-| `.compare_with_previous()` | Compare scans |
+| `.get_history(days)` | Get historical trend data |
+| `.compare_with_previous()` | Compare with last scan |
 
 ### Report Object
 
 ```python
-report.visibility_score      # 0-100 score
-report.mention_count         # Total mentions
-report.sentiment_breakdown   # positive/neutral/negative
-report.competitor_comparison # Competitor scores
-report.explanations          # Why insights
-report.recommendations       # Action items
-report.metrics              # Detailed metrics
+report.visibility_score        # 0-100 overall score
+report.mention_count           # total brand mentions
+report.sentiment_breakdown     # .positive / .neutral / .negative
+report.competitor_comparison   # {name: CompetitorScore}
+report.citation_summary        # .citations, .total_citations, .unique_domains
+report.metrics.score_breakdown # .mention_frequency / .sentiment / .position / .recommendation
+report.explanations            # evidence-based insights
+report.recommendations         # prioritised action items
 ```
 
 ### Export Functions
@@ -195,41 +249,34 @@ from promptbeacon import to_json, to_csv, to_markdown, to_html, to_dataframe
 
 to_json(report)       # JSON string
 to_csv(report)        # CSV string
-to_markdown(report)   # Markdown
-to_html(report)       # HTML page
+to_markdown(report)   # Markdown report
+to_html(report)       # Standalone HTML page
 to_dataframe(report)  # pandas DataFrame
 ```
+
+## Documentation
+
+Full docs are in [docs/](docs/):
+
+- [Quickstart Guide](docs/quickstart.md) - Up and running in 5 minutes
+- [API Reference](docs/api-reference.md) - Complete API documentation
+- [CLI Reference](docs/cli.md) - Command-line interface guide
+- [Provider Setup](docs/providers.md) - Configure all 6 providers
+- [Storage Guide](docs/storage.md) - Historical tracking with DuckDB
+- [Advanced Usage](docs/advanced.md) - Custom prompts, async, integrations
+- [Examples](docs/examples.md) - Real-world usage patterns
 
 ## Development
 
 ```bash
 git clone https://github.com/yotambraun/promptbeacon
 cd promptbeacon
+uv venv && uv sync --all-extras
 
-# Setup with uv
-uv venv
-uv sync --all-extras
-
-# Run tests
-uv run pytest --cov -v
-
-# Lint
-uv run ruff check .
-uv run ruff format .
-uv run mypy src/promptbeacon
+uv run pytest --cov -v        # tests
+uv run ruff check .           # lint
+uv run ruff format .          # format
 ```
-
-## Documentation
-
-Full documentation is available in the [docs/](docs/) folder:
-
-- [**Quickstart Guide**](docs/quickstart.md) - Get up and running in 5 minutes
-- [**API Reference**](docs/api-reference.md) - Complete API documentation
-- [**CLI Reference**](docs/cli.md) - Command-line interface guide
-- [**Provider Setup**](docs/providers.md) - Configure OpenAI, Anthropic, Google
-- [**Storage Guide**](docs/storage.md) - Historical tracking with DuckDB
-- [**Advanced Usage**](docs/advanced.md) - Custom prompts, async, advanced analysis
-- [**Examples**](docs/examples.md) - Real-world usage patterns
 
 ## Contributing
 

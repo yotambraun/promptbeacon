@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -35,6 +36,8 @@ from promptbeacon.storage.queries import (
 if TYPE_CHECKING:
     from duckdb import DuckDBPyConnection
 
+logger = logging.getLogger(__name__)
+
 
 class Database:
     """DuckDB database wrapper for PromptBeacon storage."""
@@ -59,6 +62,7 @@ class Database:
                     self._conn = duckdb.connect(":memory:")
                 self._initialize_schema()
             except Exception as e:
+                logger.error("Failed to connect to database: %s", e)
                 raise StorageError(f"Failed to connect to database: {e}") from e
         return self._conn
 
@@ -70,6 +74,7 @@ class Database:
         try:
             conn.execute(SCHEMA_SQL)
         except Exception as e:
+            logger.error("Failed to initialize schema: %s", e)
             raise StorageError(f"Failed to initialize schema: {e}") from e
 
     def close(self) -> None:
@@ -194,6 +199,7 @@ class Database:
             return scan_id
 
         except Exception as e:
+            logger.error("Failed to save report: %s", e)
             raise StorageError(f"Failed to save report: {e}") from e
 
     def get_history(self, brand: str, days: int = 30) -> HistoryReport:
@@ -265,6 +271,7 @@ class Database:
             )
 
         except Exception as e:
+            logger.error("Failed to get history: %s", e)
             raise StorageError(f"Failed to get history: {e}") from e
 
     def get_latest_scan(self, brand: str) -> ScanRecord | None:
@@ -298,6 +305,7 @@ class Database:
             )
 
         except Exception as e:
+            logger.error("Failed to get latest scan: %s", e)
             raise StorageError(f"Failed to get latest scan: {e}") from e
 
     def get_previous_scan(self, brand: str) -> ScanRecord | None:
@@ -331,6 +339,7 @@ class Database:
             )
 
         except Exception as e:
+            logger.error("Failed to get previous scan: %s", e)
             raise StorageError(f"Failed to get previous scan: {e}") from e
 
     def compare_with_previous(self, brand: str) -> ScanComparison | None:
@@ -374,6 +383,7 @@ class Database:
             return result[0] if result else 0
 
         except Exception as e:
+            logger.error("Failed to get scan count: %s", e)
             raise StorageError(f"Failed to get scan count: {e}") from e
 
     def delete_old_scans(self, brand: str, older_than_days: int) -> int:
@@ -416,4 +426,5 @@ class Database:
             return len(result)
 
         except Exception as e:
+            logger.error("Failed to delete old scans: %s", e)
             raise StorageError(f"Failed to delete old scans: {e}") from e

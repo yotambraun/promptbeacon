@@ -49,10 +49,12 @@ class BrandMonitor:
 
         self.beacon = (
             Beacon(brand)
+            .with_aliases(f"{brand} Inc", f"{brand} Corporation")
             .with_competitors(*competitors)
             .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
+            .with_industry("ecommerce")
+            .with_cache()
             .with_storage(storage_path)
-            .with_prompt_count(15)
         )
 
     async def run_daily_scan(self):

@@ -1,14 +1,17 @@
 # Provider Configuration Guide
 
-PromptBeacon supports multiple LLM providers through LiteLLM. This guide covers setup, configuration, and best practices for each provider.
+PromptBeacon supports 6 LLM providers through LiteLLM. This guide covers setup, configuration, and best practices for each provider.
 
 ## Supported Providers
 
-| Provider | Models | API Key Required | Rate Limits |
-|----------|--------|------------------|-------------|
-| OpenAI | GPT-4, GPT-3.5 | Yes | 10,000 RPM (free tier) |
-| Anthropic | Claude 3 family | Yes | 50 RPM (free tier) |
-| Google | Gemini 1.5 | Yes | 60 RPM (free tier) |
+| Provider | Default Model | API Key Required | Env Variable |
+|----------|---------------|------------------|--------------|
+| OpenAI | gpt-4o-mini | Yes | `OPENAI_API_KEY` |
+| Anthropic | claude-3-5-haiku-20241022 | Yes | `ANTHROPIC_API_KEY` |
+| Google | gemini-2.0-flash | Yes | `GOOGLE_API_KEY` |
+| Mistral | mistral-small-latest | Yes | `MISTRAL_API_KEY` |
+| Cohere | command-r | Yes | `COHERE_API_KEY` |
+| Perplexity | sonar | Yes | `PERPLEXITY_API_KEY` |
 
 ## Quick Setup
 
@@ -31,6 +34,15 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Google
 export GOOGLE_API_KEY="..."
+
+# Mistral
+export MISTRAL_API_KEY="..."
+
+# Cohere
+export COHERE_API_KEY="..."
+
+# Perplexity
+export PERPLEXITY_API_KEY="pplx-..."
 ```
 
 ### Verify Configuration
@@ -38,9 +50,9 @@ export GOOGLE_API_KEY="..."
 ```python
 from promptbeacon.core.config import has_api_key, Provider
 
-print(f"OpenAI: {has_api_key(Provider.OPENAI)}")
-print(f"Anthropic: {has_api_key(Provider.ANTHROPIC)}")
-print(f"Google: {has_api_key(Provider.GOOGLE)}")
+for provider in Provider:
+    status = "configured" if has_api_key(provider) else "not configured"
+    print(f"{provider.value}: {status}")
 ```
 
 ---
@@ -151,16 +163,15 @@ source ~/.bashrc
 ### Default Model
 
 ```python
-# Default: claude-3-haiku-20240307
-Provider.ANTHROPIC  # Uses Claude 3 Haiku
+# Default: claude-3-5-haiku-20241022
+Provider.ANTHROPIC  # Uses Claude 3.5 Haiku
 ```
 
 ### Available Models
 
+- `claude-3-5-haiku-20241022` - Default, fast and economical
+- `claude-3-5-sonnet-20241022` - High performance, balanced
 - `claude-3-opus-20240229` - Most capable, highest cost
-- `claude-3-sonnet-20240229` - Balanced performance
-- `claude-3-haiku-20240307` - Default, fast and economical
-- `claude-3-5-sonnet-20241022` - Latest, high performance
 
 ### Usage
 
@@ -189,8 +200,7 @@ report = beacon.scan()
 
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Typical scan cost |
 |-------|----------------------|------------------------|-------------------|
-| Claude 3 Haiku | $0.25 | $1.25 | $0.02-0.04 |
-| Claude 3 Sonnet | $3.00 | $15.00 | $0.20-0.40 |
+| Claude 3.5 Haiku | $1.00 | $5.00 | $0.03-0.06 |
 | Claude 3.5 Sonnet | $3.00 | $15.00 | $0.20-0.40 |
 | Claude 3 Opus | $15.00 | $75.00 | $1.00-2.00 |
 
@@ -240,15 +250,14 @@ source ~/.bashrc
 ### Default Model
 
 ```python
-# Default: gemini-1.5-flash
-Provider.GOOGLE  # Uses Gemini 1.5 Flash
+# Default: gemini-2.0-flash
+Provider.GOOGLE  # Uses Gemini 2.0 Flash
 ```
 
 ### Available Models
 
-- `gemini-1.5-flash` - Default, fast and efficient
+- `gemini-2.0-flash` - Default, fast and efficient
 - `gemini-1.5-pro` - More capable, higher cost
-- `gemini-pro` - Legacy, balanced performance
 
 ### Usage
 
@@ -278,7 +287,7 @@ report = beacon.scan()
 
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Typical scan cost |
 |-------|----------------------|------------------------|-------------------|
-| Gemini 1.5 Flash | $0.075 | $0.30 | $0.005-0.015 |
+| Gemini 2.0 Flash | $0.075 | $0.30 | $0.005-0.015 |
 | Gemini 1.5 Pro | $1.25 | $5.00 | $0.08-0.15 |
 
 ### Troubleshooting
@@ -303,6 +312,130 @@ export GOOGLE_API_KEY="AIza..."
 
 ---
 
+## Mistral
+
+### Setup
+
+1. **Get API Key**: Visit [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys)
+2. **Create key**
+3. **Set environment variable**:
+
+```bash
+export MISTRAL_API_KEY="..."
+```
+
+### Default Model
+
+```python
+# Default: mistral-small-latest
+Provider.MISTRAL  # Uses Mistral Small
+```
+
+### Available Models
+
+- `mistral-small-latest` - Default, fast and affordable
+- `mistral-medium-latest` - Balanced performance
+- `mistral-large-latest` - Most capable
+
+### Usage
+
+```python
+from promptbeacon import Beacon, Provider
+
+beacon = Beacon("Nike").with_providers(Provider.MISTRAL)
+report = beacon.scan()
+```
+
+### Cost Estimates
+
+| Model | Input (per 1M tokens) | Output (per 1M tokens) | Typical scan cost |
+|-------|----------------------|------------------------|-------------------|
+| Mistral Small | $0.20 | $0.60 | $0.01-0.03 |
+| Mistral Large | $2.00 | $6.00 | $0.10-0.20 |
+
+---
+
+## Cohere
+
+### Setup
+
+1. **Get API Key**: Visit [dashboard.cohere.com/api-keys](https://dashboard.cohere.com/api-keys)
+2. **Create key**
+3. **Set environment variable**:
+
+```bash
+export COHERE_API_KEY="..."
+```
+
+### Default Model
+
+```python
+# Default: command-r
+Provider.COHERE  # Uses Command R
+```
+
+### Available Models
+
+- `command-r` - Default, good general purpose
+- `command-r-plus` - More capable, higher cost
+
+### Usage
+
+```python
+from promptbeacon import Beacon, Provider
+
+beacon = Beacon("Nike").with_providers(Provider.COHERE)
+report = beacon.scan()
+```
+
+### Cost Estimates
+
+| Model | Input (per 1M tokens) | Output (per 1M tokens) | Typical scan cost |
+|-------|----------------------|------------------------|-------------------|
+| Command R | $0.15 | $0.60 | $0.01-0.03 |
+| Command R+ | $2.50 | $10.00 | $0.15-0.30 |
+
+---
+
+## Perplexity
+
+### Setup
+
+1. **Get API Key**: Visit [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
+2. **Create key**
+3. **Set environment variable**:
+
+```bash
+export PERPLEXITY_API_KEY="pplx-..."
+```
+
+### Default Model
+
+```python
+# Default: sonar
+Provider.PERPLEXITY  # Uses Sonar
+```
+
+### Available Models
+
+- `sonar` - Default, fast with web-grounded responses
+- `sonar-pro` - More capable, higher cost
+
+### Usage
+
+```python
+from promptbeacon import Beacon, Provider
+
+beacon = Beacon("Nike").with_providers(Provider.PERPLEXITY)
+report = beacon.scan()
+```
+
+### Why Perplexity?
+
+Perplexity is unique because its models are grounded in real-time web search. This makes it especially valuable for citation tracking — Perplexity responses frequently include URLs and source attributions.
+
+---
+
 ## Multi-Provider Strategy
 
 ### Using All Providers
@@ -315,7 +448,10 @@ beacon = (
     .with_providers(
         Provider.OPENAI,
         Provider.ANTHROPIC,
-        Provider.GOOGLE
+        Provider.GOOGLE,
+        Provider.MISTRAL,
+        Provider.COHERE,
+        Provider.PERPLEXITY,
     )
 )
 
@@ -328,25 +464,25 @@ print(f"Providers used: {', '.join(report.providers_used)}")
 **For Maximum Coverage:**
 ```python
 # Use all available providers
-beacon = Beacon("Nike").with_providers(*Provider.all())
+beacon = Beacon("Nike")  # Automatically detects configured providers
 ```
 
 **For Cost Optimization:**
 ```python
-# Use only free tier providers
+# Use only free/cheap tier providers
 beacon = Beacon("Nike").with_providers(
-    Provider.OPENAI,  # gpt-4o-mini
-    Provider.GOOGLE   # gemini-1.5-flash
+    Provider.GOOGLE,   # Generous free tier
+    Provider.OPENAI,   # gpt-4o-mini is very cheap
+    Provider.MISTRAL,  # Affordable
 )
 ```
 
-**For Quality:**
+**For Citation Tracking:**
 ```python
-# Use higher-tier models (requires custom configuration)
-# Note: Default PromptBeacon uses optimized defaults
+# Include Perplexity for web-grounded citations
 beacon = Beacon("Nike").with_providers(
-    Provider.OPENAI,   # Will use gpt-4o-mini
-    Provider.ANTHROPIC # Will use claude-3-haiku
+    Provider.OPENAI,
+    Provider.PERPLEXITY,  # Best for citations
 )
 ```
 
@@ -373,6 +509,9 @@ Create `.env` file in project root:
 OPENAI_API_KEY=sk-proj-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=...
+MISTRAL_API_KEY=...
+COHERE_API_KEY=...
+PERPLEXITY_API_KEY=pplx-...
 ```
 
 Load with python-dotenv:
@@ -495,11 +634,12 @@ if report.total_cost_usd:
 
 ### Cost Optimization Tips
 
-1. **Start with free tiers**: Use gpt-4o-mini, claude-3-haiku, gemini-1.5-flash
-2. **Reduce prompt count**: Lower from default 10 to 5-7 per category
-3. **Use fewer categories**: Focus on most important topics
-4. **Limit providers**: Use 1-2 providers instead of all 3
-5. **Reduce temperature**: Lower temperature = fewer tokens
+1. **Start with free tiers**: Use gpt-4o-mini, gemini-2.0-flash, mistral-small
+2. **Enable caching**: `.with_cache()` skips duplicate queries automatically
+3. **Reduce prompt count**: Lower from default 10 to 5-7 per category
+4. **Use industry templates**: `.with_industry("ecommerce")` generates relevant prompts
+5. **Use fewer categories**: Focus on most important topics
+6. **Limit providers**: Use 1-2 providers instead of all 6
 
 **Example: Cost-Optimized Configuration**
 
@@ -509,8 +649,8 @@ beacon = (
     .with_providers(Provider.GOOGLE)  # Free tier
     .with_categories("running shoes")  # Single category
     .with_prompt_count(5)             # Reduced prompts
+    .with_cache()                     # Cache responses
     .with_temperature(0.5)            # Lower temperature
-    .with_max_tokens(512)             # Reduced max tokens
 )
 ```
 
@@ -543,29 +683,22 @@ PromptBeacon automatically retries failed requests:
 beacon = Beacon("Nike")  # Uses max_retries=3 by default
 ```
 
-### Custom Retry Configuration
-
-```python
-from promptbeacon.core.config import BeaconConfig
-
-# Currently not directly configurable via fluent API
-# Uses sensible defaults: 3 retries, 30s timeout
-```
-
 ### Rate Limit Best Practices
 
 1. **Concurrent requests**: Default is 5, increase cautiously
 2. **Prompt count**: Reduce if hitting limits frequently
 3. **Multiple providers**: Distribute load across providers
-4. **Timing**: Schedule scans during off-peak hours
+4. **Caching**: Enable `.with_cache()` to avoid duplicate queries
+5. **Timing**: Schedule scans during off-peak hours
 
 **Example: Rate-Limit Friendly Configuration**
 
 ```python
 beacon = (
     Beacon("Nike")
-    .with_providers(Provider.OPENAI, Provider.ANTHROPIC)  # Split load
-    .with_prompt_count(8)                                 # Slightly reduced
+    .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.MISTRAL)  # Split load
+    .with_prompt_count(8)
+    .with_cache()  # Don't re-query cached responses
 )
 ```
 
@@ -609,6 +742,41 @@ beacon = (
 - Cost-sensitive applications
 - Development and testing
 
+### Mistral
+
+**Strengths:**
+- Very affordable pricing
+- Fast response times
+- Good European language support
+
+**Best for:**
+- Cost-sensitive scanning
+- European market analysis
+- Multilingual brand tracking
+
+### Cohere
+
+**Strengths:**
+- Strong retrieval-augmented generation
+- Good for factual queries
+- Competitive pricing
+
+**Best for:**
+- Factual brand queries
+- Knowledge-based analysis
+
+### Perplexity
+
+**Strengths:**
+- Web-grounded responses with real-time data
+- Frequently includes URLs and source citations
+- Combines search with generation
+
+**Best for:**
+- Citation tracking (strongest provider for this)
+- Real-time brand monitoring
+- Source attribution analysis
+
 ---
 
 ## Testing Provider Setup
@@ -621,13 +789,7 @@ from promptbeacon.core.config import has_api_key
 
 def test_providers():
     """Test all configured providers."""
-    providers = [
-        Provider.OPENAI,
-        Provider.ANTHROPIC,
-        Provider.GOOGLE
-    ]
-
-    for provider in providers:
+    for provider in Provider:
         if not has_api_key(provider):
             print(f"{provider.value}: Not configured")
             continue
@@ -638,12 +800,12 @@ def test_providers():
             beacon = beacon.with_prompt_count(1)  # Single prompt test
             report = beacon.scan()
 
-            print(f"  ✓ Success")
+            print(f"  Success")
             print(f"  Mentions: {report.mention_count}")
             if report.total_cost_usd:
                 print(f"  Cost: ${report.total_cost_usd:.4f}")
         except Exception as e:
-            print(f"  ✗ Failed: {e}")
+            print(f"  Failed: {e}")
 
 if __name__ == "__main__":
     test_providers()
@@ -652,10 +814,13 @@ if __name__ == "__main__":
 ### CLI Test
 
 ```bash
-# Test each provider
+# Test each provider individually
 promptbeacon scan "Test" --provider openai --prompts 1
 promptbeacon scan "Test" --provider anthropic --prompts 1
 promptbeacon scan "Test" --provider google --prompts 1
+promptbeacon scan "Test" --provider mistral --prompts 1
+promptbeacon scan "Test" --provider cohere --prompts 1
+promptbeacon scan "Test" --provider perplexity --prompts 1
 ```
 
 ---
@@ -665,18 +830,18 @@ promptbeacon scan "Test" --provider google --prompts 1
 ### API Key Management
 
 **DO:**
-- ✓ Use environment variables
-- ✓ Use secrets management (AWS Secrets Manager, HashiCorp Vault)
-- ✓ Rotate keys regularly
-- ✓ Use separate keys for dev/staging/prod
-- ✓ Restrict key permissions (if provider supports)
+- Use environment variables
+- Use secrets management (AWS Secrets Manager, HashiCorp Vault)
+- Rotate keys regularly
+- Use separate keys for dev/staging/prod
+- Restrict key permissions (if provider supports)
 
 **DON'T:**
-- ✗ Commit keys to git
-- ✗ Share keys in plain text
-- ✗ Use production keys in development
-- ✗ Log API keys
-- ✗ Store in unencrypted configuration files
+- Commit keys to git
+- Share keys in plain text
+- Use production keys in development
+- Log API keys
+- Store in unencrypted configuration files
 
 ### .gitignore
 
@@ -688,64 +853,6 @@ Ensure these are in `.gitignore`:
 .env.*.local
 *.key
 secrets/
-```
-
-### Secure Loading
-
-```python
-import os
-from pathlib import Path
-
-def load_secure_config():
-    """Load config from secure location."""
-    config_path = Path.home() / ".config" / "promptbeacon" / "config.env"
-
-    if config_path.exists():
-        with open(config_path) as f:
-            for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    os.environ[key] = value
-
-load_secure_config()
-```
-
----
-
-## Migration Guide
-
-### From OpenAI Only to Multi-Provider
-
-```python
-# Before
-beacon = Beacon("Nike")  # Uses OpenAI by default
-
-# After
-from promptbeacon import Provider
-
-beacon = (
-    Beacon("Nike")
-    .with_providers(
-        Provider.OPENAI,
-        Provider.ANTHROPIC,
-        Provider.GOOGLE
-    )
-)
-```
-
-### Changing Default Provider
-
-```python
-# Use Anthropic as primary
-beacon = Beacon("Nike").with_providers(Provider.ANTHROPIC)
-
-# Use multiple with preference order
-# (all are queried, order doesn't matter for results)
-beacon = Beacon("Nike").with_providers(
-    Provider.ANTHROPIC,  # Query all
-    Provider.OPENAI,
-    Provider.GOOGLE
-)
 ```
 
 ---

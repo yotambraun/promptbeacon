@@ -44,6 +44,22 @@ beacon = Beacon("Nike")
 
 All configuration methods return `self` for method chaining.
 
+#### `with_aliases(*aliases: str) -> Beacon`
+
+Add alternative brand names that should be counted as the primary brand.
+
+**Parameters:**
+- `*aliases` (str): One or more alternative brand names
+
+**Returns:** Self for chaining
+
+**Example:**
+```python
+beacon = Beacon("Nike").with_aliases("Nike Inc", "Nike Corporation")
+```
+
+---
+
 #### `with_competitors(*competitors: str) -> Beacon`
 
 Add competitor brands to track alongside your brand.
@@ -206,9 +222,74 @@ beacon = Beacon("Nike").with_timeout(60.0)
 
 ---
 
+#### `with_industry(industry: str) -> Beacon`
+
+Use industry-specific prompt templates instead of defaults.
+
+**Parameters:**
+- `industry` (str): Industry name. Available: `ecommerce`, `saas`, `finance`, `healthcare`, `travel`, `food`, `tech`
+
+**Returns:** Self for chaining
+
+**Raises:**
+- `ValueError`: If the industry is not recognized
+
+**Example:**
+```python
+beacon = Beacon("Nike").with_industry("ecommerce")
+```
+
+---
+
+#### `with_cache(cache_dir: str | Path | None = None, ttl_seconds: int = 86400) -> Beacon`
+
+Enable file-based response caching. Cached responses are keyed by (prompt, provider, model).
+
+**Parameters:**
+- `cache_dir` (str | Path | None): Cache directory (default: `~/.promptbeacon/cache`)
+- `ttl_seconds` (int): Cache time-to-live in seconds (default: 86400 = 24 hours)
+
+**Returns:** Self for chaining
+
+**Example:**
+```python
+# Default cache (24h TTL)
+beacon = Beacon("Nike").with_cache()
+
+# Custom cache directory and 1-hour TTL
+beacon = Beacon("Nike").with_cache(cache_dir="/tmp/pb_cache", ttl_seconds=3600)
+```
+
+---
+
+#### `with_scoring_weights(mention_frequency: float = 0.3, sentiment: float = 0.25, position: float = 0.25, recommendation: float = 0.2) -> Beacon`
+
+Customize the four scoring factor weights. Weights must sum to 1.0.
+
+**Parameters:**
+- `mention_frequency` (float): Weight for mention frequency (default: 0.3)
+- `sentiment` (float): Weight for sentiment (default: 0.25)
+- `position` (float): Weight for position/prominence (default: 0.25)
+- `recommendation` (float): Weight for recommendation rate (default: 0.2)
+
+**Returns:** Self for chaining
+
+**Example:**
+```python
+# Weight sentiment more heavily
+beacon = Beacon("Nike").with_scoring_weights(
+    mention_frequency=0.2,
+    sentiment=0.4,
+    position=0.2,
+    recommendation=0.2,
+)
+```
+
+---
+
 #### `with_prompts(prompts: list[str]) -> Beacon`
 
-Use custom prompts instead of defaults. Use `{category}` as a placeholder.
+Use fully custom prompts instead of defaults. Use `{category}` as a placeholder.
 
 **Parameters:**
 - `prompts` (list[str]): List of prompt templates
@@ -407,13 +488,19 @@ Enum of supported LLM providers.
 - `Provider.OPENAI` - OpenAI (GPT models)
 - `Provider.ANTHROPIC` - Anthropic (Claude models)
 - `Provider.GOOGLE` - Google (Gemini models)
+- `Provider.MISTRAL` - Mistral AI
+- `Provider.COHERE` - Cohere
+- `Provider.PERPLEXITY` - Perplexity AI
 
 **Default Models:**
 | Provider | Model |
 |----------|-------|
 | OPENAI | gpt-4o-mini |
-| ANTHROPIC | claude-3-haiku-20240307 |
-| GOOGLE | gemini-1.5-flash |
+| ANTHROPIC | claude-3-5-haiku-20241022 |
+| GOOGLE | gemini-2.0-flash |
+| MISTRAL | mistral-small-latest |
+| COHERE | command-r |
+| PERPLEXITY | sonar |
 
 **Example:**
 ```python
@@ -450,6 +537,7 @@ Main report object containing scan results.
 | `metrics` | VisibilityMetrics | Detailed metrics |
 | `explanations` | list[Explanation] | Insight explanations |
 | `recommendations` | list[Recommendation] | Actionable recommendations |
+| `citation_summary` | CitationSummary | Aggregated citations from all responses |
 | `timestamp` | datetime | Scan timestamp |
 | `scan_duration_seconds` | float | Duration in seconds |
 | `total_cost_usd` | float \| None | Estimated API cost |
@@ -571,6 +659,7 @@ Result from a single provider query.
 | `prompt` | str | Prompt sent |
 | `response` | str | Response received |
 | `mentions` | list[BrandMention] | Extracted mentions |
+| `citations` | list[Citation] | Extracted citations |
 | `latency_ms` | float | Response latency (ms) |
 | `cost_usd` | float \| None | Estimated cost |
 | `error` | str \| None | Error message if failed |
@@ -635,6 +724,7 @@ Detailed visibility metrics.
 | `average_position` | float \| None | Average mention position |
 | `sentiment` | SentimentBreakdown | Sentiment breakdown |
 | `confidence_interval` | tuple[float, float] \| None | 95% CI for score |
+| `score_breakdown` | ScoreBreakdown \| None | Breakdown of the 4 scoring factors |
 
 **Example:**
 ```python
@@ -649,6 +739,75 @@ if metrics.average_position:
 if metrics.confidence_interval:
     lower, upper = metrics.confidence_interval
     print(f"95% CI: [{lower:.1f}, {upper:.1f}]")
+
+if metrics.score_breakdown:
+    bd = metrics.score_breakdown
+    print(f"Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
+    print(f"Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
+```
+
+---
+
+### ScoreBreakdown
+
+Breakdown of the four factors that compose the visibility score. Each factor is scored 0-100 before weighting.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `mention_frequency` | float | Mention frequency sub-score (0-100) |
+| `sentiment` | float | Sentiment sub-score (0-100) |
+| `position` | float | Position/prominence sub-score (0-100) |
+| `recommendation` | float | Recommendation rate sub-score (0-100) |
+
+**Example:**
+```python
+bd = report.metrics.score_breakdown
+print(f"Mention Frequency: {bd.mention_frequency:.0f}/100")
+print(f"Sentiment: {bd.sentiment:.0f}/100")
+print(f"Position: {bd.position:.0f}/100")
+print(f"Recommendation: {bd.recommendation:.0f}/100")
+```
+
+---
+
+### Citation
+
+A single citation found in an LLM response.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `url` | str \| None | URL if one was cited |
+| `source_name` | str | Name of the cited source |
+| `context` | str | Surrounding text where the citation appeared |
+| `brand_associated` | str \| None | Brand name nearest to this citation |
+
+---
+
+### CitationSummary
+
+Aggregated citation summary for a report.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `total_citations` | int | Total number of citations found |
+| `unique_domains` | list[str] | List of unique domains cited |
+| `citations` | list[Citation] | All individual citations |
+
+**Example:**
+```python
+cs = report.citation_summary
+print(f"Total citations: {cs.total_citations}")
+print(f"Unique domains: {', '.join(cs.unique_domains)}")
+
+for cit in cs.citations[:5]:
+    source = cit.url or cit.source_name
+    print(f"  {source} -> {cit.brand_associated}")
 ```
 
 ---
@@ -946,7 +1105,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "0.1.0"
+print(__version__)  # e.g., "0.2.0"
 ```
 
 ---
@@ -961,10 +1120,11 @@ try:
     # Configure beacon with full options
     beacon = (
         Beacon("Nike")
+        .with_aliases("Nike Inc", "Nike Corporation")
         .with_competitors("Adidas", "Puma", "New Balance")
         .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-        .with_categories("running shoes", "athletic wear", "sports brand")
-        .with_prompt_count(20)
+        .with_industry("ecommerce")
+        .with_cache()
         .with_storage("~/.promptbeacon/nike.db")
         .with_temperature(0.7)
         .with_timeout(60.0)
@@ -982,9 +1142,13 @@ try:
     for name, score in report.competitor_comparison.items():
         print(f"{name}: {score.visibility_score:.1f}")
 
-    # Insights
-    for exp in report.explanations[:3]:
-        print(f"[{exp.impact}] {exp.message}")
+    # Score breakdown
+    bd = report.metrics.score_breakdown
+    print(f"Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
+
+    # Citations
+    for cit in report.citation_summary.citations[:5]:
+        print(f"  {cit.source_name} -> {cit.brand_associated}")
 
     # Recommendations
     for rec in report.recommendations[:3]:

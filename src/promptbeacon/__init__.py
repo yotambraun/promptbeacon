@@ -38,6 +38,8 @@ from promptbeacon.core.exceptions import (
 )
 from promptbeacon.core.schemas import (
     BrandMention,
+    Citation,
+    CitationSummary,
     CompetitorScore,
     Explanation,
     HistoricalDataPoint,
@@ -46,6 +48,7 @@ from promptbeacon.core.schemas import (
     Recommendation,
     Report,
     ScanComparison,
+    ScoreBreakdown,
     SentimentBreakdown,
     VisibilityMetrics,
 )
@@ -58,7 +61,7 @@ from promptbeacon.reporting.formats import (
     to_markdown,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     # Main class
     "Beacon",
@@ -78,6 +81,8 @@ __all__ = [
     "ValidationError",
     # Schemas
     "BrandMention",
+    "Citation",
+    "CitationSummary",
     "CompetitorScore",
     "Explanation",
     "HistoricalDataPoint",
@@ -86,6 +91,7 @@ __all__ = [
     "Recommendation",
     "Report",
     "ScanComparison",
+    "ScoreBreakdown",
     "SentimentBreakdown",
     "VisibilityMetrics",
     # Reporting

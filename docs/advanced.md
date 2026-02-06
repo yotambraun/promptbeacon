@@ -43,30 +43,28 @@ report = beacon.scan()
 
 ### Industry-Specific Prompts
 
+PromptBeacon includes built-in industry prompt templates for 7 verticals. Use `.with_industry()` instead of writing custom prompts:
+
 ```python
-# B2B SaaS
-saas_prompts = [
-    "What are the best {category} software solutions?",
-    "Which {category} tool should our team use?",
-    "What's the leading {category} platform for enterprises?",
-    "Can you recommend a {category} service for our company?",
-    "What {category} vendors do you suggest?",
+# Use built-in industry templates (10 prompts each)
+beacon = Beacon("Nike").with_industry("ecommerce")
+
+# Available industries: ecommerce, saas, finance, healthcare, travel, food, tech
+beacon = Beacon("Salesforce").with_industry("saas")
+beacon = Beacon("Mayo Clinic").with_industry("healthcare")
+```
+
+You can still write fully custom prompts for industries not covered:
+
+```python
+# Custom prompts for niche industries
+legal_prompts = [
+    "What are the best {category} law firms?",
+    "Which {category} legal service do you recommend?",
+    "What {category} lawyer should I consult?",
 ]
 
-# E-commerce
-ecommerce_prompts = [
-    "Where should I buy {category}?",
-    "What {category} store has the best selection?",
-    "Which online retailer is best for {category}?",
-    "Can you recommend a {category} website?",
-]
-
-# Healthcare
-healthcare_prompts = [
-    "What {category} providers are highly rated?",
-    "Which {category} service should I consider?",
-    "What are the best {category} options in my area?",
-]
+beacon = Beacon("LegalZoom").with_prompts(legal_prompts)
 ```
 
 ### Multilingual Prompts
@@ -564,56 +562,28 @@ report = scan_with_fallback("Nike")
 
 ### Caching Results
 
+PromptBeacon has built-in response caching. Enable it with `.with_cache()`:
+
 ```python
-from functools import lru_cache
 from promptbeacon import Beacon
-import hashlib
-import json
 
-class CachedBeacon:
-    """Beacon with result caching."""
+# Enable caching with default 24-hour TTL
+beacon = Beacon("Nike").with_cache()
 
-    def __init__(self, cache_ttl: int = 3600):
-        self.cache_ttl = cache_ttl
-        self._cache = {}
+# First scan - queries LLM providers
+report1 = beacon.scan()
 
-    def scan(self, brand: str, **kwargs) -> dict:
-        """Scan with caching."""
-        cache_key = self._make_key(brand, **kwargs)
+# Second scan - uses cached responses (instant, free)
+report2 = beacon.scan()
 
-        if cache_key in self._cache:
-            cached_time, result = self._cache[cache_key]
-            if time.time() - cached_time < self.cache_ttl:
-                print(f"Cache hit for {brand}")
-                return result
-
-        # Cache miss - perform scan
-        beacon = Beacon(brand)
-        for key, value in kwargs.items():
-            if hasattr(beacon, f"with_{key}"):
-                method = getattr(beacon, f"with_{key}")
-                beacon = method(value)
-
-        report = beacon.scan()
-        self._cache[cache_key] = (time.time(), report)
-
-        return report
-
-    def _make_key(self, brand: str, **kwargs) -> str:
-        """Generate cache key."""
-        data = {"brand": brand, **kwargs}
-        json_str = json.dumps(data, sort_keys=True)
-        return hashlib.md5(json_str.encode()).hexdigest()
-
-# Usage
-cached_beacon = CachedBeacon(cache_ttl=3600)  # 1 hour cache
-
-# First call - cache miss
-report1 = cached_beacon.scan("Nike")
-
-# Second call - cache hit (if within 1 hour)
-report2 = cached_beacon.scan("Nike")
+# Custom TTL (1 hour) and cache directory
+beacon = Beacon("Nike").with_cache(
+    cache_dir="~/.promptbeacon/cache",
+    ttl_seconds=3600,
+)
 ```
+
+The cache is keyed by `(prompt, provider, model)`, so changing providers or prompts will trigger fresh queries. Cached responses are stored as JSON files in the cache directory.
 
 ### Parallel Processing with multiprocessing
 
@@ -808,7 +778,38 @@ create_dashboard("Nike")
 
 ## Custom Scoring
 
-### Weighted Scoring
+### Configurable Scoring Weights
+
+PromptBeacon's visibility score is composed of 4 factors. You can customize their weights with `.with_scoring_weights()`:
+
+```python
+from promptbeacon import Beacon
+
+# Default weights: mention_frequency=0.3, sentiment=0.25, position=0.25, recommendation=0.2
+beacon = Beacon("Nike")
+
+# Custom weights (must sum to 1.0)
+beacon = Beacon("Nike").with_scoring_weights(
+    mention_frequency=0.2,
+    sentiment=0.4,     # Weight sentiment more heavily
+    position=0.2,
+    recommendation=0.2,
+)
+
+report = beacon.scan()
+
+# See the breakdown of each factor (0-100 before weighting)
+bd = report.metrics.score_breakdown
+print(f"Mention Frequency: {bd.mention_frequency:.0f}/100")
+print(f"Sentiment: {bd.sentiment:.0f}/100")
+print(f"Position: {bd.position:.0f}/100")
+print(f"Recommendation: {bd.recommendation:.0f}/100")
+print(f"Weighted total: {report.visibility_score:.1f}/100")
+```
+
+### Fully Custom Scoring
+
+For completely custom scoring logic, use the raw data from the report:
 
 ```python
 from promptbeacon import Beacon
@@ -822,43 +823,31 @@ def custom_weighted_score(report) -> float:
         "recommendations": 0.1,
     }
 
-    # Base visibility
     visibility_component = report.visibility_score * weights["visibility"]
 
-    # Sentiment component
     sentiment_score = (
         report.sentiment_breakdown.positive * 100
         - report.sentiment_breakdown.negative * 50
     )
     sentiment_component = sentiment_score * weights["sentiment"]
 
-    # Position component (lower is better)
     avg_position = report.metrics.average_position or 5.0
     position_score = max(0, 100 - (avg_position * 10))
     position_component = position_score * weights["position"]
 
-    # Recommendations component
     rec_rate = report.metrics.recommendation_rate * 100
     rec_component = rec_rate * weights["recommendations"]
 
-    total = (
-        visibility_component +
-        sentiment_component +
-        position_component +
-        rec_component
+    return round(
+        visibility_component + sentiment_component + position_component + rec_component,
+        1,
     )
 
-    return round(total, 1)
-
-# Usage
 beacon = Beacon("Nike")
 report = beacon.scan()
 
-standard_score = report.visibility_score
-custom_score = custom_weighted_score(report)
-
-print(f"Standard score: {standard_score:.1f}")
-print(f"Custom score: {custom_score:.1f}")
+print(f"Standard score: {report.visibility_score:.1f}")
+print(f"Custom score: {custom_weighted_score(report):.1f}")
 ```
 
 ### Category-Specific Scoring

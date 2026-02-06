@@ -21,11 +21,11 @@ uv add promptbeacon
 ### Requirements
 
 - Python 3.10 or higher
-- At least one LLM provider API key (OpenAI, Anthropic, or Google)
+- At least one LLM provider API key
 
 ## Provider Setup
 
-PromptBeacon needs API keys to query LLM providers. Set up at least one:
+PromptBeacon supports 6 LLM providers. Set up at least one:
 
 ### OpenAI
 
@@ -51,6 +51,30 @@ export GOOGLE_API_KEY="..."
 
 Get your key from [aistudio.google.com](https://aistudio.google.com/app/apikey)
 
+### Mistral
+
+```bash
+export MISTRAL_API_KEY="..."
+```
+
+Get your key from [console.mistral.ai](https://console.mistral.ai/api-keys)
+
+### Cohere
+
+```bash
+export COHERE_API_KEY="..."
+```
+
+Get your key from [dashboard.cohere.com](https://dashboard.cohere.com/api-keys)
+
+### Perplexity
+
+```bash
+export PERPLEXITY_API_KEY="pplx-..."
+```
+
+Get your key from [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
+
 ### Verify Setup
 
 Check which providers are configured:
@@ -61,18 +85,20 @@ promptbeacon providers
 
 ## Your First Scan
 
+### Quick Scan (CLI)
+
+The fastest way to check brand visibility:
+
+```bash
+promptbeacon quick "Nike"
+```
+
 ### Basic Scan (Python)
 
 ```python
 from promptbeacon import Beacon
 
-# Create a beacon for your brand
-beacon = Beacon("Nike")
-
-# Run the scan
-report = beacon.scan()
-
-# View results
+report = Beacon("Nike").scan()
 print(f"Visibility Score: {report.visibility_score}/100")
 print(f"Total Mentions: {report.mention_count}")
 print(f"Positive Sentiment: {report.sentiment_breakdown.positive:.0%}")
@@ -96,6 +122,18 @@ The visibility score (0-100) measures how prominently your brand appears in AI r
 - **40-69**: Moderate visibility - mentioned but not always prominently
 - **0-39**: Low visibility - rarely mentioned or recommended
 
+### Score Breakdown
+
+See which factors drive your score:
+
+```python
+bd = report.metrics.score_breakdown
+print(f"Mention Frequency: {bd.mention_frequency:.0f}/100")
+print(f"Sentiment: {bd.sentiment:.0f}/100")
+print(f"Position: {bd.position:.0f}/100")
+print(f"Recommendation: {bd.recommendation:.0f}/100")
+```
+
 ### Mention Count
 
 Total number of times your brand was mentioned across all queries to all providers.
@@ -110,6 +148,15 @@ print(f"Neutral: {report.sentiment_breakdown.neutral:.0%}")
 print(f"Negative: {report.sentiment_breakdown.negative:.0%}")
 ```
 
+### Citations
+
+See which sources LLMs cite when discussing your brand:
+
+```python
+for cit in report.citation_summary.citations[:5]:
+    print(f"Source: {cit.source_name} -> {cit.brand_associated}")
+```
+
 ## Adding Competitors
 
 Compare your brand against competitors:
@@ -117,14 +164,12 @@ Compare your brand against competitors:
 ```python
 from promptbeacon import Beacon
 
-beacon = (
+report = (
     Beacon("Nike")
     .with_competitors("Adidas", "Puma", "New Balance")
+    .scan()
 )
 
-report = beacon.scan()
-
-# Compare scores
 print(f"{report.brand}: {report.visibility_score:.1f}")
 for name, score in report.competitor_comparison.items():
     print(f"{name}: {score.visibility_score:.1f}")
@@ -136,6 +181,30 @@ for name, score in report.competitor_comparison.items():
 promptbeacon compare "Nike" --against "Adidas" --against "Puma"
 ```
 
+## Brand Aliases
+
+Count all name variants as the same brand:
+
+```python
+report = (
+    Beacon("Nike")
+    .with_aliases("Nike Inc", "Nike Corporation")
+    .scan()
+)
+```
+
+## Industry Templates
+
+Use pre-built prompts tuned for your industry:
+
+```python
+report = (
+    Beacon("Nike")
+    .with_industry("ecommerce")  # ecommerce, saas, finance, healthcare, travel, food, tech
+    .scan()
+)
+```
+
 ## Customizing Your Scan
 
 ### Multiple Providers
@@ -145,13 +214,24 @@ Query multiple LLM providers for comprehensive coverage:
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = (
+report = (
     Beacon("Nike")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE)
+    .scan()
 )
-
-report = beacon.scan()
 print(f"Providers used: {', '.join(report.providers_used)}")
+```
+
+### Response Caching
+
+Skip duplicate queries to save time and money:
+
+```python
+report = (
+    Beacon("Nike")
+    .with_cache()  # Default 24h TTL
+    .scan()
+)
 ```
 
 ### Categories
@@ -159,25 +239,11 @@ print(f"Providers used: {', '.join(report.providers_used)}")
 Analyze specific categories or topics:
 
 ```python
-beacon = (
+report = (
     Beacon("Nike")
     .with_categories("running shoes", "athletic wear", "sports brand")
+    .scan()
 )
-
-report = beacon.scan()
-```
-
-### Prompt Count
-
-Control how many prompts to use per category:
-
-```python
-beacon = (
-    Beacon("Nike")
-    .with_prompt_count(20)  # Default is 10
-)
-
-report = beacon.scan()
 ```
 
 ## Complete Example
@@ -187,29 +253,38 @@ Here's a comprehensive scan combining all options:
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = (
+report = (
     Beacon("Nike")
+    .with_aliases("Nike Inc", "Nike Corporation")
     .with_competitors("Adidas", "Puma")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-    .with_categories("running shoes", "athletic wear")
-    .with_prompt_count(15)
+    .with_industry("ecommerce")
+    .with_cache()
+    .scan()
 )
 
-report = beacon.scan()
-
-# Display results
+# Score with breakdown
 print(f"\nVisibility Report for {report.brand}")
 print(f"{'='*50}")
 print(f"Score: {report.visibility_score:.1f}/100")
-print(f"Mentions: {report.mention_count}")
-print(f"Positive: {report.sentiment_breakdown.positive:.0%}")
 
+bd = report.metrics.score_breakdown
+print(f"  Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
+print(f"  Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
+
+# Competitors
 print(f"\nCompetitor Comparison:")
 for name, score in report.competitor_comparison.items():
     diff = report.visibility_score - score.visibility_score
-    symbol = "+" if diff >= 0 else ""
-    print(f"  {name}: {score.visibility_score:.1f} ({symbol}{diff:.1f})")
+    print(f"  {name}: {score.visibility_score:.1f} ({diff:+.1f})")
 
+# Citations
+if report.citation_summary.total_citations > 0:
+    print(f"\nSources Cited ({report.citation_summary.total_citations}):")
+    for cit in report.citation_summary.citations[:5]:
+        print(f"  {cit.source_name} -> {cit.brand_associated}")
+
+# Insights
 print(f"\nTop Insights:")
 for exp in report.explanations[:3]:
     print(f"  [{exp.impact.upper()}] {exp.message}")
@@ -222,10 +297,7 @@ Store scan results for trend analysis:
 ```python
 from promptbeacon import Beacon
 
-beacon = (
-    Beacon("Nike")
-    .with_storage("~/.promptbeacon/nike.db")
-)
+beacon = Beacon("Nike").with_storage("~/.promptbeacon/nike.db")
 
 # This scan will be automatically saved
 report = beacon.scan()
@@ -315,69 +387,6 @@ async def scan_multiple_brands():
 asyncio.run(scan_multiple_brands())
 ```
 
-## Common Patterns
-
-### Daily Brand Monitoring
-
-```python
-from promptbeacon import Beacon
-
-def daily_scan(brand: str):
-    """Run a daily brand visibility scan."""
-    beacon = (
-        Beacon(brand)
-        .with_storage("~/.promptbeacon/data.db")
-        .with_prompt_count(20)
-    )
-
-    report = beacon.scan()
-
-    # Check for significant changes
-    comparison = beacon.compare_with_previous()
-    if comparison and abs(comparison.score_change) > 5:
-        print(f"ALERT: Score changed by {comparison.score_change:+.1f} points")
-
-    return report
-
-# Schedule this to run daily
-report = daily_scan("Nike")
-```
-
-### Competitive Analysis
-
-```python
-from promptbeacon import Beacon, Provider
-
-def competitive_analysis(brand: str, competitors: list[str]):
-    """Run comprehensive competitive analysis."""
-    beacon = (
-        Beacon(brand)
-        .with_competitors(*competitors)
-        .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-        .with_categories("product quality", "customer service", "value")
-        .with_prompt_count(25)
-    )
-
-    report = beacon.scan()
-
-    # Find market leader
-    all_scores = [(brand, report.visibility_score)]
-    all_scores.extend([
-        (name, score.visibility_score)
-        for name, score in report.competitor_comparison.items()
-    ])
-
-    leader = max(all_scores, key=lambda x: x[1])
-    print(f"Market Leader: {leader[0]} ({leader[1]:.1f})")
-
-    return report
-
-report = competitive_analysis(
-    "Nike",
-    ["Adidas", "Puma", "New Balance", "Under Armour"]
-)
-```
-
 ## Troubleshooting
 
 ### No API Keys Found
@@ -398,12 +407,13 @@ export GOOGLE_API_KEY="..."
 
 **Error**: `ProviderRateLimitError: Rate limit exceeded`
 
-**Solution**: Reduce concurrent requests:
+**Solution**: Enable caching and reduce prompts:
 
 ```python
 beacon = (
     Beacon("Nike")
-    .with_prompt_count(5)  # Reduce from default 10
+    .with_cache()            # Don't repeat queries
+    .with_prompt_count(5)    # Reduce from default 10
 )
 ```
 
@@ -424,7 +434,7 @@ beacon = (
 
 - [Explore the complete API Reference](api-reference.md)
 - [Learn about CLI commands](cli.md)
-- [Configure multiple providers](providers.md)
+- [Configure all 6 providers](providers.md)
 - [Set up historical tracking](storage.md)
 - [Check out advanced patterns](advanced.md)
 - [See real-world examples](examples.md)
@@ -436,13 +446,18 @@ beacon = (
 ```python
 # Configuration
 Beacon(brand)
-.with_competitors(*brands)
-.with_providers(*providers)
-.with_categories(*topics)
-.with_prompt_count(n)
-.with_storage(path)
-.with_temperature(t)
-.with_timeout(seconds)
+.with_aliases(*names)          # Alternative brand names
+.with_competitors(*brands)     # Competitor brands
+.with_providers(*providers)    # LLM providers
+.with_industry(name)           # Industry prompt templates
+.with_categories(*topics)      # Custom categories
+.with_prompt_count(n)          # Prompts per category
+.with_cache(ttl_seconds=...)   # Response caching
+.with_storage(path)            # DuckDB storage
+.with_scoring_weights(...)     # Custom score weights
+.with_temperature(t)           # LLM temperature
+.with_timeout(seconds)         # Request timeout
+.with_prompts(list)            # Fully custom prompts
 
 # Execution
 .scan()              # Sync scan
@@ -456,19 +471,21 @@ Beacon(brand)
 ### Essential CLI Commands
 
 ```bash
-promptbeacon scan "Brand"
-promptbeacon compare "Brand" --against "Competitor"
-promptbeacon history "Brand" --days 30
-promptbeacon providers
+promptbeacon quick "Brand"                           # Fast 3-prompt scan
+promptbeacon scan "Brand"                            # Full scan
+promptbeacon compare "Brand" --against "Competitor"  # Compare brands
+promptbeacon history "Brand" --days 30               # View trends
+promptbeacon providers                               # Check API keys
 ```
 
 ### Essential Exports
 
 ```python
-from promptbeacon import to_json, to_csv, to_markdown, to_dataframe
+from promptbeacon import to_json, to_csv, to_markdown, to_html, to_dataframe
 
 to_json(report)
 to_csv(report)
 to_markdown(report)
+to_html(report)
 to_dataframe(report)
 ```

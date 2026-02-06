@@ -134,6 +134,7 @@ def to_csv(report: Report) -> str:
         f"timestamp,{report.timestamp.isoformat()}",
         f"scan_duration_seconds,{report.scan_duration_seconds}",
         f"total_cost_usd,{report.total_cost_usd or ''}",
+        f"citation_count,{report.citation_summary.total_citations if report.citation_summary else 0}",
     ]
 
     return "\n".join(lines)
@@ -221,6 +222,23 @@ def to_markdown(report: Report) -> str:
             if rec.expected_impact:
                 lines.append(f"\n**Expected Impact**: {rec.expected_impact}")
             lines.append("")
+
+    if report.citation_summary and report.citation_summary.total_citations > 0:
+        lines.extend(
+            [
+                "## Sources Cited",
+                "",
+            ]
+        )
+        for cit in report.citation_summary.citations[:15]:
+            source = f"[{cit.source_name}]({cit.url})" if cit.url else cit.source_name
+            brand_tag = f" *({cit.brand_associated})*" if cit.brand_associated else ""
+            lines.append(f"- {source}{brand_tag}")
+        if report.citation_summary.unique_domains:
+            lines.append(
+                f"\n*{len(report.citation_summary.unique_domains)} unique domain(s)*"
+            )
+        lines.append("")
 
     lines.extend(
         [
@@ -321,6 +339,19 @@ def to_html(report: Report) -> str:
         for rec in report.recommendations[:5]:
             priority_class = "high" if rec.priority == "high" else ""
             html += f'    <div class="recommendation {priority_class}"><strong>[{rec.priority.upper()}]</strong> {rec.action}<br><small>{rec.rationale}</small></div>\n'
+
+    if report.citation_summary and report.citation_summary.total_citations > 0:
+        html += "    <h2>Sources Cited</h2>\n    <ul>\n"
+        for cit in report.citation_summary.citations[:15]:
+            if cit.url:
+                source_html = f'<a href="{cit.url}">{cit.source_name}</a>'
+            else:
+                source_html = cit.source_name
+            brand_tag = (
+                f" <em>({cit.brand_associated})</em>" if cit.brand_associated else ""
+            )
+            html += f"        <li>{source_html}{brand_tag}</li>\n"
+        html += "    </ul>\n"
 
     html += f"""
     <hr>

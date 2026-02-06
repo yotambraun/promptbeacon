@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "promptbeacon"
-version = "0.1.0"
+version = "0.2.0"
 description = "LLM visibility monitoring for brands - track how your brand appears in AI-generated responses"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [
     { name = "Yotam Braun" }
@@ -27,11 +27,18 @@ keywords = [
     "brand-monitoring",
     "seo",
     "analytics",
+    "geo",
+    "generative-engine-optimization",
+    "ai-visibility",
+    "brand-tracking",
+    "ai-search",
+    "aeo",
+    "llm-brand-monitoring",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -47,7 +54,7 @@ dependencies = [
     "pydantic>=2.0.0,<3.0.0",
     "litellm>=1.0.0,<2.0.0",
     "httpx>=0.26.0,<1.0.0",
-    "instructor>=0.4.0,<2.0.0",
+
     "duckdb>=0.10.0,<2.0.0",
     "typer>=0.9.0,<1.0.0",
     "rich>=13.0.0,<14.0.0",
@@ -157,5 +164,5 @@ no_implicit_optional = false
 show_error_codes = true
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "litellm.*", "duckdb.*", "instructor.*"]
+module = ["tests.*", "litellm.*", "duckdb.*"]
 ignore_errors = true

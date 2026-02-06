@@ -19,10 +19,43 @@ All commands support these options:
 
 ## Commands
 
-- [`scan`](#scan) - Run a brand visibility scan
+- [`quick`](#quick) - Fast 3-prompt scan with cheapest provider
+- [`scan`](#scan) - Run a full brand visibility scan
 - [`compare`](#compare) - Compare brand against competitors
 - [`history`](#history) - View historical visibility data
 - [`providers`](#providers) - List available providers and status
+
+---
+
+## `quick`
+
+Run a fast 3-prompt scan with the cheapest available provider. Great for a quick check before running a full scan.
+
+### Usage
+
+```bash
+promptbeacon quick BRAND [OPTIONS]
+```
+
+### Arguments
+
+- `BRAND` (required): The brand name to analyze
+
+### Options
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
+
+### Examples
+
+```bash
+# Quick check
+promptbeacon quick "Nike"
+
+# Quick check with JSON output
+promptbeacon quick "Nike" --format json
+```
 
 ---
 
@@ -45,7 +78,7 @@ promptbeacon scan BRAND [OPTIONS]
 | Option | Short | Type | Default | Description |
 |--------|-------|------|---------|-------------|
 | `--competitor` | `-c` | TEXT | None | Competitor brand (can be used multiple times) |
-| `--provider` | `-p` | TEXT | None | LLM provider: openai, anthropic, google (can be used multiple times) |
+| `--provider` | `-p` | TEXT | None | LLM provider: openai, anthropic, google, mistral, cohere, perplexity (can be used multiple times) |
 | `--category` | `-t` | TEXT | None | Category/topic to analyze (can be used multiple times) |
 | `--prompts` | `-n` | INT | 10 | Number of prompts per category |
 | `--storage` | `-s` | PATH | None | Path to DuckDB storage file |
@@ -63,7 +96,7 @@ Output:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Visibility Score: Nike
-Generated: 2026-01-16 10:30:00
+Generated: 2026-02-06 10:30:00
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
          73.5 / 100
 
@@ -79,6 +112,26 @@ Generated: 2026-01-16 10:30:00
 │ Scan Duration      │ 12.3s       │
 │ Estimated Cost     │ $0.0145     │
 └────────────────────┴─────────────┘
+
+  Score Breakdown (0-100 per factor, before weighting)
+┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ Factor                ┃ Score  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ Mention Frequency     │ 80.0   │
+│ Sentiment             │ 75.5   │
+│ Position / Prominence │ 68.2   │
+│ Recommendation Rate   │ 65.0   │
+└───────────────────────┴────────┘
+
+Key Insights:
+  ● Brand is mentioned prominently across all queries.
+
+Recommendations:
+  [HIGH] Increase presence in "athletic wear" queries.
+
+Sources Cited:
+  • nike.com [Nike]
+  • runnersworld.com [Nike]
 ```
 
 #### With Competitors
@@ -96,7 +149,8 @@ promptbeacon scan "Nike" \
 promptbeacon scan "Nike" \
   --provider openai \
   --provider anthropic \
-  --provider google
+  --provider google \
+  --provider mistral
 ```
 
 #### Custom Categories
@@ -141,6 +195,7 @@ promptbeacon scan "Nike" \
   --competitor "Puma" \
   --provider openai \
   --provider anthropic \
+  --provider mistral \
   --category "running shoes" \
   --category "athletic wear" \
   --prompts 20 \
@@ -251,31 +306,6 @@ promptbeacon history BRAND [OPTIONS]
 promptbeacon history "Nike"
 ```
 
-Output:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Historical Visibility Data
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-           Nike
-
-Average Score: 72.3
-Trend: ↑ up
-Volatility: 3.45
-
-    Historical Data Points
-┏━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Date       ┃ Score ┃ Mentions ┃ Sentiment  ┃
-┡━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━┩
-│ 2026-01-10 │ 68.5  │ 38      │ +65% / -5% │
-│ 2026-01-11 │ 70.2  │ 40      │ +66% / -4% │
-│ 2026-01-12 │ 71.8  │ 41      │ +67% / -5% │
-│ 2026-01-13 │ 73.1  │ 42      │ +68% / -4% │
-│ 2026-01-14 │ 74.5  │ 44      │ +69% / -3% │
-│ 2026-01-15 │ 73.9  │ 43      │ +68% / -4% │
-│ 2026-01-16 │ 73.5  │ 42      │ +67% / -5% │
-└────────────┴───────┴─────────┴────────────┘
-```
-
 #### Custom Time Range
 
 ```bash
@@ -316,14 +346,17 @@ promptbeacon providers
 
 Output:
 ```
-       Available Providers
-┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Provider ┃ Status         ┃ Environment Variable ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
-│ openai   │ ✓ Configured   │ OPENAI_API_KEY       │
-│ anthropic│ ✗ Not configured│ ANTHROPIC_API_KEY    │
-│ google   │ ✓ Configured   │ GOOGLE_API_KEY       │
-└──────────┴────────────────┴──────────────────────┘
+         Available Providers
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Provider   ┃ Status           ┃ Environment Variable   ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ openai     │ ✓ Configured     │ OPENAI_API_KEY         │
+│ anthropic  │ ✓ Configured     │ ANTHROPIC_API_KEY      │
+│ google     │ ✓ Configured     │ GOOGLE_API_KEY         │
+│ mistral    │ ✗ Not configured │ MISTRAL_API_KEY        │
+│ cohere     │ ✗ Not configured │ COHERE_API_KEY         │
+│ perplexity │ ✗ Not configured │ PERPLEXITY_API_KEY     │
+└────────────┴──────────────────┴────────────────────────┘
 ```
 
 ---
@@ -332,7 +365,7 @@ Output:
 
 ### Text Format (Default)
 
-Rich formatted output with tables, colors, and visual hierarchy. Best for terminal display.
+Rich formatted output with tables, colors, score breakdown, and visual hierarchy. Best for terminal display.
 
 ```bash
 promptbeacon scan "Nike"
@@ -357,8 +390,12 @@ Example output:
     "neutral": 0.28,
     "negative": 0.05
   },
-  "competitor_comparison": {},
-  "timestamp": "2026-01-16T10:30:00Z",
+  "citation_summary": {
+    "total_citations": 5,
+    "unique_domains": ["nike.com", "runnersworld.com"],
+    "citations": [...]
+  },
+  "timestamp": "2026-02-06T10:30:00Z",
   "scan_duration_seconds": 12.3
 }
 ```
@@ -369,28 +406,6 @@ Formatted Markdown for documentation and reports.
 
 ```bash
 promptbeacon scan "Nike" --format markdown
-```
-
-Example output:
-```markdown
-# Visibility Report: Nike
-
-**Generated:** 2026-01-16 10:30:00
-
-## Summary
-
-- **Visibility Score:** 73.5 / 100
-- **Total Mentions:** 42
-- **Positive Sentiment:** 67.0%
-- **Scan Duration:** 12.3s
-
-## Metrics
-
-| Metric | Value |
-|--------|-------|
-| Total Mentions | 42 |
-| Positive Sentiment | 67.0% |
-...
 ```
 
 ---
@@ -440,22 +455,28 @@ done
 echo "All scans completed"
 ```
 
-### Competitive Intelligence
+### Quick Check Before Full Scan
 
 ```bash
 #!/bin/bash
-# competitive_intel.sh
+# quick_then_full.sh
 
-promptbeacon compare "Nike" \
-  --against "Adidas" \
-  --against "Puma" \
-  --against "New Balance" \
-  --against "Under Armour" \
-  --provider openai \
-  --provider anthropic \
-  --format markdown > reports/competitive_analysis.md
+BRAND="Nike"
 
-promptbeacon history "Nike" --days 90 --format json > reports/nike_history.json
+echo "Running quick scan..."
+promptbeacon quick "$BRAND"
+
+read -p "Run full scan? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Running full scan..."
+    promptbeacon scan "$BRAND" \
+      --competitor "Adidas" \
+      --competitor "Puma" \
+      --provider openai \
+      --provider anthropic \
+      --storage ~/.promptbeacon/nike.db
+fi
 ```
 
 ---
@@ -470,14 +491,9 @@ Required for provider access:
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 export GOOGLE_API_KEY="..."
-```
-
-### Default Storage Path
-
-Override default storage location:
-
-```bash
-export PROMPTBEACON_STORAGE="~/.promptbeacon/data.db"
+export MISTRAL_API_KEY="..."
+export COHERE_API_KEY="..."
+export PERPLEXITY_API_KEY="pplx-..."
 ```
 
 ---
@@ -488,45 +504,6 @@ export PROMPTBEACON_STORAGE="~/.promptbeacon/data.db"
 |------|---------|
 | 0 | Success |
 | 1 | Error (configuration, scan failure, etc.) |
-
-### Handling Errors
-
-```bash
-#!/bin/bash
-
-if promptbeacon scan "Nike" --format json > report.json; then
-    echo "Scan successful"
-else
-    echo "Scan failed with exit code $?"
-    exit 1
-fi
-```
-
----
-
-## Shell Completion
-
-### Bash
-
-```bash
-eval "$(_PROMPTBEACON_COMPLETE=bash_source promptbeacon)"
-```
-
-Add to `~/.bashrc` for persistence.
-
-### Zsh
-
-```bash
-eval "$(_PROMPTBEACON_COMPLETE=zsh_source promptbeacon)"
-```
-
-Add to `~/.zshrc` for persistence.
-
-### Fish
-
-```bash
-_PROMPTBEACON_COMPLETE=fish_source promptbeacon | source
-```
 
 ---
 
@@ -547,16 +524,10 @@ promptbeacon compare "Nike" --against "Adidas" --format json | \
 # Filter high-priority recommendations
 promptbeacon scan "Nike" --format json | \
   jq '.recommendations[] | select(.priority == "high") | .action'
-```
 
-### With CSV Tools
-
-```bash
-# Convert to CSV and analyze with csvkit
+# List cited sources
 promptbeacon scan "Nike" --format json | \
-  python -c "import sys, json, csv; data = json.load(sys.stdin); ..." > report.csv
-
-csvstat report.csv
+  jq '.citation_summary.citations[] | .source_name'
 ```
 
 ### With curl for API Integration
@@ -568,53 +539,6 @@ REPORT=$(promptbeacon scan "Nike" --format json)
 curl -X POST https://api.example.com/reports \
   -H "Content-Type: application/json" \
   -d "$REPORT"
-```
-
----
-
-## Scheduled Execution
-
-### Using cron
-
-```cron
-# Daily scan at 2 AM
-0 2 * * * /usr/local/bin/promptbeacon scan "Nike" --storage ~/.promptbeacon/nike.db
-
-# Weekly competitive analysis (Mondays at 3 AM)
-0 3 * * 1 /usr/local/bin/promptbeacon compare "Nike" --against "Adidas" --format json > /data/reports/weekly_$(date +\%Y\%m\%d).json
-```
-
-### Using systemd timer
-
-Create `~/.config/systemd/user/promptbeacon.service`:
-
-```ini
-[Unit]
-Description=PromptBeacon Daily Scan
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/promptbeacon scan "Nike" --storage %h/.promptbeacon/nike.db
-```
-
-Create `~/.config/systemd/user/promptbeacon.timer`:
-
-```ini
-[Unit]
-Description=Run PromptBeacon Daily
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable:
-```bash
-systemctl --user enable promptbeacon.timer
-systemctl --user start promptbeacon.timer
 ```
 
 ---
@@ -648,21 +572,6 @@ promptbeacon providers
 
 # Set missing API keys
 export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-### Permission Denied on Storage
-
-**Problem:** `StorageError: Permission denied: /path/to/data.db`
-
-**Solution:**
-```bash
-# Ensure directory exists and is writable
-mkdir -p ~/.promptbeacon
-chmod 755 ~/.promptbeacon
-
-# Use explicit path
-promptbeacon scan "Nike" --storage ~/.promptbeacon/data.db
 ```
 
 ### Timeout Errors
@@ -671,53 +580,11 @@ promptbeacon scan "Nike" --storage ~/.promptbeacon/data.db
 
 **Solution:**
 ```bash
-# Reduce prompt count
+# Use quick scan for a fast check
+promptbeacon quick "Nike"
+
+# Or reduce prompt count
 promptbeacon scan "Nike" --prompts 5
-
-# Or increase timeout in Python API
-# (CLI doesn't expose timeout option currently)
-```
-
----
-
-## Advanced Usage
-
-### Piping and Redirection
-
-```bash
-# Chain commands
-promptbeacon scan "Nike" --format json | jq '.visibility_score' | mail -s "Nike Score" team@company.com
-
-# Append to log file
-promptbeacon scan "Nike" >> ~/logs/promptbeacon.log 2>&1
-
-# Split output
-promptbeacon scan "Nike" --format json | tee report.json | jq '.visibility_score'
-```
-
-### Conditional Execution
-
-```bash
-# Only run comparison if scan succeeds
-promptbeacon scan "Nike" && promptbeacon compare "Nike" --against "Adidas"
-
-# Run with fallback
-promptbeacon scan "Nike" --provider openai || promptbeacon scan "Nike" --provider anthropic
-```
-
-### Loop Processing
-
-```bash
-# Process multiple brands
-for brand in Nike Adidas Puma; do
-    promptbeacon scan "$brand" --format json > "${brand,,}_report.json"
-done
-
-# Process with timestamps
-while true; do
-    promptbeacon scan "Nike" --storage ~/.promptbeacon/nike.db
-    sleep 86400  # 24 hours
-done
 ```
 
 ---

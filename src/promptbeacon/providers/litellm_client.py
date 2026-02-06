@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import time
 from typing import Any
 
@@ -22,11 +23,16 @@ from promptbeacon.core.exceptions import (
 )
 from promptbeacon.providers.base import BaseLLMClient, LLMResponse
 
+logger = logging.getLogger(__name__)
+
 # Model mapping for each provider
 PROVIDER_MODELS: dict[Provider, str] = {
     Provider.OPENAI: "gpt-4o-mini",
-    Provider.ANTHROPIC: "claude-3-haiku-20240307",
-    Provider.GOOGLE: "gemini/gemini-1.5-flash",
+    Provider.ANTHROPIC: "claude-3-5-haiku-20241022",
+    Provider.GOOGLE: "gemini/gemini-2.0-flash",
+    Provider.MISTRAL: "mistral/mistral-small-latest",
+    Provider.COHERE: "cohere/command-r",
+    Provider.PERPLEXITY: "perplexity/sonar",
 }
 
 # LiteLLM model prefixes
@@ -34,6 +40,9 @@ LITELLM_MODEL_MAP: dict[Provider, str] = {
     Provider.OPENAI: "",  # OpenAI models don't need prefix
     Provider.ANTHROPIC: "",  # Anthropic models don't need prefix
     Provider.GOOGLE: "gemini/",  # Google models need gemini/ prefix
+    Provider.MISTRAL: "mistral/",
+    Provider.COHERE: "cohere/",
+    Provider.PERPLEXITY: "perplexity/",
 }
 
 
@@ -144,19 +153,23 @@ class LiteLLMClient(BaseLLMClient):
             )
 
         except AuthenticationError as e:
+            logger.error("Authentication failed for %s: %s", self.provider_name, e)
             raise ProviderAuthenticationError(
                 f"Authentication failed for {self.provider_name}: {e}"
             ) from e
         except RateLimitError as e:
+            logger.warning("Rate limit exceeded for %s: %s", self.provider_name, e)
             raise ProviderRateLimitError(
                 f"Rate limit exceeded for {self.provider_name}: {e}"
             ) from e
         except APIError as e:
+            logger.error("API error from %s: %s", self.provider_name, e)
             raise ProviderAPIError(
                 f"API error from {self.provider_name}: {e}",
                 status_code=getattr(e, "status_code", None),
             ) from e
         except Exception as e:
+            logger.error("Unexpected error from %s: %s", self.provider_name, e)
             raise ProviderAPIError(
                 f"Unexpected error from {self.provider_name}: {e}"
             ) from e
@@ -226,19 +239,23 @@ class LiteLLMClient(BaseLLMClient):
             )
 
         except AuthenticationError as e:
+            logger.error("Authentication failed for %s: %s", self.provider_name, e)
             raise ProviderAuthenticationError(
                 f"Authentication failed for {self.provider_name}: {e}"
             ) from e
         except RateLimitError as e:
+            logger.warning("Rate limit exceeded for %s: %s", self.provider_name, e)
             raise ProviderRateLimitError(
                 f"Rate limit exceeded for {self.provider_name}: {e}"
             ) from e
         except APIError as e:
+            logger.error("API error from %s: %s", self.provider_name, e)
             raise ProviderAPIError(
                 f"API error from {self.provider_name}: {e}",
                 status_code=getattr(e, "status_code", None),
             ) from e
         except Exception as e:
+            logger.error("Unexpected error from %s: %s", self.provider_name, e)
             raise ProviderAPIError(
                 f"Unexpected error from {self.provider_name}: {e}"
             ) from e

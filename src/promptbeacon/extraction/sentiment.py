@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from promptbeacon.core.schemas import BrandMention, SentimentBreakdown
+from promptbeacon.extraction.mentions import _is_negated
 
 
 class SentimentAnalysisResult(BaseModel):
@@ -74,16 +75,29 @@ def analyze_response_sentiment(response: str) -> SentimentAnalysisResult:
         "overpriced": 1,
     }
 
-    # Calculate scores
-    positive_score = sum(
-        weight for word, weight in positive_signals.items() if word in response_lower
-    )
-    negative_score = sum(
-        weight for word, weight in negative_signals.items() if word in response_lower
-    )
+    # Calculate scores with negation awareness
+    positive_score = 0.0
+    negative_score = 0.0
+    found_positive: list[str] = []
+    found_negative: list[str] = []
 
-    found_positive = [word for word in positive_signals if word in response_lower]
-    found_negative = [word for word in negative_signals if word in response_lower]
+    for word, weight in positive_signals.items():
+        if word in response_lower:
+            if _is_negated(response_lower, word):
+                negative_score += weight
+                found_negative.append(word)
+            else:
+                positive_score += weight
+                found_positive.append(word)
+
+    for word, weight in negative_signals.items():
+        if word in response_lower:
+            if _is_negated(response_lower, word):
+                positive_score += weight
+                found_positive.append(word)
+            else:
+                negative_score += weight
+                found_negative.append(word)
 
     total_score = positive_score + negative_score
     overall: Literal["positive", "neutral", "negative"]

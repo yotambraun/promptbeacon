@@ -22,6 +22,7 @@ def extract_mentions(
     response: str,
     target_brand: str,
     competitors: list[str] | None = None,
+    aliases: list[str] | None = None,
 ) -> MentionExtractionResult:
     """Extract brand mentions from an LLM response.
 
@@ -29,11 +30,18 @@ def extract_mentions(
         response: The LLM response text.
         target_brand: The main brand to look for.
         competitors: Optional list of competitor brands.
+        aliases: Optional alternative names for the target brand.
+            Matches are credited to ``target_brand``.
 
     Returns:
         MentionExtractionResult with extracted mentions.
     """
-    all_brands = [target_brand] + (competitors or [])
+    # Map alias -> canonical brand name so mentions are credited correctly
+    alias_map: dict[str, str] = {}
+    for alias in aliases or []:
+        alias_map[alias] = target_brand
+
+    all_brands = [target_brand] + (aliases or []) + (competitors or [])
     mentions: list[BrandMention] = []
     brands_found: set[str] = set()
     position = 0
@@ -41,6 +49,10 @@ def extract_mentions(
     for brand in all_brands:
         # Find all occurrences of the brand (case-insensitive)
         pattern = re.compile(re.escape(brand), re.IGNORECASE)
+        # Precompile word-boundary pattern for this brand
+        word_boundary_pattern = re.compile(
+            r"\b" + re.escape(brand) + r"\b", re.IGNORECASE
+        )
         for match in pattern.finditer(response):
             start = match.start()
             end = match.end()
@@ -60,17 +72,25 @@ def extract_mentions(
             # Check if this is a recommendation
             is_recommendation = is_brand_recommended(context, brand)
 
+            # Calculate confidence from signal quality
+            confidence = _calculate_mention_confidence(
+                response, brand, match, sentiment, word_boundary_pattern
+            )
+
+            # Credit aliases to the canonical brand name
+            canonical_name = alias_map.get(brand, brand)
+
             mentions.append(
                 BrandMention(
-                    brand_name=brand,
+                    brand_name=canonical_name,
                     sentiment=sentiment,
                     position=position,
                     context=context.strip(),
-                    confidence=0.9,  # Base confidence for regex matching
+                    confidence=confidence,
                     is_recommendation=is_recommendation,
                 )
             )
-            brands_found.add(brand)
+            brands_found.add(canonical_name)
             position += 1
 
     return MentionExtractionResult(
@@ -80,10 +100,103 @@ def extract_mentions(
     )
 
 
+def _calculate_mention_confidence(
+    response: str,
+    brand: str,
+    match: re.Match,
+    sentiment: str,
+    word_boundary_pattern: re.Pattern,
+) -> float:
+    """Calculate confidence score from signal quality.
+
+    The score honestly reflects what a regex-only extraction can claim:
+      - Base 0.5 (a regex match exists)
+      - +0.1 for exact case match (the response used the brand's casing)
+      - +0.1 for clean word boundaries (not a substring of another word)
+      - +0.05 per sentiment signal found, up to +0.1
+
+    Resulting range: 0.5 – 0.8.
+    """
+    confidence = 0.5
+
+    # Exact case match bonus
+    matched_text = response[match.start() : match.end()]
+    if matched_text == brand:
+        confidence += 0.1
+
+    # Clean word-boundary bonus
+    if word_boundary_pattern.search(
+        response[match.start() : match.end() + 1]
+        if match.end() < len(response)
+        else response[match.start() : match.end()]
+    ):
+        # Verify the actual match position has word boundaries
+        before_ok = match.start() == 0 or not response[match.start() - 1].isalnum()
+        after_ok = match.end() == len(response) or not response[match.end()].isalnum()
+        if before_ok and after_ok:
+            confidence += 0.1
+
+    # Sentiment signal bonus (+0.05 per signal, up to +0.1)
+    if sentiment != "neutral":
+        confidence += 0.1
+    # (neutral sentiment = no sentiment signals detected = no bonus)
+
+    return round(min(0.8, confidence), 2)
+
+
+NEGATION_PREFIXES = [
+    "not ",
+    "no ",
+    "never ",
+    "isn't ",
+    "isnt ",
+    "don't ",
+    "dont ",
+    "doesn't ",
+    "doesnt ",
+    "wasn't ",
+    "wasnt ",
+    "weren't ",
+    "werent ",
+    "won't ",
+    "wont ",
+    "wouldn't ",
+    "wouldnt ",
+    "shouldn't ",
+    "shouldnt ",
+    "hardly ",
+    "barely ",
+    "neither ",
+    "nor ",
+]
+
+
+def _is_negated(text: str, keyword: str) -> bool:
+    """Check if a keyword is negated by looking at the preceding ~4 words.
+
+    Args:
+        text: The lowercased text to search in.
+        keyword: The keyword to check for negation.
+
+    Returns:
+        True if the keyword is preceded by a negation word.
+    """
+    idx = text.find(keyword)
+    if idx < 0:
+        return False
+    # Look at the ~40 characters before the keyword (roughly 4 words)
+    window_start = max(0, idx - 40)
+    window = text[window_start:idx]
+    return any(neg in window for neg in NEGATION_PREFIXES)
+
+
 def analyze_mention_sentiment(
     context: str,
 ) -> Literal["positive", "neutral", "negative"]:
     """Analyze the sentiment of a brand mention based on context.
+
+    Uses keyword matching with negation detection: if a negation word
+    appears in the ~4 words preceding a keyword, its polarity is flipped.
 
     Args:
         context: The text context around the mention.
@@ -144,8 +257,22 @@ def analyze_mention_sentiment(
         "warning",
     ]
 
-    positive_count = sum(1 for word in positive_words if word in context_lower)
-    negative_count = sum(1 for word in negative_words if word in context_lower)
+    positive_count = 0
+    negative_count = 0
+
+    for word in positive_words:
+        if word in context_lower:
+            if _is_negated(context_lower, word):
+                negative_count += 1  # Negated positive -> negative
+            else:
+                positive_count += 1
+
+    for word in negative_words:
+        if word in context_lower:
+            if _is_negated(context_lower, word):
+                positive_count += 1  # Negated negative -> positive
+            else:
+                negative_count += 1
 
     if positive_count > negative_count:
         return "positive"
@@ -157,15 +284,44 @@ def analyze_mention_sentiment(
 def is_brand_recommended(context: str, brand: str) -> bool:
     """Check if a brand is being explicitly recommended in the context.
 
+    Anti-recommendation patterns (e.g. "recommend against Nike") are checked
+    first.  If any match, the function returns ``False`` immediately so that
+    negative advice is never mistaken for a positive recommendation.
+
     Args:
         context: The text context around the mention.
         brand: The brand name.
 
     Returns:
-        True if the brand appears to be recommended.
+        True if the brand appears to be positively recommended.
     """
     context_lower = context.lower()
     brand_lower = brand.lower()
+
+    # Check anti-recommendation patterns FIRST — if any match, it's not a rec.
+    anti_patterns = [
+        f"don't recommend {brand_lower}",
+        f"dont recommend {brand_lower}",
+        f"do not recommend {brand_lower}",
+        f"wouldn't recommend {brand_lower}",
+        f"wouldnt recommend {brand_lower}",
+        f"would not recommend {brand_lower}",
+        f"cannot recommend {brand_lower}",
+        f"can't recommend {brand_lower}",
+        f"recommend against {brand_lower}",
+        f"advise against {brand_lower}",
+        f"avoid {brand_lower}",
+        f"stay away from {brand_lower}",
+        f"steer clear of {brand_lower}",
+        f"not suggest {brand_lower}",
+        f"never recommend {brand_lower}",
+        f"stop recommending {brand_lower}",
+        f"{brand_lower} is not recommended",
+        f"{brand_lower} isn't recommended",
+    ]
+
+    if any(pattern in context_lower for pattern in anti_patterns):
+        return False
 
     recommendation_patterns = [
         f"recommend {brand_lower}",

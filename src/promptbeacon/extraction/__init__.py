@@ -1,5 +1,9 @@
 """Extraction module for PromptBeacon."""
 
+from promptbeacon.extraction.citations import (
+    CitationResult,
+    extract_citations,
+)
 from promptbeacon.extraction.mentions import (
     MentionExtractionResult,
     calculate_mention_prominence,
@@ -23,6 +27,9 @@ from promptbeacon.extraction.sentiment import (
 )
 
 __all__ = [
+    # Citations
+    "CitationResult",
+    "extract_citations",
     # Mentions
     "MentionExtractionResult",
     "calculate_mention_prominence",

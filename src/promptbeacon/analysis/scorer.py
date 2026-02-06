@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from promptbeacon.core.schemas import (
     CompetitorScore,
     ProviderResult,
+    ScoreBreakdown,
     VisibilityMetrics,
 )
 from promptbeacon.extraction.mentions import calculate_mention_prominence
@@ -15,7 +16,25 @@ from promptbeacon.extraction.sentiment import aggregate_mention_sentiment
 
 
 class ScoringWeights(BaseModel):
-    """Weights for visibility score calculation."""
+    """Weights for the four components of the visibility score.
+
+    The default weights reflect the relative importance of each signal
+    for a brand-monitoring use case:
+
+    - **mention_frequency (0.30)**: The strongest signal — a brand that
+      is never mentioned is invisible regardless of other factors.
+    - **sentiment (0.25)**: Positive mentions are worth more than neutral
+      ones. Note that neutral sentiment counts as 50% positive in the
+      scoring formula because being mentioned neutrally is still
+      better than not being mentioned at all.
+    - **position (0.25)**: Being listed first / early in ranked lists
+      captures the "top-of-mind" effect that correlates with user trust.
+    - **recommendation (0.20)**: Explicit recommendations ("I recommend X")
+      are the strongest qualitative signal but are relatively rare, so
+      the weight is slightly lower to avoid score swings on small samples.
+
+    All four weights should sum to 1.0 for a meaningful 0-100 score.
+    """
 
     mention_frequency: float = Field(default=0.3, ge=0.0, le=1.0)
     sentiment: float = Field(default=0.25, ge=0.0, le=1.0)
@@ -26,23 +45,18 @@ class ScoringWeights(BaseModel):
 DEFAULT_WEIGHTS = ScoringWeights()
 
 
-def calculate_visibility_score(
+def _calculate_score_and_breakdown(
     results: list[ProviderResult],
     brand: str,
     weights: ScoringWeights | None = None,
-) -> float:
-    """Calculate the overall visibility score for a brand.
-
-    Args:
-        results: List of provider results.
-        brand: The brand to score.
-        weights: Optional custom weights.
+) -> tuple[float, ScoreBreakdown]:
+    """Calculate visibility score and its factor breakdown.
 
     Returns:
-        Visibility score from 0 to 100.
+        (score, breakdown) tuple.
     """
     if not results:
-        return 0.0
+        return 0.0, ScoreBreakdown()
 
     weights = weights or DEFAULT_WEIGHTS
 
@@ -56,7 +70,7 @@ def calculate_visibility_score(
 
     successful_results = [r for r in results if r.success]
     if not successful_results:
-        return 0.0
+        return 0.0, ScoreBreakdown()
 
     # Factor 1: Mention frequency (mentions per query)
     total_queries = len(successful_results)
@@ -70,7 +84,10 @@ def calculate_visibility_score(
 
     # Factor 2: Sentiment score
     sentiment_breakdown = aggregate_mention_sentiment(all_mentions)
-    # Convert sentiment to 0-100 scale (positive = good)
+    # Convert sentiment to 0-100 scale (positive = good).
+    # Neutral sentiment counts as 50% positive because being mentioned
+    # neutrally is still better than not being mentioned at all — it
+    # indicates the brand exists in the LLM's knowledge.
     sentiment_score = (
         (sentiment_breakdown.positive * 100)
         + (sentiment_breakdown.neutral * 50)
@@ -107,23 +124,53 @@ def calculate_visibility_score(
         + (recommendation_score * weights.recommendation)
     )
 
-    return round(min(100, max(0, visibility_score)), 1)
+    breakdown = ScoreBreakdown(
+        mention_frequency=round(frequency_score, 1),
+        sentiment=round(sentiment_score, 1),
+        position=round(position_score, 1),
+        recommendation=round(recommendation_score, 1),
+    )
+
+    return round(min(100, max(0, visibility_score)), 1), breakdown
+
+
+def calculate_visibility_score(
+    results: list[ProviderResult],
+    brand: str,
+    weights: ScoringWeights | None = None,
+) -> float:
+    """Calculate the overall visibility score for a brand.
+
+    Args:
+        results: List of provider results.
+        brand: The brand to score.
+        weights: Optional custom weights.
+
+    Returns:
+        Visibility score from 0 to 100.
+    """
+    score, _ = _calculate_score_and_breakdown(results, brand, weights)
+    return score
 
 
 def calculate_metrics(
     results: list[ProviderResult],
     brand: str,
+    weights: ScoringWeights | None = None,
 ) -> VisibilityMetrics:
     """Calculate detailed visibility metrics for a brand.
 
     Args:
         results: List of provider results.
         brand: The brand to analyze.
+        weights: Optional custom scoring weights.
 
     Returns:
         VisibilityMetrics with detailed analysis.
     """
-    visibility_score = calculate_visibility_score(results, brand)
+    visibility_score, breakdown = _calculate_score_and_breakdown(
+        results, brand, weights
+    )
 
     # Collect all mentions
     all_mentions = []
@@ -152,6 +199,7 @@ def calculate_metrics(
         average_position=round(average_position, 2) if average_position else None,
         sentiment=sentiment,
         confidence_interval=None,  # Calculated separately with statistics module
+        score_breakdown=breakdown,
     )
 
 

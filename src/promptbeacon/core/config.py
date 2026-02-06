@@ -16,6 +16,9 @@ class Provider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
+    MISTRAL = "mistral"
+    COHERE = "cohere"
+    PERPLEXITY = "perplexity"
 
     @classmethod
     def all(cls) -> list[Provider]:
@@ -35,8 +38,11 @@ class ModelConfig(BaseModel):
 # Default models for each provider
 DEFAULT_MODELS: dict[Provider, str] = {
     Provider.OPENAI: "gpt-4o-mini",
-    Provider.ANTHROPIC: "claude-3-haiku-20240307",
-    Provider.GOOGLE: "gemini-1.5-flash",
+    Provider.ANTHROPIC: "claude-3-5-haiku-20241022",
+    Provider.GOOGLE: "gemini-2.0-flash",
+    Provider.MISTRAL: "mistral-small-latest",
+    Provider.COHERE: "command-r",
+    Provider.PERPLEXITY: "sonar",
 }
 
 
@@ -44,6 +50,10 @@ class BeaconConfig(BaseModel):
     """Configuration for a Beacon instance."""
 
     brand: str = Field(..., min_length=1, description="The brand to monitor")
+    brand_aliases: list[str] = Field(
+        default_factory=list,
+        description="Alternative names for the brand (e.g. 'Nike Inc', 'Nike Corporation')",
+    )
     competitors: list[str] = Field(
         default_factory=list, description="Competitor brands"
     )
@@ -103,6 +113,9 @@ def get_api_key(provider: Provider) -> str | None:
         Provider.OPENAI: "OPENAI_API_KEY",
         Provider.ANTHROPIC: "ANTHROPIC_API_KEY",
         Provider.GOOGLE: "GOOGLE_API_KEY",
+        Provider.MISTRAL: "MISTRAL_API_KEY",
+        Provider.COHERE: "COHERE_API_KEY",
+        Provider.PERPLEXITY: "PERPLEXITY_API_KEY",
     }
     env_var = env_vars.get(provider)
     if env_var:

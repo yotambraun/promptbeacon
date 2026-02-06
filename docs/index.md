@@ -1,22 +1,30 @@
 # PromptBeacon Documentation
 
-Welcome to PromptBeacon - a comprehensive toolkit for monitoring how your brand appears in AI-generated responses across multiple LLM providers.
+Welcome to PromptBeacon - the open-source Generative Engine Optimization (GEO) toolkit for Python. Track how AI sees your brand across ChatGPT, Claude, Gemini, Mistral, and more.
 
 ## What is PromptBeacon?
 
 PromptBeacon helps brands understand and track their visibility in the AI ecosystem. As large language models become the new search engines, knowing how AI assistants represent your brand is crucial for modern brand management.
 
+> **The AI visibility space is dominated by $99-300+/month SaaS tools.**
+> PromptBeacon is the **only open-source alternative** — free, local-first, and extensible.
+
 ## Key Features
 
+- **6 LLM Providers**: Query OpenAI, Anthropic, Google, Mistral, Cohere, and Perplexity simultaneously
+- **Citation Tracking**: See which sources LLMs cite when discussing your brand
+- **Brand Aliases**: "Nike Inc", "Nike Corporation" all count as Nike mentions
+- **Industry Templates**: Pre-built prompts for ecommerce, SaaS, finance, healthcare, travel, food, tech
+- **Response Caching**: Skip identical queries with file-based caching (configurable TTL)
+- **Score Breakdown**: See which of the 4 scoring factors drags your score
 - **Visibility Scoring**: Quantifiable metrics (0-100) measuring brand prominence in AI responses
-- **Multi-Provider Support**: Query OpenAI, Anthropic, and Google simultaneously
-- **Sentiment Analysis**: Track positive, neutral, and negative mentions
+- **Sentiment Analysis**: Track positive, neutral, and negative mentions with negation detection
 - **Competitor Benchmarking**: Compare your visibility against competitors
 - **Historical Tracking**: DuckDB-powered local storage for trend analysis
 - **Explainable Insights**: Understand why scores change with evidence-backed explanations
 - **Statistical Rigor**: Confidence intervals, volatility scoring, and significance testing
 - **Fluent API**: Chainable, readable Python interface
-- **CLI Interface**: Full command-line support for automation
+- **CLI Interface**: Full command-line support for automation including quick scans
 - **Export Formats**: JSON, CSV, Markdown, HTML, pandas DataFrame
 
 ## Quick Links
@@ -29,7 +37,7 @@ PromptBeacon helps brands understand and track their visibility in the AI ecosys
 ### Core Documentation
 - [API Reference](api-reference.md) - Complete API documentation
 - [CLI Reference](cli.md) - Command-line interface guide
-- [Provider Configuration](providers.md) - Setup for OpenAI, Anthropic, Google
+- [Provider Configuration](providers.md) - Setup for all 6 providers
 - [Storage Guide](storage.md) - Historical tracking with DuckDB
 
 ### Advanced Usage
@@ -63,9 +71,10 @@ PromptBeacon is built on a modular architecture:
 ### Components
 
 - **Beacon**: Main interface with fluent configuration API
-- **Providers**: Multi-provider LLM access via LiteLLM (OpenAI, Anthropic, Google)
-- **Storage**: Local-first DuckDB storage for historical data
-- **Analysis**: Visibility scoring, sentiment analysis, competitor comparison
+- **Providers**: Multi-provider LLM access via LiteLLM (OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity)
+- **Extraction**: Brand mention detection, sentiment analysis, citation tracking
+- **Storage**: Local-first DuckDB storage for historical data, file-based response caching
+- **Analysis**: Visibility scoring with configurable weights, competitor comparison
 - **Reporting**: Export to JSON, CSV, Markdown, HTML, pandas
 
 ## Installation
@@ -85,10 +94,7 @@ uv add promptbeacon
 ```python
 from promptbeacon import Beacon
 
-# Basic scan
-beacon = Beacon("Nike")
-report = beacon.scan()
-
+report = Beacon("Nike").scan()
 print(f"Visibility: {report.visibility_score}/100")
 print(f"Mentions: {report.mention_count}")
 print(f"Sentiment: {report.sentiment_breakdown.positive:.0%} positive")
@@ -99,28 +105,34 @@ print(f"Sentiment: {report.sentiment_breakdown.positive:.0%} positive")
 ```python
 from promptbeacon import Beacon, Provider
 
-# Comprehensive competitive analysis
-beacon = (
+report = (
     Beacon("Nike")
+    .with_aliases("Nike Inc", "Nike Corporation")
     .with_competitors("Adidas", "Puma", "New Balance")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE)
-    .with_categories("running shoes", "athletic wear", "sustainability")
-    .with_prompt_count(25)
+    .with_industry("ecommerce")
+    .with_cache()
     .with_storage("~/.promptbeacon/nike.db")
+    .scan()
 )
 
-report = beacon.scan()
+# Score with factor breakdown
+print(f"Score: {report.visibility_score}/100")
+bd = report.metrics.score_breakdown
+print(f"  Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
+print(f"  Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
 
-# Compare against competitors
-print(f"\n{report.brand}: {report.visibility_score:.1f}")
+# Competitor comparison
 for name, score in report.competitor_comparison.items():
-    diff = report.visibility_score - score.visibility_score
-    print(f"{name}: {score.visibility_score:.1f} ({diff:+.1f})")
+    print(f"{name}: {score.visibility_score:.1f}")
 
-# Get actionable insights
-print("\nKey Recommendations:")
+# Citations the LLM used
+for cit in report.citation_summary.citations[:5]:
+    print(f"  Source: {cit.source_name} -> {cit.brand_associated}")
+
+# Evidence-based recommendations
 for rec in report.recommendations[:3]:
-    print(f"  [{rec.priority.upper()}] {rec.action}")
+    print(f"[{rec.priority.upper()}] {rec.action}")
 ```
 
 ## Use Cases
@@ -162,14 +174,15 @@ PromptBeacon stores all data locally using DuckDB:
 ## Data Flow
 
 ```
-1. Configure Beacon with brand, competitors, categories
-2. Generate prompts from templates and categories
-3. Query multiple LLM providers concurrently
-4. Extract brand mentions with sentiment
-5. Calculate visibility scores and metrics
-6. Generate explanations and recommendations
-7. Store results in DuckDB (if enabled)
-8. Export to desired format
+1. Configure Beacon with brand, aliases, competitors, categories
+2. Generate prompts from templates (or industry-specific templates)
+3. Check response cache; skip queries with cached responses
+4. Query multiple LLM providers concurrently
+5. Extract brand mentions with sentiment + citations
+6. Calculate visibility scores with configurable weights
+7. Generate evidence-based explanations and recommendations
+8. Store results in DuckDB (if enabled)
+9. Export to desired format
 ```
 
 ## Philosophy
@@ -192,7 +205,7 @@ We welcome contributions! See the [GitHub repository](https://github.com/yotambr
 
 ## License
 
-PromptBeacon is released under the MIT License. See [LICENSE](../LICENSE) for details.
+PromptBeacon is released under the Apache License 2.0. See [LICENSE](../LICENSE) for details.
 
 ## Next Steps
 

@@ -41,8 +41,9 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
         try:
             providers.append(Provider(v.lower()))
         except ValueError:
+            valid = ", ".join(p.value for p in Provider)
             raise typer.BadParameter(
-                f"Invalid provider: {v}. Choose from: openai, anthropic, google"
+                f"Invalid provider: {v}. Choose from: {valid}"
             ) from None
     return providers
 
@@ -116,6 +117,43 @@ def scan(
             raise typer.Exit(1) from None
 
     # Output results
+    if output_format == OutputFormat.json:
+        console.print(to_json(report))
+    elif output_format == OutputFormat.markdown:
+        console.print(to_markdown(report))
+    else:
+        _print_text_report(report)
+
+
+@app.command()
+def quick(
+    brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format"),
+    ] = OutputFormat.text,
+) -> None:
+    """Run a fast 3-prompt scan with the cheapest available provider.
+
+    Great for a quick check before running a full scan.
+
+    Example:
+        promptbeacon quick "Nike"
+    """
+    beacon = Beacon(brand).with_prompt_count(3)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task(description=f"Quick scan for {brand}...", total=None)
+        try:
+            report = beacon.scan()
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+
     if output_format == OutputFormat.json:
         console.print(to_json(report))
     elif output_format == OutputFormat.markdown:
@@ -226,6 +264,9 @@ def providers() -> None:
         Provider.OPENAI: "OPENAI_API_KEY",
         Provider.ANTHROPIC: "ANTHROPIC_API_KEY",
         Provider.GOOGLE: "GOOGLE_API_KEY",
+        Provider.MISTRAL: "MISTRAL_API_KEY",
+        Provider.COHERE: "COHERE_API_KEY",
+        Provider.PERPLEXITY: "PERPLEXITY_API_KEY",
     }
 
     for provider in Provider:
@@ -275,6 +316,18 @@ def _print_text_report(report) -> None:
 
     console.print(table)
 
+    # Score breakdown
+    bd = getattr(report.metrics, "score_breakdown", None) if report.metrics else None
+    if bd:
+        bd_table = Table(title="Score Breakdown (0-100 per factor, before weighting)")
+        bd_table.add_column("Factor", style="cyan")
+        bd_table.add_column("Score", style="green")
+        bd_table.add_row("Mention Frequency", f"{bd.mention_frequency:.1f}")
+        bd_table.add_row("Sentiment", f"{bd.sentiment:.1f}")
+        bd_table.add_row("Position / Prominence", f"{bd.position:.1f}")
+        bd_table.add_row("Recommendation Rate", f"{bd.recommendation:.1f}")
+        console.print(bd_table)
+
     # Explanations
     if report.explanations:
         console.print("\n[bold]Key Insights:[/bold]")
@@ -294,6 +347,14 @@ def _print_text_report(report) -> None:
             console.print(
                 f"  [{priority_color}][{rec.priority.upper()}][/{priority_color}] {rec.action}"
             )
+
+    # Sources Cited
+    if report.citation_summary and report.citation_summary.total_citations > 0:
+        console.print("\n[bold]Sources Cited:[/bold]")
+        for cit in report.citation_summary.citations[:10]:
+            source = cit.url or cit.source_name
+            brand_tag = f" [{cit.brand_associated}]" if cit.brand_associated else ""
+            console.print(f"  [cyan]•[/cyan] {source}{brand_tag}")
 
 
 def _print_comparison_report(report) -> None:
