@@ -89,9 +89,7 @@ class TestIsBrandAntiRecommended:
         assert is_brand_anti_recommended("You should avoid Nike.", "Nike") is True
 
     def test_wouldnt_recommend(self):
-        assert (
-            is_brand_anti_recommended("I wouldn't recommend Nike.", "Nike") is True
-        )
+        assert is_brand_anti_recommended("I wouldn't recommend Nike.", "Nike") is True
 
     def test_positive_recommendation_not_anti(self):
         assert (
