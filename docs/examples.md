@@ -1105,6 +1105,48 @@ if __name__ == "__main__":
 
 ---
 
+## BeaconGuard: Brand Safety
+
+Real-time brand safety analysis for LLM outputs — no API calls needed.
+
+### Basic Guard
+
+```python
+from promptbeacon import BeaconGuard
+
+guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
+
+responses = [
+    "I recommend Nike for running shoes. Great quality and innovation.",
+    "Try Adidas instead — Nike has had quality issues lately.",
+    "Popular running brands include Brooks, Asics, and Saucony.",
+]
+
+for response in responses:
+    result = guard.analyze(response)
+    print(f"Risk: {result.risk_level} | Flags: {result.flags}")
+```
+
+### Guard as Middleware
+
+```python
+from promptbeacon import BeaconGuard
+from promptbeacon.integrations.middleware import BeaconGuardMiddleware
+
+guard = BeaconGuard("Acme", competitors=["CompetitorX"])
+middleware = BeaconGuardMiddleware(
+    guard,
+    on_high_risk=lambda r: print(f"ALERT: {r.flags}")
+)
+
+result = middleware("I'd suggest CompetitorX over Acme for this use case.")
+print(f"Risk: {result.risk_level}")
+```
+
+See the [examples directory](../examples/) for runnable scripts: `guard_example.py` and `langchain_guard.py`.
+
+---
+
 ## See Also
 
 - [Quickstart Guide](quickstart.md) - Getting started

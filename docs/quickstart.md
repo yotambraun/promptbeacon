@@ -112,6 +112,21 @@ promptbeacon scan "Nike"
 
 That's it! You've just completed your first brand visibility scan.
 
+## Quick Start: BeaconGuard
+
+BeaconGuard provides real-time brand safety for LLM outputs — no API keys needed, pure local processing:
+
+```python
+from promptbeacon import BeaconGuard
+
+guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
+result = guard.analyze("I recommend Adidas over Nike for running.")
+print(f"Risk: {result.risk_level}")  # "high"
+print(f"Flags: {result.flags}")
+```
+
+See [Advanced Usage: Real-Time Brand Safety](advanced.md#real-time-brand-safety) for LangChain integration and middleware patterns.
+
 ## Understanding Your Results
 
 ### Visibility Score

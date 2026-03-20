@@ -11,6 +11,8 @@ PromptBeacon helps brands understand and track their visibility in the AI ecosys
 
 ## Key Features
 
+- **BeaconGuard**: Real-time brand safety for LLM outputs — flag competitors, negative sentiment, anti-recommendations. No API calls, pure local processing.
+- **LangChain Integration**: Callback handler + output parser for LangChain pipelines (optional dependency)
 - **6 LLM Providers**: Query OpenAI, Anthropic, Google, Mistral, Cohere, and Perplexity simultaneously
 - **Citation Tracking**: See which sources LLMs cite when discussing your brand
 - **Brand Aliases**: "Nike Inc", "Nike Corporation" all count as Nike mentions
@@ -71,8 +73,10 @@ PromptBeacon is built on a modular architecture:
 ### Components
 
 - **Beacon**: Main interface with fluent configuration API
+- **BeaconGuard**: Real-time brand safety analysis for LLM outputs
 - **Providers**: Multi-provider LLM access via LiteLLM (OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity)
 - **Extraction**: Brand mention detection, sentiment analysis, citation tracking
+- **Integrations**: LangChain callback handler/output parser, generic middleware
 - **Storage**: Local-first DuckDB storage for historical data, file-based response caching
 - **Analysis**: Visibility scoring with configurable weights, competitor comparison
 - **Reporting**: Export to JSON, CSV, Markdown, HTML, pandas
@@ -136,6 +140,12 @@ for rec in report.recommendations[:3]:
 ```
 
 ## Use Cases
+
+### Brand Safety for AI Apps
+- Ensure customer-facing chatbots don't recommend competitors
+- Flag negative sentiment or anti-recommendations in real time
+- Integrate with LangChain or any LLM pipeline via middleware
+- No API calls required — pure local processing
 
 ### Brand Managers
 - Track brand visibility across AI platforms

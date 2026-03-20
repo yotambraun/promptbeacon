@@ -299,6 +299,44 @@ def is_brand_recommended(context: str, brand: str) -> bool:
     brand_lower = brand.lower()
 
     # Check anti-recommendation patterns FIRST — if any match, it's not a rec.
+    if is_brand_anti_recommended(context, brand):
+        return False
+
+    recommendation_patterns = [
+        f"recommend {brand_lower}",
+        f"i recommend {brand_lower}",
+        f"would recommend {brand_lower}",
+        f"suggest {brand_lower}",
+        f"try {brand_lower}",
+        f"go with {brand_lower}",
+        f"choose {brand_lower}",
+        f"best option is {brand_lower}",
+        f"top choice is {brand_lower}",
+        f"{brand_lower} is a great choice",
+        f"{brand_lower} is the best",
+        f"{brand_lower} is recommended",
+        f"consider {brand_lower}",
+    ]
+
+    return any(pattern in context_lower for pattern in recommendation_patterns)
+
+
+def is_brand_anti_recommended(context: str, brand: str) -> bool:
+    """Check if a brand is being explicitly warned against in the context.
+
+    Complements ``is_brand_recommended`` by detecting negative recommendation
+    patterns such as "avoid Nike" or "don't recommend Nike".
+
+    Args:
+        context: The text context around the mention.
+        brand: The brand name.
+
+    Returns:
+        True if the brand appears to be negatively recommended against.
+    """
+    context_lower = context.lower()
+    brand_lower = brand.lower()
+
     anti_patterns = [
         f"don't recommend {brand_lower}",
         f"dont recommend {brand_lower}",
@@ -320,26 +358,7 @@ def is_brand_recommended(context: str, brand: str) -> bool:
         f"{brand_lower} isn't recommended",
     ]
 
-    if any(pattern in context_lower for pattern in anti_patterns):
-        return False
-
-    recommendation_patterns = [
-        f"recommend {brand_lower}",
-        f"i recommend {brand_lower}",
-        f"would recommend {brand_lower}",
-        f"suggest {brand_lower}",
-        f"try {brand_lower}",
-        f"go with {brand_lower}",
-        f"choose {brand_lower}",
-        f"best option is {brand_lower}",
-        f"top choice is {brand_lower}",
-        f"{brand_lower} is a great choice",
-        f"{brand_lower} is the best",
-        f"{brand_lower} is recommended",
-        f"consider {brand_lower}",
-    ]
-
-    return any(pattern in context_lower for pattern in recommendation_patterns)
+    return any(pattern in context_lower for pattern in anti_patterns)
 
 
 def count_brand_mentions(response: str, brand: str) -> int:

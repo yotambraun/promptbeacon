@@ -5,10 +5,12 @@ Complete API documentation for PromptBeacon. This reference covers all classes, 
 ## Table of Contents
 
 - [Beacon Class](#beacon-class)
+- [BeaconGuard](#beaconguard)
 - [Configuration](#configuration)
 - [Report Objects](#report-objects)
 - [Data Schemas](#data-schemas)
 - [Export Functions](#export-functions)
+- [Integrations](#integrations)
 - [Exceptions](#exceptions)
 - [Provider Enum](#provider-enum)
 
@@ -453,6 +455,90 @@ The current configuration (read-only).
 beacon = Beacon("Nike").with_competitors("Adidas")
 print(beacon.config.competitors)  # ["Adidas"]
 ```
+
+---
+
+## BeaconGuard
+
+Real-time brand safety analysis for LLM outputs. No API calls, pure local processing.
+
+### Constructor
+
+```python
+BeaconGuard(
+    brand: str,
+    competitors: list[str] | None = None,
+    aliases: list[str] | None = None,
+    *,
+    flag_competitor_mention: bool = True,
+    flag_negative_sentiment: bool = True,
+    flag_no_brand_mention: bool = False,
+    flag_anti_recommendation: bool = True,
+)
+```
+
+**Parameters:**
+- `brand` (str): The brand to protect
+- `competitors` (list[str] | None): Competitor brand names to flag
+- `aliases` (list[str] | None): Alternative brand names (credited to primary)
+- `flag_competitor_mention` (bool): Flag when competitors are mentioned (default: True)
+- `flag_negative_sentiment` (bool): Flag negative sentiment (default: True)
+- `flag_no_brand_mention` (bool): Flag when brand is absent (default: False)
+- `flag_anti_recommendation` (bool): Flag anti-recommendations (default: True)
+
+**Example:**
+```python
+from promptbeacon import BeaconGuard
+
+guard = BeaconGuard(
+    "Nike",
+    competitors=["Adidas", "Puma"],
+    aliases=["Nike Inc"],
+    flag_no_brand_mention=True,
+)
+```
+
+---
+
+### `analyze(text: str) -> GuardResult`
+
+Analyze text for brand safety concerns.
+
+**Parameters:**
+- `text` (str): The LLM output text to analyze
+
+**Returns:** GuardResult with analysis details
+
+**Example:**
+```python
+result = guard.analyze("Try Adidas instead of Nike.")
+print(result.risk_level)     # "high"
+print(result.flags)          # ["Competitor mentioned: Adidas"]
+print(result.sentiment)      # "neutral"
+```
+
+---
+
+### GuardResult
+
+Pydantic model returned by `BeaconGuard.analyze()`.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `text` | str | Input text analyzed |
+| `mentions_brand` | bool | Target brand was found |
+| `mentions_competitor` | bool | Any competitor was found |
+| `competitor_names` | list[str] | Which competitors were found |
+| `sentiment` | "positive" \| "neutral" \| "negative" | Overall sentiment |
+| `sentiment_details` | SentimentAnalysisResult | Full sentiment breakdown |
+| `has_citations` | bool | Whether citations were found |
+| `citations` | list[Citation] | Citations found in text |
+| `is_recommendation` | bool | Brand explicitly recommended |
+| `is_anti_recommendation` | bool | Brand explicitly warned against |
+| `risk_level` | "low" \| "medium" \| "high" | Risk level (0 flags=low, 1=medium, 2+=high) |
+| `flags` | list[str] | Human-readable triggered rules |
 
 ---
 
@@ -975,6 +1061,61 @@ print(data['visibility_score'])
 
 ---
 
+## Integrations
+
+### BeaconGuardMiddleware
+
+Generic callable middleware for any LLM pipeline.
+
+```python
+from promptbeacon import BeaconGuard
+from promptbeacon.integrations.middleware import BeaconGuardMiddleware
+
+guard = BeaconGuard("Acme", competitors=["CompetitorX"])
+mw = BeaconGuardMiddleware(
+    guard,
+    on_high_risk=lambda r: print(f"ALERT: {r.flags}"),
+)
+
+result = mw("Try CompetitorX instead of Acme.")
+```
+
+**Parameters:**
+- `guard` (BeaconGuard): The guard instance
+- `on_high_risk` (Callable[[GuardResult], None] | None): Optional callback for high-risk results
+
+---
+
+### LangChain Integration
+
+Requires `langchain-core`: `pip install 'promptbeacon[langchain]'`
+
+#### BeaconGuardCallbackHandler
+
+LangChain callback handler that runs BeaconGuard on LLM outputs.
+
+```python
+from promptbeacon import BeaconGuard
+from promptbeacon.integrations.langchain import BeaconGuardCallbackHandler
+
+guard = BeaconGuard("Acme", competitors=["CompetitorX"])
+handler = BeaconGuardCallbackHandler(guard, on_high_risk=lambda r: alert(r))
+# Pass to your chain's callbacks
+```
+
+#### BeaconGuardOutputParser
+
+LangChain output parser that returns `GuardResult`.
+
+```python
+from promptbeacon.integrations.langchain import BeaconGuardOutputParser
+
+parser = BeaconGuardOutputParser(guard=guard)
+# Use in a chain: chain | parser
+```
+
+---
+
 ## Exceptions
 
 All PromptBeacon exceptions inherit from `PromptBeaconError`.
@@ -1105,7 +1246,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "0.2.0"
+print(__version__)  # e.g., "0.3.0"
 ```
 
 ---

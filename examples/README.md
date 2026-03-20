@@ -27,6 +27,8 @@ This directory contains example scripts demonstrating how to use PromptBeacon fo
 | [`basic_scan.py`](basic_scan.py) | Simple brand visibility analysis |
 | [`competitor_analysis.py`](competitor_analysis.py) | Compare against competitors |
 | [`export_formats.py`](export_formats.py) | Export reports in various formats |
+| [`guard_example.py`](guard_example.py) | BeaconGuard: real-time brand safety analysis |
+| [`langchain_guard.py`](langchain_guard.py) | Using BeaconGuard as middleware in LLM pipelines |
 
 ### 1. Basic Scan
 
@@ -112,6 +114,22 @@ Creates files in `examples/output/`:
 - `report.json` - JSON export
 - `report.csv` - CSV metrics
 - `report.md` - Markdown report
+
+### 4. Brand Safety (BeaconGuard)
+
+Analyze LLM outputs for brand safety — no API keys required:
+
+```bash
+python examples/guard_example.py
+```
+
+### 5. Middleware Integration
+
+Use BeaconGuard as middleware in any LLM pipeline:
+
+```bash
+python examples/langchain_guard.py
+```
 
 ## Customization
 

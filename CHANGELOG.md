@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-20
+
+### Added
+
+- **BeaconGuard**: Real-time brand safety analysis for LLM outputs — pure local processing, no API calls
+  - `BeaconGuard` class with configurable flags for competitor mentions, negative sentiment, brand absence, and anti-recommendations
+  - `GuardResult` pydantic model with risk level, flags, sentiment details, citations, and recommendation detection
+  - `is_brand_anti_recommended()` utility for detecting negative recommendation patterns
+- **LangChain Integration**: `BeaconGuardCallbackHandler` and `BeaconGuardOutputParser` for LangChain pipelines
+  - Lazy import — `langchain-core` is NOT a hard dependency
+  - Optional `[langchain]` dependency group: `pip install 'promptbeacon[langchain]'`
+- **Generic Middleware**: `BeaconGuardMiddleware` callable with optional `on_high_risk` callback for any LLM pipeline
+- **New examples**: `guard_example.py` (BeaconGuard basics), `langchain_guard.py` (middleware usage)
+
 ## [0.2.0] - 2026-02-06
 
 ### Added

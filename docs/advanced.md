@@ -896,6 +896,87 @@ for category, score in scores.items():
 
 ---
 
+## Real-Time Brand Safety
+
+### BeaconGuard Basics
+
+BeaconGuard analyzes LLM outputs for brand safety concerns. It's synchronous, uses no API calls, and processes everything locally:
+
+```python
+from promptbeacon import BeaconGuard
+
+guard = BeaconGuard(
+    "Nike",
+    competitors=["Adidas", "Puma"],
+    aliases=["Nike Inc"],
+    flag_competitor_mention=True,
+    flag_negative_sentiment=True,
+    flag_no_brand_mention=True,
+    flag_anti_recommendation=True,
+)
+
+result = guard.analyze("I'd suggest Adidas — Nike has had quality issues.")
+print(f"Risk: {result.risk_level}")           # "high"
+print(f"Flags: {result.flags}")               # multiple flags
+print(f"Competitor: {result.competitor_names}")# ["Adidas"]
+print(f"Anti-rec: {result.is_anti_recommendation}")
+```
+
+### LangChain Integration
+
+Use BeaconGuard as a LangChain callback handler to monitor every LLM response:
+
+```python
+from promptbeacon import BeaconGuard
+from promptbeacon.integrations.langchain import BeaconGuardCallbackHandler
+
+guard = BeaconGuard("Acme", competitors=["CompetitorX"])
+
+def on_brand_risk(result):
+    print(f"Brand safety alert: {result.flags}")
+
+handler = BeaconGuardCallbackHandler(guard, on_high_risk=on_brand_risk)
+
+# Pass handler to your LangChain chain's callbacks:
+# chain.invoke({"input": "..."}, config={"callbacks": [handler]})
+```
+
+Or use as an output parser to get `GuardResult` directly in your chain:
+
+```python
+from promptbeacon.integrations.langchain import BeaconGuardOutputParser
+
+parser = BeaconGuardOutputParser(guard=guard)
+# chain | parser  -> returns GuardResult
+```
+
+Install the optional dependency: `pip install 'promptbeacon[langchain]'`
+
+### Custom Risk Rules with Middleware
+
+Use `BeaconGuardMiddleware` to add brand safety to any pipeline:
+
+```python
+from promptbeacon import BeaconGuard
+from promptbeacon.integrations.middleware import BeaconGuardMiddleware
+
+guard = BeaconGuard("Acme", competitors=["CompetitorX"])
+
+def handle_risk(result):
+    # Log, alert, or block the response
+    if result.is_anti_recommendation:
+        raise ValueError(f"Blocked: anti-recommendation detected")
+
+middleware = BeaconGuardMiddleware(guard, on_high_risk=handle_risk)
+
+# In your LLM pipeline:
+llm_output = get_llm_response(prompt)
+result = middleware(llm_output)
+# result.risk_level tells you if the output is safe
+```
+
+---
+
 ## See Also
 
 - [API Reference](api-reference.md) - Complete API documentation

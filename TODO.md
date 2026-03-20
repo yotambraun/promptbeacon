@@ -36,6 +36,16 @@
 
 ---
 
+## Completed in v0.3.0
+
+### BeaconGuard
+- [x] Real-time brand safety analysis (`BeaconGuard` class)
+- [x] `GuardResult` pydantic model with risk levels
+- [x] `is_brand_anti_recommended()` utility
+- [x] LangChain integration (callback handler + output parser)
+- [x] Generic middleware with `on_high_risk` callback
+- [x] Optional `[langchain]` dependency group
+
 ## High Priority
 
 ### Enhanced Extraction
@@ -45,8 +55,8 @@
 - [ ] Context-aware recommendation detection
 
 ### Prompt Library
-- [ ] Industry-specific prompt templates
-- [ ] Custom prompt template support
+- [x] Industry-specific prompt templates
+- [x] Custom prompt template support
 - [ ] Prompt effectiveness scoring
 - [ ] A/B testing for prompts
 
@@ -101,8 +111,8 @@
 - [ ] Notion/Airtable sync
 
 ### Additional Providers
-- [ ] Cohere support
-- [ ] Mistral support
+- [x] Cohere support
+- [x] Mistral support
 - [ ] Local models (Ollama)
 - [ ] Custom provider plugins
 

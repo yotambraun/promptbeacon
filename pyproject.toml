@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "promptbeacon"
-version = "0.2.0"
+version = "0.3.0"
 description = "LLM visibility monitoring for brands - track how your brand appears in AI-generated responses"
 readme = "README.md"
 license = "Apache-2.0"
@@ -75,6 +75,9 @@ dev = [
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "types-requests>=2.31.0",
+]
+langchain = [
+    "langchain-core>=0.1.0",
 ]
 pandas = [
     "pandas>=2.0.0",

@@ -46,6 +46,27 @@ report = Beacon("Nike").scan()
 print(f"Visibility: {report.visibility_score}/100")  # 78.3
 ```
 
+## BeaconGuard: Real-Time Brand Safety
+
+Deploying a customer-facing AI chatbot? BeaconGuard ensures LLM outputs don't recommend competitors or trash your brand — **no API calls, pure local processing**.
+
+```python
+from promptbeacon import BeaconGuard
+
+guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
+result = guard.analyze("Try Adidas instead — Nike has quality issues.")
+print(result.risk_level)  # "high"
+print(result.flags)       # ["Competitor mentioned: Adidas", "Negative sentiment detected"]
+```
+
+Works as middleware in any LLM pipeline, or with LangChain via callback handler/output parser:
+
+```bash
+pip install 'promptbeacon[langchain]'
+```
+
+See [Advanced Usage: Real-Time Brand Safety](docs/advanced.md#real-time-brand-safety) for integration patterns.
+
 ## Why PromptBeacon?
 
 As AI assistants replace search engines, your brand's AI visibility is your new SEO.
@@ -72,6 +93,8 @@ PromptBeacon answers the questions that matter:
 | **Historical Tracking** | DuckDB-powered local storage for trend analysis |
 | **CLI + Python** | Full command-line and programmatic access |
 | **5 Export Formats** | JSON, CSV, Markdown, HTML, pandas DataFrame |
+| **BeaconGuard** | Real-time brand safety for LLM outputs — flag competitors, negative sentiment, anti-recommendations |
+| **LangChain Integration** | Callback handler + output parser for LangChain pipelines |
 | **Async-First** | Built for performance with concurrent provider queries |
 | **Local-First** | All data stays on your machine — no cloud, no subscription |
 
