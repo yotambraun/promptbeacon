@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'   # full semver only (e.g. v1.0.0); the moving 'v1' action alias does not publish
 
 permissions:
   contents: write
