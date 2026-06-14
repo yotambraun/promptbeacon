@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PromptBeacon">
+  <defs>
+    <linearGradient id="pb" x1="14" y1="12" x2="50" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <circle cx="32" cy="32" r="20" stroke="url(#pb)" stroke-width="3" stroke-opacity="0.45" fill="none"/>
+  <circle cx="32" cy="32" r="12" stroke="url(#pb)" stroke-width="3.5" stroke-opacity="0.8" fill="none"/>
+  <circle cx="32" cy="32" r="5.5" fill="url(#pb)"/>
+</svg>

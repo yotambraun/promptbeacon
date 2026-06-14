@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # Model mapping for each provider
 PROVIDER_MODELS: dict[Provider, str] = {
     Provider.OPENAI: "gpt-4o-mini",
-    Provider.ANTHROPIC: "claude-3-5-haiku-20241022",
+    Provider.ANTHROPIC: "claude-haiku-4-5",
     Provider.GOOGLE: "gemini/gemini-2.0-flash",
     Provider.MISTRAL: "mistral/mistral-small-latest",
     Provider.COHERE: "cohere/command-r",

@@ -1,0 +1,74 @@
+name: "PromptBeacon GEO Check"
+description: "Measure and gate your brand's AI visibility (ChatGPT, Claude, Gemini) in CI."
+branding:
+  icon: "radio"
+  color: "purple"
+
+inputs:
+  brand:
+    description: "Brand to measure"
+    required: true
+  competitors:
+    description: "Space-separated competitor brands"
+    required: false
+    default: ""
+  providers:
+    description: "Space-separated LLM providers (openai anthropic google ...)"
+    required: false
+    default: "openai"
+  categories:
+    description: "Space-separated categories/topics to probe"
+    required: false
+    default: ""
+  prompts:
+    description: "Number of prompts per category"
+    required: false
+    default: "10"
+  min-score:
+    description: "Fail if visibility score is below this (0-100)"
+    required: false
+    default: "0"
+  min-share-of-voice:
+    description: "Fail if Share of Voice is below this (0-1)"
+    required: false
+    default: "0"
+  stability:
+    description: "Repeat the scan N times and report stability (0 = off)"
+    required: false
+    default: "0"
+  min-stability:
+    description: "Fail if stability score is below this (0-100; needs stability > 0)"
+    required: false
+    default: "0"
+  demo:
+    description: "Run keyless demo mode (no API keys) — for smoke tests"
+    required: false
+    default: "false"
+  version:
+    description: "PromptBeacon version spec to install"
+    required: false
+    default: "promptbeacon"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install PromptBeacon
+      shell: bash
+      run: pipx install "${{ inputs.version }}"
+
+    - name: Run GEO visibility check
+      shell: bash
+      run: |
+        args=(scan "${{ inputs.brand }}" --format json)
+        for c in ${{ inputs.competitors }}; do args+=(--competitor "$c"); done
+        for p in ${{ inputs.providers }}; do args+=(--provider "$p"); done
+        for t in ${{ inputs.categories }}; do args+=(--category "$t"); done
+        args+=(--prompts "${{ inputs.prompts }}")
+        if [ "${{ inputs.demo }}" = "true" ]; then args+=(--demo); fi
+        if [ "${{ inputs.stability }}" -gt 0 ]; then
+          args+=(--stability "${{ inputs.stability }}")
+          args+=(--assert-min-stability "${{ inputs.min-stability }}")
+        fi
+        args+=(--assert-min-score "${{ inputs.min-score }}")
+        args+=(--assert-min-sov "${{ inputs.min-share-of-voice }}")
+        promptbeacon "${args[@]}"

@@ -9,9 +9,11 @@ from promptbeacon.analysis.scorer import (
     ScoringWeights,
     calculate_competitor_scores,
     calculate_metrics,
+    calculate_share_of_voice,
     calculate_visibility_score,
     compare_to_competitors,
 )
+from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import (
     SignificanceTest,
     StatisticalSummary,
@@ -28,8 +30,11 @@ __all__ = [
     "ScoringWeights",
     "calculate_competitor_scores",
     "calculate_metrics",
+    "calculate_share_of_voice",
     "calculate_visibility_score",
     "compare_to_competitors",
+    # Stability
+    "aggregate_stability",
     # Statistics
     "SignificanceTest",
     "StatisticalSummary",

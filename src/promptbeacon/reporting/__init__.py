@@ -2,6 +2,7 @@
 
 from promptbeacon.reporting.formats import (
     to_csv,
+    to_dashboard_html,
     to_dataframe,
     to_dict,
     to_html,
@@ -18,6 +19,7 @@ from promptbeacon.reporting.report import (
 __all__ = [
     # Formats
     "to_csv",
+    "to_dashboard_html",
     "to_dataframe",
     "to_dict",
     "to_html",

@@ -25,8 +25,10 @@ from promptbeacon.analysis.scorer import (
     ScoringWeights,
     calculate_competitor_scores,
     calculate_metrics,
+    calculate_share_of_voice,
     calculate_visibility_score,
 )
+from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import calculate_confidence_interval
 from promptbeacon.core.config import BeaconConfig, Provider
 from promptbeacon.core.exceptions import ConfigurationError, ScanError
@@ -41,7 +43,9 @@ from promptbeacon.core.schemas import (
 from promptbeacon.extraction.citations import extract_citations
 from promptbeacon.extraction.mentions import extract_mentions
 from promptbeacon.prompts.templates import get_industry_prompts
+from promptbeacon.providers.base import BaseLLMClient
 from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_providers
+from promptbeacon.providers.mock_client import MockLLMClient
 from promptbeacon.storage.cache import ResponseCache
 from promptbeacon.storage.database import Database
 
@@ -95,6 +99,8 @@ class Beacon:
         self._custom_prompts: list[str] | None = None
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
+        self._demo_mode: bool = False
+        self._stability_runs: int | None = None
 
     @property
     def brand(self) -> str:
@@ -328,6 +334,74 @@ class Beacon:
         self._cache = ResponseCache(cache_dir=dir_path, ttl_seconds=ttl_seconds)
         return self
 
+    def demo(self) -> Self:
+        """Run with realistic canned responses — no API keys required.
+
+        Demo mode swaps the real LLM clients for an offline mock that returns
+        believable, deterministic answers weaving in your brand and competitors.
+        Perfect for a ``pip install promptbeacon`` first run, CI smoke checks,
+        and reproducible tests.
+
+        Returns:
+            Self for chaining.
+        """
+        self._demo_mode = True
+        return self
+
+    def with_stability(self, runs: int = 5) -> Self:
+        """Repeat every prompt ``runs`` times to measure answer-to-answer stability.
+
+        Answer engines are probabilistic, so a single visibility number can be
+        misleading. A stability scan reruns the whole scan ``runs`` times and
+        reports how trustworthy that number is (see ``report.stability``).
+
+        WARNING: this multiplies API calls — and therefore cost — by ``runs``.
+        It is opt-in and bypasses the response cache (otherwise every run would
+        be identical and report fake-perfect stability). Use a non-zero
+        temperature, or the runs will not vary.
+
+        Args:
+            runs: Number of times to repeat the scan (>= 2 to be meaningful).
+
+        Returns:
+            Self for chaining.
+        """
+        if runs < 1:
+            raise ValueError("stability runs must be >= 1")
+        self._stability_runs = runs
+        return self
+
+    def _make_client(self, provider: Provider, variation: int = 0) -> BaseLLMClient:
+        """Create the LLM client for a provider (real or demo mock)."""
+        if self._demo_mode:
+            return MockLLMClient(
+                provider,
+                brand=self._config.brand,
+                competitors=self._config.competitors,
+                variation=variation,
+            )
+        return LiteLLMClient(
+            provider=provider,
+            timeout=self._config.timeout,
+            max_retries=self._config.max_retries,
+        )
+
+    def _resolve_providers(self) -> list[Provider]:
+        """Determine which providers to query, honouring demo mode."""
+        if self._demo_mode:
+            # No API keys needed; use the configured providers as-is.
+            return list(self._config.providers)
+
+        available = get_available_providers()
+        providers_to_use = [p for p in self._config.providers if p in available]
+        if not providers_to_use:
+            raise ConfigurationError(
+                f"No API keys found for configured providers: {self._config.providers}. "
+                "Set environment variables like OPENAI_API_KEY, ANTHROPIC_API_KEY, etc. "
+                "Or try keyless demo mode: Beacon(...).demo().scan()"
+            )
+        return providers_to_use
+
     def _get_prompts(self) -> list[str]:
         """Generate the list of prompts to use."""
         base_prompts = self._custom_prompts or DEFAULT_PROMPTS
@@ -360,34 +434,87 @@ class Beacon:
             Report with visibility analysis.
         """
         start_time = time.time()
+        results, total_cost = await self._collect_results()
+        if not results:
+            raise ScanError("All provider queries failed. Check API keys and network.")
+        report = self._build_report(results, total_cost, start_time)
 
-        # Check for available providers
-        available = get_available_providers()
-        providers_to_use = [p for p in self._config.providers if p in available]
+        db = self._get_database()
+        if db:
+            db.save_report(report)
 
-        if not providers_to_use:
-            raise ConfigurationError(
-                f"No API keys found for configured providers: {self._config.providers}. "
-                "Set environment variables like OPENAI_API_KEY, ANTHROPIC_API_KEY, etc."
-            )
+        return report
 
-        # Generate prompts
+    def scan_stability(self) -> Report:
+        """Run a synchronous stability scan (repeats the scan N times).
+
+        Configure with ``.with_stability(runs)`` first. The returned Report is a
+        normal single-scan report with ``report.stability`` populated.
+
+        Returns:
+            Report with a populated ``stability`` field.
+        """
+        return asyncio.run(self.scan_stability_async())
+
+    async def scan_stability_async(self) -> Report:
+        """Run an asynchronous stability scan.
+
+        Repeats the full scan ``runs`` times (cache bypassed) and attaches a
+        :class:`StabilityReport` describing how trustworthy a single scan is.
+
+        Returns:
+            Report with a populated ``stability`` field.
+        """
+        runs = self._stability_runs or 5
+        start_time = time.time()
+
+        all_runs: list[list[ProviderResult]] = []
+        total_cost = 0.0
+        for i in range(runs):
+            results, cost = await self._collect_results(variation=i, use_cache=False)
+            if results:
+                all_runs.append(results)
+                total_cost += cost
+
+        if not all_runs:
+            raise ScanError("All provider queries failed. Check API keys and network.")
+
+        report = self._build_report(all_runs[0], total_cost, start_time)
+        report.stability = aggregate_stability(
+            all_runs, self._config.brand, weights=self._scoring_weights
+        )
+
+        db = self._get_database()
+        if db:
+            db.save_report(report)
+
+        return report
+
+    async def _collect_results(
+        self, variation: int = 0, use_cache: bool = True
+    ) -> tuple[list[ProviderResult], float]:
+        """Query all providers once and collect the raw results.
+
+        Args:
+            variation: Seed passed to demo clients so repeated runs differ.
+            use_cache: Whether to use the response cache (False for stability).
+
+        Returns:
+            Tuple of (results, total_cost_usd).
+        """
+        providers_to_use = self._resolve_providers()
+
         prompts = self._get_prompts()
         if not prompts:
             raise ConfigurationError(
                 "No prompts generated. Check categories configuration."
             )
 
-        # Query all providers concurrently
         results: list[ProviderResult] = []
         total_cost = 0.0
 
         for provider in providers_to_use:
-            client = LiteLLMClient(
-                provider=provider,
-                timeout=self._config.timeout,
-                max_retries=self._config.max_retries,
-            )
+            client = self._make_client(provider, variation=variation)
 
             # Run prompts concurrently with semaphore for rate limiting
             semaphore = asyncio.Semaphore(self._config.concurrent_requests)
@@ -395,10 +522,10 @@ class Beacon:
             async def query_with_semaphore(
                 prompt: str,
                 sem: asyncio.Semaphore = semaphore,
-                cli: LiteLLMClient = client,
+                cli: BaseLLMClient = client,
             ) -> ProviderResult:
                 async with sem:
-                    return await self._query_provider(cli, prompt)
+                    return await self._query_provider(cli, prompt, use_cache=use_cache)
 
             provider_results = await asyncio.gather(
                 *[query_with_semaphore(p) for p in prompts],
@@ -413,9 +540,15 @@ class Beacon:
                 elif isinstance(result, Exception):
                     logger.warning("Provider query failed: %s", result)
 
-        if not results:
-            raise ScanError("All provider queries failed. Check API keys and network.")
+        return results, total_cost
 
+    def _build_report(
+        self,
+        results: list[ProviderResult],
+        total_cost: float,
+        start_time: float,
+    ) -> Report:
+        """Build a Report from collected provider results."""
         # Calculate metrics
         visibility_score = calculate_visibility_score(
             results, self._config.brand, weights=self._scoring_weights
@@ -442,6 +575,11 @@ class Beacon:
                 results, self._config.competitors
             )
 
+        # Calculate Share of Voice (always — cheap, local)
+        share_of_voice = calculate_share_of_voice(
+            results, self._config.brand, self._config.competitors
+        )
+
         # Generate explanations and recommendations
         explanations = generate_explanations(
             results,
@@ -466,9 +604,8 @@ class Beacon:
             citations=all_citations,
         )
 
-        # Build report
         scan_duration = time.time() - start_time
-        report = Report(
+        return Report(
             brand=self._config.brand,
             visibility_score=visibility_score,
             mention_count=metrics.mention_count,
@@ -479,20 +616,14 @@ class Beacon:
             explanations=explanations,
             recommendations=recommendations,
             citation_summary=citation_summary,
+            share_of_voice=share_of_voice,
             timestamp=datetime.utcnow(),
             scan_duration_seconds=round(scan_duration, 2),
             total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
         )
 
-        # Save to storage if configured
-        db = self._get_database()
-        if db:
-            db.save_report(report)
-
-        return report
-
     async def _query_provider(
-        self, client: LiteLLMClient, prompt: str
+        self, client: BaseLLMClient, prompt: str, use_cache: bool = True
     ) -> ProviderResult:
         """Query a single provider with a prompt.
 
@@ -504,9 +635,9 @@ class Beacon:
             ProviderResult with the response.
         """
         try:
-            # Check cache first
+            # Check cache first (bypassed during stability scans)
             cached_content: str | None = None
-            if self._cache:
+            if use_cache and self._cache:
                 cached_content = self._cache.get(
                     prompt, client.provider_name, client.model
                 )
@@ -529,8 +660,8 @@ class Beacon:
                 provider_name = response.provider
                 model_name = response.model
 
-                # Store in cache
-                if self._cache:
+                # Store in cache (skipped during stability scans)
+                if use_cache and self._cache:
                     self._cache.set(
                         prompt, client.provider_name, client.model, response_content
                     )

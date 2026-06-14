@@ -35,6 +35,7 @@ from promptbeacon.core.exceptions import (
     ScanError,
     StorageError,
     ValidationError,
+    VisibilityAssertionError,
 )
 from promptbeacon.core.schemas import (
     BrandMention,
@@ -44,17 +45,23 @@ from promptbeacon.core.schemas import (
     Explanation,
     HistoricalDataPoint,
     HistoryReport,
+    PromptStability,
     ProviderResult,
     Recommendation,
     Report,
     ScanComparison,
     ScoreBreakdown,
     SentimentBreakdown,
+    ShareOfVoiceEntry,
+    ShareOfVoiceReport,
+    StabilityReport,
     VisibilityMetrics,
+    VolatilityMetrics,
 )
 from promptbeacon.guard import BeaconGuard, GuardResult
 from promptbeacon.reporting.formats import (
     to_csv,
+    to_dashboard_html,
     to_dataframe,
     to_dict,
     to_html,
@@ -62,7 +69,7 @@ from promptbeacon.reporting.formats import (
     to_markdown,
 )
 
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 __all__ = [
     # Main class
     "Beacon",
@@ -83,6 +90,7 @@ __all__ = [
     "ScanError",
     "StorageError",
     "ValidationError",
+    "VisibilityAssertionError",
     # Schemas
     "BrandMention",
     "Citation",
@@ -91,15 +99,21 @@ __all__ = [
     "Explanation",
     "HistoricalDataPoint",
     "HistoryReport",
+    "PromptStability",
     "ProviderResult",
     "Recommendation",
     "Report",
     "ScanComparison",
     "ScoreBreakdown",
     "SentimentBreakdown",
+    "ShareOfVoiceEntry",
+    "ShareOfVoiceReport",
+    "StabilityReport",
     "VisibilityMetrics",
+    "VolatilityMetrics",
     # Reporting
     "to_csv",
+    "to_dashboard_html",
     "to_dataframe",
     "to_dict",
     "to_html",

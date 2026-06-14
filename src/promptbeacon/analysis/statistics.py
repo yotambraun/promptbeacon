@@ -5,7 +5,22 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+# VolatilityMetrics now lives in core.schemas (so it can be embedded in the
+# Report tree) and is re-exported here for backward compatibility.
+from promptbeacon.core.schemas import VolatilityMetrics
+
+__all__ = [
+    "StatisticalSummary",
+    "VolatilityMetrics",
+    "SignificanceTest",
+    "calculate_confidence_interval",
+    "calculate_statistical_summary",
+    "calculate_volatility",
+    "check_significance",
+    "calculate_trend",
+]
 
 
 class StatisticalSummary(BaseModel):
@@ -18,15 +33,6 @@ class StatisticalSummary(BaseModel):
     max_value: float
     count: int
     confidence_interval_95: tuple[float, float]
-
-
-class VolatilityMetrics(BaseModel):
-    """Metrics for score volatility."""
-
-    volatility_score: float = Field(ge=0.0, description="Standard deviation of changes")
-    max_swing: float = Field(ge=0.0, description="Maximum single-period change")
-    average_change: float = Field(description="Average period-to-period change")
-    stability_rating: Literal["stable", "moderate", "volatile"]
 
 
 class SignificanceTest(BaseModel):

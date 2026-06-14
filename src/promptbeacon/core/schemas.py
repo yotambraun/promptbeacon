@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
+from promptbeacon.core.exceptions import VisibilityAssertionError
+
 
 class BrandMention(BaseModel):
     """Represents a single brand mention in an LLM response."""
@@ -191,6 +193,139 @@ class Recommendation(BaseModel):
     )
 
 
+class ShareOfVoiceEntry(BaseModel):
+    """Share-of-voice numbers for a single brand within a prompt set."""
+
+    brand_name: str = Field(..., description="Brand or competitor name")
+    appearances: int = Field(
+        default=0, ge=0, description="Number of prompts where the brand appeared"
+    )
+    total_prompts: int = Field(
+        default=0, ge=0, description="Number of prompts evaluated"
+    )
+    presence_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="appearances / total_prompts (how often the brand shows up at all)",
+    )
+    share_of_voice: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="appearances / sum(appearances across all tracked brands)",
+    )
+
+
+class ShareOfVoiceReport(BaseModel):
+    """Presence-based Share of Voice across the brand and its competitors.
+
+    This is the canonical GEO metric: of all the brand presence across the
+    tracked set (target + competitors), what fraction is the target's. It is
+    computed per prompt (a brand "appears" in a prompt if it is mentioned at
+    least once) and aggregated overall and per provider.
+    """
+
+    target_brand: str = Field(..., description="The brand being analyzed")
+    aggregate: dict[str, ShareOfVoiceEntry] = Field(
+        default_factory=dict,
+        description="brand -> share-of-voice entry across all providers",
+    )
+    by_provider: dict[str, dict[str, ShareOfVoiceEntry]] = Field(
+        default_factory=dict,
+        description="provider -> brand -> share-of-voice entry",
+    )
+    target_rank: int = Field(
+        default=1, ge=1, description="Target's rank by appearances (1 = leader)"
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def target_share(self) -> float:
+        """The target brand's aggregate share of voice (0.0-1.0)."""
+        entry = self.aggregate.get(self.target_brand)
+        return entry.share_of_voice if entry else 0.0
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def target_presence_rate(self) -> float:
+        """The target brand's aggregate presence rate (0.0-1.0)."""
+        entry = self.aggregate.get(self.target_brand)
+        return entry.presence_rate if entry else 0.0
+
+
+class VolatilityMetrics(BaseModel):
+    """Metrics for score volatility (run-to-run or period-to-period)."""
+
+    volatility_score: float = Field(ge=0.0, description="Standard deviation of changes")
+    max_swing: float = Field(ge=0.0, description="Maximum single-period change")
+    average_change: float = Field(description="Average period-to-period change")
+    stability_rating: Literal["stable", "moderate", "volatile"]
+
+
+class PromptStability(BaseModel):
+    """How consistently a single prompt surfaces the brand across repeated runs."""
+
+    prompt: str = Field(..., description="The prompt that was repeated")
+    runs: int = Field(..., ge=1, description="Number of times the prompt was run")
+    appearances: int = Field(
+        default=0, ge=0, description="Runs where the brand appeared"
+    )
+    presence_rate: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="appearances / runs"
+    )
+    flip_flopped: bool = Field(
+        default=False,
+        description="True if the brand appeared in some runs but not others",
+    )
+
+
+class StabilityReport(BaseModel):
+    """Trustworthiness of a single scan, measured by repeating it N times.
+
+    Answer engines are probabilistic, so a single visibility number can be
+    misleading. A stability scan repeats every prompt ``runs`` times and reports
+    how consistent the result is — the headline ``stability_score`` (0-100) tells
+    you how much to trust a one-shot scan.
+    """
+
+    brand: str = Field(..., description="The brand being analyzed")
+    runs: int = Field(..., ge=1, description="Number of repeated scans")
+    score_per_run: list[float] = Field(
+        default_factory=list, description="Visibility score from each run"
+    )
+    mean_score: float = Field(
+        default=0.0, ge=0.0, le=100.0, description="Mean visibility score across runs"
+    )
+    score_confidence_interval: tuple[float, float] = Field(
+        default=(0.0, 0.0), description="95% confidence interval for the score"
+    )
+    volatility: VolatilityMetrics = Field(
+        ..., description="Run-to-run volatility of the visibility score"
+    )
+    stability_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="0-100: how trustworthy a single scan is (100 = perfectly stable)",
+    )
+    overall_presence_consistency: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Mean per-prompt presence rate (1.0 = brand appears in every run)",
+    )
+    prompt_stability: list[PromptStability] = Field(
+        default_factory=list, description="Per-prompt stability detail"
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def flip_flop_count(self) -> int:
+        """Number of prompts that flip-flopped (inconsistent) across runs."""
+        return sum(1 for p in self.prompt_stability if p.flip_flopped)
+
+
 class Report(BaseModel):
     """Complete visibility report for a brand scan."""
 
@@ -219,6 +354,14 @@ class Report(BaseModel):
         default_factory=CitationSummary,
         description="Aggregated citations from all provider responses",
     )
+    share_of_voice: ShareOfVoiceReport | None = Field(
+        default=None,
+        description="Presence-based Share of Voice vs competitors",
+    )
+    stability: StabilityReport | None = Field(
+        default=None,
+        description="Run-to-run stability of the visibility score (if measured)",
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     scan_duration_seconds: float = Field(default=0.0, ge=0)
     total_cost_usd: float | None = Field(default=None, ge=0)
@@ -238,6 +381,79 @@ class Report(BaseModel):
         return sum(1 for r in self.provider_results if r.success) / len(
             self.provider_results
         )
+
+    def assert_visibility(
+        self,
+        min_score: float | None = None,
+        min_share_of_voice: float | None = None,
+        min_presence_rate: float | None = None,
+        min_stability_score: float | None = None,
+        max_rank: int | None = None,
+    ) -> Report:
+        """Assert that this report meets visibility thresholds.
+
+        Designed for CI/CD: raises :class:`VisibilityAssertionError` (an
+        ``AssertionError`` subclass) listing every unmet threshold, so a
+        failing gate stops the pipeline. Returns ``self`` on success for
+        chaining, e.g. ``Beacon("Nike").scan().assert_visibility(min_score=50)``.
+
+        Args:
+            min_score: Minimum overall visibility score (0-100).
+            min_share_of_voice: Minimum target Share of Voice (0.0-1.0). Requires
+                a report that includes share-of-voice data.
+            min_presence_rate: Minimum target presence rate (0.0-1.0).
+            min_stability_score: Minimum stability score (0-100). Requires a
+                stability scan (``.with_stability()``).
+            max_rank: Maximum acceptable Share-of-Voice rank (1 = leader).
+
+        Returns:
+            Self, for chaining.
+
+        Raises:
+            VisibilityAssertionError: If any provided threshold is unmet.
+        """
+        failures: list[str] = []
+
+        if min_score is not None and self.visibility_score < min_score:
+            failures.append(
+                f"visibility_score {self.visibility_score:.1f} < {min_score}"
+            )
+
+        if min_share_of_voice is not None:
+            sov = self.share_of_voice.target_share if self.share_of_voice else 0.0
+            if sov < min_share_of_voice:
+                failures.append(f"share_of_voice {sov:.3f} < {min_share_of_voice}")
+
+        if min_presence_rate is not None:
+            presence = (
+                self.share_of_voice.target_presence_rate if self.share_of_voice else 0.0
+            )
+            if presence < min_presence_rate:
+                failures.append(f"presence_rate {presence:.3f} < {min_presence_rate}")
+
+        if min_stability_score is not None:
+            stability = self.stability.stability_score if self.stability else 0.0
+            if stability < min_stability_score:
+                failures.append(
+                    f"stability_score {stability:.1f} < {min_stability_score} "
+                    "(run a stability scan with .with_stability())"
+                    if self.stability is None
+                    else f"stability_score {stability:.1f} < {min_stability_score}"
+                )
+
+        if max_rank is not None:
+            rank = self.share_of_voice.target_rank if self.share_of_voice else 999
+            if rank > max_rank:
+                failures.append(f"share_of_voice rank {rank} > {max_rank}")
+
+        if failures:
+            raise VisibilityAssertionError(
+                f"Visibility assertion failed for '{self.brand}': "
+                + "; ".join(failures),
+                failures=failures,
+            )
+
+        return self
 
 
 class HistoricalDataPoint(BaseModel):

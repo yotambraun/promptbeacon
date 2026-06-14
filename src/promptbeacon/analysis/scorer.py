@@ -8,6 +8,8 @@ from promptbeacon.core.schemas import (
     CompetitorScore,
     ProviderResult,
     ScoreBreakdown,
+    ShareOfVoiceEntry,
+    ShareOfVoiceReport,
     VisibilityMetrics,
 )
 from promptbeacon.extraction.mentions import calculate_mention_prominence
@@ -239,6 +241,88 @@ def calculate_competitor_scores(
         )
 
     return scores
+
+
+def _brand_appears(result: ProviderResult, brand: str) -> bool:
+    """Whether a brand is mentioned at least once in a single result."""
+    target = brand.lower()
+    return any(m.brand_name.lower() == target for m in result.mentions)
+
+
+def _build_sov_entries(
+    results: list[ProviderResult],
+    brands: list[str],
+) -> dict[str, ShareOfVoiceEntry]:
+    """Build share-of-voice entries for a set of brands over some results."""
+    successful = [r for r in results if r.success]
+    total = len(successful)
+    appearances = {
+        brand: sum(1 for r in successful if _brand_appears(r, brand))
+        for brand in brands
+    }
+    total_appearances = sum(appearances.values())
+
+    entries: dict[str, ShareOfVoiceEntry] = {}
+    for brand in brands:
+        count = appearances[brand]
+        entries[brand] = ShareOfVoiceEntry(
+            brand_name=brand,
+            appearances=count,
+            total_prompts=total,
+            presence_rate=round(count / total, 4) if total else 0.0,
+            share_of_voice=(
+                round(count / total_appearances, 4) if total_appearances else 0.0
+            ),
+        )
+    return entries
+
+
+def calculate_share_of_voice(
+    results: list[ProviderResult],
+    target_brand: str,
+    competitors: list[str] | None = None,
+) -> ShareOfVoiceReport:
+    """Calculate presence-based Share of Voice for the target and competitors.
+
+    Share of Voice is *the* headline GEO metric: of all brand presence across
+    the tracked set (target + competitors), what fraction is the target's. A
+    brand "appears" in a prompt if it is mentioned at least once. This is
+    distinct from :func:`compare_to_competitors`, which derives a score-ratio
+    SoV from visibility scores rather than raw prompt presence.
+
+    Args:
+        results: Provider results from a scan.
+        target_brand: The brand being analyzed.
+        competitors: Competitor brands to include in the SoV denominator.
+
+    Returns:
+        ShareOfVoiceReport with aggregate and per-provider entries plus the
+        target's rank by appearances.
+    """
+    brands = [target_brand] + list(competitors or [])
+
+    aggregate = _build_sov_entries(results, brands)
+
+    by_provider: dict[str, dict[str, ShareOfVoiceEntry]] = {}
+    providers = sorted({r.provider for r in results})
+    for provider in providers:
+        provider_results = [r for r in results if r.provider == provider]
+        by_provider[provider] = _build_sov_entries(provider_results, brands)
+
+    # Rank by appearances (1 = leader). Ties resolve in the target's favour.
+    target_appearances = aggregate[target_brand].appearances
+    target_rank = 1 + sum(
+        1
+        for brand, entry in aggregate.items()
+        if brand != target_brand and entry.appearances > target_appearances
+    )
+
+    return ShareOfVoiceReport(
+        target_brand=target_brand,
+        aggregate=aggregate,
+        by_provider=by_provider,
+        target_rank=target_rank,
+    )
 
 
 def compare_to_competitors(
