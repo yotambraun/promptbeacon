@@ -84,6 +84,13 @@ def scan(
         bool,
         typer.Option("--demo", help="Keyless demo mode (no API keys, canned data)"),
     ] = False,
+    smart: Annotated[
+        bool,
+        typer.Option(
+            "--smart",
+            help="LLM-based extraction + recommendations (more accurate, costs more)",
+        ),
+    ] = False,
     stability: Annotated[
         int,
         typer.Option(
@@ -145,6 +152,9 @@ def scan(
 
     if demo:
         beacon = beacon.demo()
+
+    if smart:
+        beacon = beacon.with_smart_extraction().with_smart_recommendations()
 
     if stability > 0:
         beacon = beacon.with_stability(stability)

@@ -21,6 +21,10 @@ from promptbeacon.analysis.explainer import (
     generate_explanations,
     generate_recommendations,
 )
+from promptbeacon.analysis.llm_recommendations import (
+    build_recommendations_prompt,
+    parse_recommendations,
+)
 from promptbeacon.analysis.scorer import (
     ScoringWeights,
     calculate_competitor_scores,
@@ -41,7 +45,11 @@ from promptbeacon.core.schemas import (
     ScanComparison,
 )
 from promptbeacon.extraction.citations import extract_citations
-from promptbeacon.extraction.mentions import extract_mentions
+from promptbeacon.extraction.llm_extraction import (
+    build_extraction_prompt,
+    parse_llm_extraction,
+)
+from promptbeacon.extraction.mentions import MentionExtractionResult, extract_mentions
 from promptbeacon.prompts.templates import get_industry_prompts
 from promptbeacon.providers.base import BaseLLMClient
 from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_providers
@@ -101,6 +109,9 @@ class Beacon:
         self._cache: ResponseCache | None = None
         self._demo_mode: bool = False
         self._stability_runs: int | None = None
+        self._smart_extraction: bool = False
+        self._extraction_model: str | None = None
+        self._smart_recommendations: bool = False
 
     @property
     def brand(self) -> str:
@@ -371,6 +382,38 @@ class Beacon:
         self._stability_runs = runs
         return self
 
+    def with_smart_extraction(self, model: str | None = None) -> Self:
+        """Use an LLM (not regex) to extract mentions, sentiment, and recommendations.
+
+        Smart mode reads each response with a cheap model and structured output,
+        catching paraphrases and nuance that regex misses — at the cost of one
+        extra LLM call per response. Opt-in; falls back to regex on any error.
+        Not used in demo mode (which makes no real API calls).
+
+        Args:
+            model: Optional model override for the extraction call (defaults to
+                the provider's default model).
+
+        Returns:
+            Self for chaining.
+        """
+        self._smart_extraction = True
+        self._extraction_model = model
+        return self
+
+    def with_smart_recommendations(self) -> Self:
+        """Generate evidence-linked recommendations with an LLM instead of rules.
+
+        Produces "why you're invisible and how to fix it" guidance grounded in
+        the scan's own data, at the cost of one extra LLM call per scan. Opt-in;
+        falls back to rule-based recommendations on any error. Requires API keys.
+
+        Returns:
+            Self for chaining.
+        """
+        self._smart_recommendations = True
+        return self
+
     def _make_client(self, provider: Provider, variation: int = 0) -> BaseLLMClient:
         """Create the LLM client for a provider (real or demo mock)."""
         if self._demo_mode:
@@ -438,6 +481,7 @@ class Beacon:
         if not results:
             raise ScanError("All provider queries failed. Check API keys and network.")
         report = self._build_report(results, total_cost, start_time)
+        await self._apply_smart_recommendations(report)
 
         db = self._get_database()
         if db:
@@ -483,6 +527,7 @@ class Beacon:
         report.stability = aggregate_stability(
             all_runs, self._config.brand, weights=self._scoring_weights
         )
+        await self._apply_smart_recommendations(report)
 
         db = self._get_database()
         if db:
@@ -622,6 +667,61 @@ class Beacon:
             total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
         )
 
+    async def _apply_smart_recommendations(self, report: Report) -> None:
+        """Replace rule-based recommendations with LLM-generated ones (opt-in)."""
+        if not self._smart_recommendations or self._demo_mode:
+            return
+        try:
+            providers = self._resolve_providers()
+            client = self._make_client(providers[0])
+            prompt = build_recommendations_prompt(report)
+            resp = await client.complete(
+                prompt=prompt,
+                model=self._extraction_model,
+                temperature=0.3,
+                max_tokens=900,
+            )
+            recs = parse_recommendations(resp.content)
+            if recs:
+                report.recommendations = recs
+        except Exception as e:  # noqa: BLE001 — keep rule-based recs on any failure
+            logger.warning("Smart recommendations failed, keeping rule-based: %s", e)
+
+    async def _extract(
+        self, client: BaseLLMClient, response_content: str
+    ) -> MentionExtractionResult:
+        """Extract mentions via LLM smart mode (if enabled) or regex fallback."""
+        if self._smart_extraction and not self._demo_mode:
+            try:
+                prompt = build_extraction_prompt(
+                    response_content,
+                    self._config.brand,
+                    self._config.competitors,
+                    self._config.brand_aliases or None,
+                )
+                resp = await client.complete(
+                    prompt=prompt,
+                    model=self._extraction_model,
+                    temperature=0.0,
+                    max_tokens=800,
+                )
+                return parse_llm_extraction(
+                    resp.content,
+                    response_content,
+                    self._config.brand,
+                    self._config.competitors,
+                    self._config.brand_aliases or None,
+                )
+            except Exception as e:  # noqa: BLE001 — any failure falls back to regex
+                logger.warning("Smart extraction failed, using regex: %s", e)
+
+        return extract_mentions(
+            response_content,
+            self._config.brand,
+            self._config.competitors,
+            aliases=self._config.brand_aliases or None,
+        )
+
     async def _query_provider(
         self, client: BaseLLMClient, prompt: str, use_cache: bool = True
     ) -> ProviderResult:
@@ -666,13 +766,8 @@ class Beacon:
                         prompt, client.provider_name, client.model, response_content
                     )
 
-            # Extract mentions from response
-            extraction = extract_mentions(
-                response_content,
-                self._config.brand,
-                self._config.competitors,
-                aliases=self._config.brand_aliases or None,
-            )
+            # Extract mentions from response (LLM smart mode or regex)
+            extraction = await self._extract(client, response_content)
 
             # Extract citations
             all_brands = (

@@ -1,145 +1,154 @@
-# PromptBeacon
+<p align="center">
+  <img src="assets/logo-wordmark.svg" alt="PromptBeacon" width="420">
+</p>
 
-**The open-source Generative Engine Optimization (GEO) toolkit for Python.**
-Track how AI sees your brand across ChatGPT, Claude, Gemini, Mistral, and more.
+<p align="center">
+  <b>Does AI recommend your brand?</b><br>
+  The open-source engine to <b>measure, track, and CI-test</b> your visibility across
+  ChatGPT, Claude, Gemini, Mistral &amp; more. <code>pip install</code>, zero keys to start.
+</p>
 
-[![PyPI version](https://badge.fury.io/py/promptbeacon.svg)](https://badge.fury.io/py/promptbeacon)
-[![Downloads](https://static.pepy.tech/badge/promptbeacon)](https://pepy.tech/project/promptbeacon)
-[![CI](https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg)](https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![codecov](https://codecov.io/gh/yotambraun/promptbeacon/branch/main/graph/badge.svg)](https://codecov.io/gh/yotambraun/promptbeacon)
+<p align="center">
+  <a href="https://pypi.org/project/promptbeacon/"><img src="https://badge.fury.io/py/promptbeacon.svg" alt="PyPI version"></a>
+  <a href="https://pepy.tech/project/promptbeacon"><img src="https://static.pepy.tech/badge/promptbeacon" alt="Downloads"></a>
+  <a href="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml"><img src="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+  <a href="https://codecov.io/gh/yotambraun/promptbeacon"><img src="https://codecov.io/gh/yotambraun/promptbeacon/branch/main/graph/badge.svg" alt="codecov"></a>
+</p>
 
 ---
 
-> **The AI visibility space is dominated by $99-300+/month SaaS tools.**
-> PromptBeacon is the **only open-source alternative** — free, local-first, and extensible.
+People used to Google "best running shoes" and click a link. Now they ask ChatGPT — and
+get one synthesized answer with **no click**. If the AI doesn't mention you, you're
+invisible. **PromptBeacon measures whether it does**, with the statistical rigor a real
+monitoring pipeline needs — and you can run it in your terminal or your CI in 60 seconds.
 
-## What It Does
+## Try it now — no API keys
 
-```
-Prompt: "What are the best running shoe brands?"
-
-     ChatGPT                    Claude                     Gemini
-        |                         |                          |
-        v                         v                          v
-  "Nike is a top              "I'd recommend             "Popular brands
-   choice for..."              Nike and..."               include Nike..."
-        |                         |                          |
-        +------------+------------+------------+-------------+
-                     |
-              PromptBeacon
-                     |
-     +---------------+----------------+
-     |               |                |
-  Visibility    Sentiment         Citations
-  Score: 78/100  82% positive    nike.com (3x)
-                                 runnersworld.com
+```bash
+pip install promptbeacon
+promptbeacon demo "Nike"
 ```
 
-**Three lines of code. Six providers. One score.**
+<p align="center">
+  <img src="assets/cli-demo.svg" alt="promptbeacon demo Nike — terminal output" width="680">
+</p>
+
+`demo` runs against a realistic offline mock, so you see exactly what a real scan produces
+without spending a cent. When you're ready, add an API key and drop `--demo`.
 
 ```python
 from promptbeacon import Beacon
 
-report = Beacon("Nike").scan()
-print(f"Visibility: {report.visibility_score}/100")  # 78.3
+# Keyless: works the moment you install
+report = Beacon("Nike").demo().with_competitors("Adidas", "Puma").scan()
+
+print(f"Visibility:      {report.visibility_score}/100")
+print(f"Share of Voice:  {report.share_of_voice.target_share:.0%} (rank {report.share_of_voice.target_rank})")
 ```
 
-## BeaconGuard: Real-Time Brand Safety
+## Why PromptBeacon
 
-Deploying a customer-facing AI chatbot? BeaconGuard ensures LLM outputs don't recommend competitors or trash your brand — **no API calls, pure local processing**.
+The AI-visibility (GEO / AEO) space is dominated by **$29–490/month SaaS dashboards**
+(Profound, Peec, Otterly…). They're built for marketers to *look at*. PromptBeacon is built
+for developers and agencies to *build on* — the open-source measurement engine you can
+script, schedule, embed in a product, or gate a deploy with.
+
+|                          | SaaS dashboards            | **PromptBeacon**                       |
+| ------------------------ | -------------------------- | -------------------------------------- |
+| Price                    | $29–490+/mo, per seat      | **Free, Apache-2.0**                   |
+| Where your data lives    | Their cloud                | **Your machine** (local-first)         |
+| Try without paying       | Trial / credit card        | **`pip install` → keyless demo**       |
+| Programmable             | Limited API                | **It's a Python library**              |
+| Reproducibility          | One number                 | **Confidence intervals + stability**   |
+| CI / regression testing  | ✗                          | **pytest plugin + GitHub Action**      |
+| Providers in one run     | Tier-gated                 | **6, simultaneously**                  |
+
+### Who it's for
+
+- **Indie devs & technical founders** — "does ChatGPT recommend *my* product?", answered in code.
+- **GEO/SEO agencies & consultants** — one engine, every client, build your own dashboards on top.
+- **AI / eval engineers** — track brand visibility as a CI check next to your other evals.
+
+## The three things that make it rigorous
+
+### 1. Share of Voice — the metric everyone wants
+
+Of all the brand presence across your prompt set (you + competitors), what fraction is yours?
 
 ```python
-from promptbeacon import BeaconGuard
-
-guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
-result = guard.analyze("Try Adidas instead — Nike has quality issues.")
-print(result.risk_level)  # "high"
-print(result.flags)       # ["Competitor mentioned: Adidas", "Negative sentiment detected"]
+report = Beacon("Nike").demo().with_competitors("Adidas", "Puma").scan()
+sov = report.share_of_voice
+print(sov.target_share)        # 0.34  (34% share of voice)
+print(sov.target_presence_rate)# 0.88  (appears in 88% of prompts)
+print(sov.target_rank)         # 2     (rank by appearances)
 ```
 
-Works as middleware in any LLM pipeline, or with LangChain via callback handler/output parser:
+### 2. Stability — don't trust a single answer
+
+LLM answers are probabilistic: in the wild, only ~30% of brands stay visible from one answer
+to the next. PromptBeacon repeats each prompt N times and tells you **how much to trust the
+number** — a 0–100 stability score, a confidence interval, and which prompts flip-flop.
+
+```python
+report = Beacon("Nike").demo().with_stability(5).scan_stability()
+s = report.stability
+print(s.stability_score)            # 78.5  (higher = more trustworthy)
+print(s.score_confidence_interval)  # (61.0, 84.0)
+print(s.flip_flop_count)            # prompts that appeared in some runs but not others
+```
+
+### 3. CI-native — gate your deploys on AI visibility
+
+No other tool lets you fail a build when AI stops recommending you.
+
+```python
+# In code
+Beacon("Nike").scan().assert_visibility(min_score=50, min_share_of_voice=0.3)
+```
+
+```python
+# As a pytest check (plugin auto-registers; skips cleanly without keys)
+import pytest
+
+@pytest.mark.visibility(brand="Nike", competitors=["Adidas"], min_score=40)
+def test_brand_is_visible():
+    ...
+```
+
+```yaml
+# As a GitHub Action
+- uses: yotambraun/promptbeacon@v1
+  with:
+    brand: "Nike"
+    competitors: "Adidas Puma"
+    min-share-of-voice: "0.3"
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+## Shareable dashboard (no SaaS)
 
 ```bash
-pip install 'promptbeacon[langchain]'
+promptbeacon dashboard "Nike" --competitor "Adidas" --demo
 ```
 
-See [Advanced Usage: Real-Time Brand Safety](docs/advanced.md#real-time-brand-safety) for integration patterns.
+<p align="center">
+  <img src="assets/dashboard-preview.svg" alt="PromptBeacon HTML dashboard" width="720">
+</p>
 
-## Why PromptBeacon?
+Writes a single, self-contained HTML file — Share-of-Voice bar, score breakdown, sentiment
+donut, stability band — that you can hand to a stakeholder. No server, no subscription.
+([sample](assets/sample-dashboard.html))
 
-As AI assistants replace search engines, your brand's AI visibility is your new SEO.
-PromptBeacon answers the questions that matter:
-
-- **"How visible is my brand?"** — 0-100 score based on mention frequency, sentiment, position, and recommendation rate
-- **"What do LLMs say about me?"** — Sentiment analysis with negation detection ("not great" = negative)
-- **"How do I compare to competitors?"** — Side-by-side benchmarking across providers
-- **"Why did my score change?"** — Evidence-based explanations with actual quotes from LLM responses
-- **"Which sources does the AI cite?"** — Citation tracking: URLs, "According to X" patterns, brand associations
-- **"Is my score statistically reliable?"** — Confidence intervals, volatility scoring, significance testing
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **6 LLM Providers** | OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity — query them all simultaneously |
-| **Citation Tracking** | See which sources LLMs cite when discussing your brand |
-| **Brand Aliases** | "Nike Inc", "Nike Corporation" all count as Nike mentions |
-| **Industry Templates** | Pre-built prompts for ecommerce, SaaS, finance, healthcare, travel, food, tech |
-| **Response Caching** | Skip identical queries with file-based caching (configurable TTL) |
-| **Score Breakdown** | See which of the 4 scoring factors (mentions, sentiment, position, recommendations) drags your score |
-| **Fluent API** | Chainable, readable Python interface |
-| **Historical Tracking** | DuckDB-powered local storage for trend analysis |
-| **CLI + Python** | Full command-line and programmatic access |
-| **5 Export Formats** | JSON, CSV, Markdown, HTML, pandas DataFrame |
-| **BeaconGuard** | Real-time brand safety for LLM outputs — flag competitors, negative sentiment, anti-recommendations |
-| **LangChain Integration** | Callback handler + output parser for LangChain pipelines |
-| **Async-First** | Built for performance with concurrent provider queries |
-| **Local-First** | All data stays on your machine — no cloud, no subscription |
-
-## Installation
-
-```bash
-pip install promptbeacon
-```
-
-Or with [uv](https://github.com/astral-sh/uv) (recommended):
-
-```bash
-uv add promptbeacon
-```
-
-## Prerequisites
-
-You need at least one LLM provider API key:
+## Real scans (with keys)
 
 ```bash
 export OPENAI_API_KEY="sk-..."          # https://platform.openai.com/api-keys
 export ANTHROPIC_API_KEY="sk-ant-..."   # https://console.anthropic.com/settings/keys
-export GOOGLE_API_KEY="..."             # https://aistudio.google.com/apikey
+promptbeacon providers                   # check what's configured
 ```
-
-Verify your setup:
-
-```bash
-promptbeacon providers
-```
-
-## Quick Start
-
-### 3-Line Scan
-
-```python
-from promptbeacon import Beacon
-
-report = Beacon("Nike").scan()
-print(f"Visibility: {report.visibility_score}/100")
-print(f"Mentions: {report.mention_count}")
-print(f"Sentiment: {report.sentiment_breakdown.positive:.0%} positive")
-```
-
-### Full Competitive Analysis
 
 ```python
 from promptbeacon import Beacon, Provider
@@ -151,143 +160,95 @@ report = (
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
     .with_industry("ecommerce")                          # industry-tuned prompts
     .with_cache()                                        # skip duplicate queries
-    .with_storage("~/.promptbeacon/nike.db")             # track history
+    .with_storage("~/.promptbeacon/nike.db")             # track history over time
     .scan()
 )
 
-# Visibility score with factor breakdown
-print(f"Score: {report.visibility_score}/100")
-bd = report.metrics.score_breakdown
-print(f"  Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
-print(f"  Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
-
-# Competitor comparison
+print(f"Score: {report.visibility_score}/100  |  SoV: {report.share_of_voice.target_share:.0%}")
 for name, score in report.competitor_comparison.items():
-    print(f"{name}: {score.visibility_score:.1f}")
-
-# Citations the LLM used
-for cit in report.citation_summary.citations[:5]:
-    print(f"  Source: {cit.source_name} -> {cit.brand_associated}")
-
-# Evidence-based recommendations
-for rec in report.recommendations[:3]:
-    print(f"[{rec.priority.upper()}] {rec.action}")
+    print(f"  {name}: {score.visibility_score:.1f}")
 ```
 
-### Historical Tracking
+### Smart mode — LLM accuracy + actionable advice
 
-```python
-beacon = Beacon("Nike").with_storage("~/.promptbeacon/data.db")
-report = beacon.scan()
-
-history = beacon.get_history(days=30)
-print(f"Trend: {history.trend_direction}")  # up, down, or stable
-
-diff = beacon.compare_with_previous()
-if diff:
-    print(f"Change: {diff.score_change:+.1f} points")
-```
-
-## CLI Usage
+Regex extraction is fast and offline, but heuristic. `--smart` (or `.with_smart_extraction()`)
+uses a cheap LLM with structured output to read each response — catching paraphrases and
+nuance regex misses — and `.with_smart_recommendations()` turns the scan's own data into
+specific "why you're invisible and how to fix it" guidance. Opt-in (one extra LLM call each);
+falls back to regex/rule-based on any error.
 
 ```bash
-# Quick 3-prompt scan (fast check)
-promptbeacon quick "Nike"
+promptbeacon scan "Nike" -c "Adidas" --smart
+```
 
-# Full scan
-promptbeacon scan "Nike"
+## BeaconGuard: real-time brand safety (bonus)
 
-# With competitors and multiple providers
-promptbeacon scan "Nike" -c "Adidas" -c "Puma" -p openai -p anthropic
+Shipping a customer-facing AI chatbot? `BeaconGuard` flags when an LLM output recommends a
+competitor or trashes your brand — **local, no API calls**.
 
-# Compare brands head-to-head
-promptbeacon compare "Nike" --against "Adidas" --against "Puma"
+```python
+from promptbeacon import BeaconGuard
 
-# View 30-day history
+guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
+result = guard.analyze("Try Adidas instead — Nike has quality issues.")
+print(result.risk_level)  # "high"
+```
+
+Works as middleware in any pipeline, or with LangChain (`pip install 'promptbeacon[langchain]'`).
+See [Advanced Usage](docs/advanced.md#real-time-brand-safety).
+
+## CLI
+
+```bash
+promptbeacon demo "Nike"                                  # keyless, instant
+promptbeacon scan "Nike" -c "Adidas" -p openai -p anthropic
+promptbeacon scan "Nike" --stability 5                    # repeat for a stability score
+promptbeacon scan "Nike" --assert-min-score 50           # CI gate (exit 1 on fail)
+promptbeacon dashboard "Nike" --demo                      # shareable HTML
+promptbeacon compare "Nike" --against "Adidas"
 promptbeacon history "Nike" --days 30
-
-# Export as JSON or Markdown
-promptbeacon scan "Nike" --format json
-promptbeacon scan "Nike" --format markdown
-
-# Check which providers are configured
 promptbeacon providers
 ```
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Keyless demo mode** | `pip install` → realistic scan with zero API keys |
+| **Smart mode (LLM)** | `--smart` swaps regex for LLM extraction + evidence-linked, actionable recommendations |
+| **Share of Voice** | Presence-based SoV vs competitors, per-provider + aggregate + rank |
+| **Stability scoring** | Repeat-N-times trust score, confidence interval, flip-flop detection |
+| **CI-native** | `assert_visibility()`, pytest plugin, GitHub Action |
+| **HTML dashboard** | Single-file, shareable, no SaaS |
+| **6 LLM Providers** | OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity — queried together |
+| **Citation Tracking** | Which sources LLMs cite when discussing your brand |
+| **Brand Aliases** | "Nike Inc", "Nike Corporation" all count as Nike |
+| **Industry Templates** | ecommerce, SaaS, finance, healthcare, travel, food, tech |
+| **Historical Tracking** | DuckDB-powered local storage for trends |
+| **Score Breakdown** | See which of 4 factors drives your score |
+| **5 Export Formats** | JSON, CSV, Markdown, HTML, pandas DataFrame |
+| **BeaconGuard** | Real-time brand-safety guard for LLM outputs |
+| **Local-First** | Your data stays on your machine — no cloud, no subscription |
 
 ## Supported Providers
 
 | Provider | Default Model | Env Variable |
 |----------|---------------|--------------|
 | OpenAI | gpt-4o-mini | `OPENAI_API_KEY` |
-| Anthropic | claude-3-5-haiku-20241022 | `ANTHROPIC_API_KEY` |
+| Anthropic | claude-haiku-4-5 | `ANTHROPIC_API_KEY` |
 | Google | gemini-2.0-flash | `GOOGLE_API_KEY` |
 | Mistral | mistral-small-latest | `MISTRAL_API_KEY` |
 | Cohere | command-r | `COHERE_API_KEY` |
 | Perplexity | sonar | `PERPLEXITY_API_KEY` |
 
-## API at a Glance
-
-### Beacon Configuration
-
-```python
-beacon = Beacon("Nike")
-```
-
-| Method | Description |
-|--------|-------------|
-| `.with_competitors(*brands)` | Add competitor brands to track |
-| `.with_aliases(*names)` | Alternative brand names (counted as primary) |
-| `.with_providers(*providers)` | Set LLM providers to query |
-| `.with_industry(name)` | Use industry-specific prompt templates |
-| `.with_categories(*topics)` | Set custom analysis categories |
-| `.with_prompt_count(n)` | Number of prompts per category |
-| `.with_cache(ttl_seconds=...)` | Enable response caching |
-| `.with_storage(path)` | Enable DuckDB historical storage |
-| `.with_scoring_weights(...)` | Customise visibility score weights |
-| `.with_prompts(list)` | Use fully custom prompt templates |
-| `.with_temperature(t)` | LLM temperature (0.0-2.0) |
-| `.with_timeout(seconds)` | Request timeout |
-| `.scan()` | Run synchronous scan |
-| `.scan_async()` | Run async scan |
-| `.get_history(days)` | Get historical trend data |
-| `.compare_with_previous()` | Compare with last scan |
-
-### Report Object
-
-```python
-report.visibility_score        # 0-100 overall score
-report.mention_count           # total brand mentions
-report.sentiment_breakdown     # .positive / .neutral / .negative
-report.competitor_comparison   # {name: CompetitorScore}
-report.citation_summary        # .citations, .total_citations, .unique_domains
-report.metrics.score_breakdown # .mention_frequency / .sentiment / .position / .recommendation
-report.explanations            # evidence-based insights
-report.recommendations         # prioritised action items
-```
-
-### Export Functions
-
-```python
-from promptbeacon import to_json, to_csv, to_markdown, to_html, to_dataframe
-
-to_json(report)       # JSON string
-to_csv(report)        # CSV string
-to_markdown(report)   # Markdown report
-to_html(report)       # Standalone HTML page
-to_dataframe(report)  # pandas DataFrame
-```
-
 ## Documentation
 
-Full docs are in [docs/](docs/):
+📖 **[Full docs &amp; guides →](https://yotambraun.github.io/promptbeacon/)**
 
-- [Quickstart Guide](docs/quickstart.md) - Up and running in 5 minutes
-- [API Reference](docs/api-reference.md) - Complete API documentation
-- [CLI Reference](docs/cli.md) - Command-line interface guide
-- [Provider Setup](docs/providers.md) - Configure all 6 providers
-- [Storage Guide](docs/storage.md) - Historical tracking with DuckDB
-- [Advanced Usage](docs/advanced.md) - Custom prompts, async, integrations
-- [Examples](docs/examples.md) - Real-world usage patterns
+- [Quickstart](docs/quickstart.md) — up and running in 5 minutes (keyless)
+- [Share of Voice &amp; Stability](docs/advanced.md) — the rigor features
+- [CI &amp; pytest plugin](docs/examples.md) — gate deploys on AI visibility
+- [API Reference](docs/api-reference.md) · [Providers](docs/providers.md) · [Storage](docs/storage.md)
 
 ## Development
 
@@ -307,7 +268,7 @@ Contributions welcome! See [TODO.md](TODO.md) for the roadmap.
 
 ## License
 
-Apache License 2.0 - see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Acknowledgements
 

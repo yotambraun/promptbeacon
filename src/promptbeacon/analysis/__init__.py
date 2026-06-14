@@ -5,6 +5,10 @@ from promptbeacon.analysis.explainer import (
     generate_explanations,
     generate_recommendations,
 )
+from promptbeacon.analysis.llm_recommendations import (
+    build_recommendations_prompt,
+    parse_recommendations,
+)
 from promptbeacon.analysis.scorer import (
     ScoringWeights,
     calculate_competitor_scores,
@@ -48,4 +52,7 @@ __all__ = [
     "explain_change",
     "generate_explanations",
     "generate_recommendations",
+    # LLM recommendations
+    "build_recommendations_prompt",
+    "parse_recommendations",
 ]
