@@ -65,3 +65,19 @@ class ScanError(PromptBeaconError):
     """Raised when a scan operation fails."""
 
     pass
+
+
+class VisibilityAssertionError(AssertionError, PromptBeaconError):
+    """Raised when a visibility threshold assertion fails.
+
+    Subclasses :class:`AssertionError` so that pytest renders it as a normal
+    assertion failure (and CI exits non-zero), while also being a
+    :class:`PromptBeaconError` for callers that catch the package's base
+    exception.
+
+    The ``failures`` attribute holds the individual unmet thresholds.
+    """
+
+    def __init__(self, message: str, failures: list[str] | None = None):
+        super().__init__(message)
+        self.failures = failures or []

@@ -4,6 +4,10 @@ from promptbeacon.extraction.citations import (
     CitationResult,
     extract_citations,
 )
+from promptbeacon.extraction.llm_extraction import (
+    build_extraction_prompt,
+    parse_llm_extraction,
+)
 from promptbeacon.extraction.mentions import (
     MentionExtractionResult,
     calculate_mention_prominence,
@@ -30,6 +34,9 @@ __all__ = [
     # Citations
     "CitationResult",
     "extract_citations",
+    # LLM extraction
+    "build_extraction_prompt",
+    "parse_llm_extraction",
     # Mentions
     "MentionExtractionResult",
     "calculate_mention_prominence",

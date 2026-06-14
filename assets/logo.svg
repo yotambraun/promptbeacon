@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PromptBeacon">
+  <defs>
+    <linearGradient id="pb" x1="120" y1="96" x2="392" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="pbGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop stop-color="#22D3EE" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="170" fill="url(#pbGlow)"/>
+  <circle cx="256" cy="256" r="150" stroke="url(#pb)" stroke-width="20" stroke-opacity="0.28" fill="none"/>
+  <circle cx="256" cy="256" r="104" stroke="url(#pb)" stroke-width="22" stroke-opacity="0.60" fill="none"/>
+  <circle cx="256" cy="256" r="58" stroke="url(#pb)" stroke-width="24" stroke-opacity="0.88" fill="none"/>
+  <circle cx="256" cy="256" r="30" fill="url(#pb)"/>
+</svg>

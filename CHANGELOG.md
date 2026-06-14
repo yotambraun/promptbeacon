@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-14
+
+The first stable release — PromptBeacon is now **the open-source GEO engine to
+measure, track, and CI-test how AI recommends your brand**. Repositioned for
+developers and agencies, with a keyless first run and the statistical rigor a
+real monitoring pipeline needs.
+
+### Added
+
+- **Keyless demo mode**: `Beacon("Nike").demo().scan()` and `promptbeacon demo "Nike"`
+  (plus a `--demo` flag on `scan`/`quick`/`dashboard`) run against a realistic offline
+  mock — instant value with **no API keys**. New `MockLLMClient` + deterministic fixtures.
+- **Share of Voice**: presence-based SoV vs competitors, computed on every scan —
+  `report.share_of_voice` (`.target_share`, `.target_presence_rate`, `.target_rank`,
+  `.aggregate`, `.by_provider`). New `calculate_share_of_voice()`.
+- **Stability scanning**: `Beacon(...).with_stability(N).scan_stability()` (CLI `--stability/-r`)
+  repeats each prompt N times and reports a 0-100 `report.stability.stability_score`, a
+  confidence interval, run-to-run volatility, and per-prompt flip-flop detection — so you
+  know how much to trust a single number. Bypasses the cache so runs actually vary.
+- **CI-native testing**: `report.assert_visibility(min_score=, min_share_of_voice=, ...)`
+  raising `VisibilityAssertionError`; a **pytest plugin** (`@pytest.mark.visibility(...)`,
+  auto-registered, skips cleanly without keys); a composite **GitHub Action** (`action.yml`);
+  and CLI `--assert-min-score` / `--assert-min-sov` / `--assert-min-stability` flags (exit 1 on fail).
+- **HTML dashboard**: `to_dashboard_html(report)` and `promptbeacon dashboard "Nike"` produce a
+  single self-contained, shareable HTML file (SoV bar, score breakdown, sentiment donut,
+  stability band, optional history sparkline) — no SaaS.
+- **Smart mode (LLM)**: opt-in `with_smart_extraction()` (LLM + structured output instead of
+  regex) and `with_smart_recommendations()` (evidence-linked, actionable GEO guidance), enabled
+  together via the CLI `--smart` flag. Falls back to regex/rule-based on any error.
+- **Brand assets**: a modern "Signal Beacon" logo set, plus README screenshots.
+- **Hosted docs site** (mkdocs-material) at https://yotambraun.github.io/promptbeacon/.
+
+### Changed
+
+- **Repositioned** as a developer/CI-native GEO measurement engine; README, docs, and PyPI
+  metadata rewritten around the new narrative. BeaconGuard is now a documented secondary feature.
+- Default Anthropic model updated to **`claude-haiku-4-5`** (the previous default,
+  `claude-3-5-haiku-20241022`, was retired and would 404 on real scans).
+- Package status promoted to **Production/Stable**; added a `[docs]` extra and a `pytest11`
+  entry point.
+
 ## [0.3.0] - 2026-03-20
 
 ### Added

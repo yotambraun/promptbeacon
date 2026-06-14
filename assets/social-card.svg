@@ -1,0 +1,31 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PromptBeacon — does AI recommend your brand?">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="pb" x1="120" y1="120" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="pbGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop stop-color="#22D3EE" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <!-- mark -->
+  <g transform="translate(980,320)">
+    <circle r="240" fill="url(#pbGlow)"/>
+    <circle r="200" stroke="url(#pb)" stroke-width="14" stroke-opacity="0.22" fill="none"/>
+    <circle r="138" stroke="url(#pb)" stroke-width="16" stroke-opacity="0.55" fill="none"/>
+    <circle r="78" stroke="url(#pb)" stroke-width="18" stroke-opacity="0.9" fill="none"/>
+    <circle r="40" fill="url(#pb)"/>
+  </g>
+  <!-- text -->
+  <text x="96" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="74" font-weight="800" fill="#f8fafc">PromptBeacon</text>
+  <text x="98" y="320" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="38" font-weight="600" fill="#22D3EE">Does AI recommend your brand?</text>
+  <text x="98" y="392" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="29" fill="#94a3b8">The open-source GEO engine to measure, track &amp; CI-test</text>
+  <text x="98" y="432" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="29" fill="#94a3b8">your visibility across ChatGPT, Claude, Gemini &amp; more.</text>
+  <text x="98" y="520" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27" fill="#e2e8f0">pip install promptbeacon</text>
+</svg>

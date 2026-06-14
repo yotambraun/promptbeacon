@@ -2,16 +2,20 @@
 
 PromptBeacon supports 6 LLM providers through LiteLLM. This guide covers setup, configuration, and best practices for each provider.
 
+> **No API keys needed to try PromptBeacon.** Use demo mode (`promptbeacon demo "Nike"` or `.demo().scan()`) to explore all features without any provider configuration.
+
 ## Supported Providers
 
 | Provider | Default Model | API Key Required | Env Variable |
 |----------|---------------|------------------|--------------|
-| OpenAI | gpt-4o-mini | Yes | `OPENAI_API_KEY` |
-| Anthropic | claude-3-5-haiku-20241022 | Yes | `ANTHROPIC_API_KEY` |
-| Google | gemini-2.0-flash | Yes | `GOOGLE_API_KEY` |
-| Mistral | mistral-small-latest | Yes | `MISTRAL_API_KEY` |
-| Cohere | command-r | Yes | `COHERE_API_KEY` |
-| Perplexity | sonar | Yes | `PERPLEXITY_API_KEY` |
+| OpenAI | gpt-4o-mini | Yes (live scans) | `OPENAI_API_KEY` |
+| Anthropic | claude-haiku-4-5 | Yes (live scans) | `ANTHROPIC_API_KEY` |
+| Google | gemini-2.0-flash | Yes (live scans) | `GOOGLE_API_KEY` |
+| Mistral | mistral-small-latest | Yes (live scans) | `MISTRAL_API_KEY` |
+| Cohere | command-r | Yes (live scans) | `COHERE_API_KEY` |
+| Perplexity | sonar | Yes (live scans) | `PERPLEXITY_API_KEY` |
+
+Demo mode requires **no** provider keys. Keys are only required for real scans.
 
 ## Quick Setup
 
@@ -135,10 +139,6 @@ export OPENAI_API_KEY="sk-proj-..."  # Double-check key
 beacon = Beacon("Nike").with_prompt_count(5)
 ```
 
-**Billing Issues**
-- Ensure you have credits: [platform.openai.com/settings/organization/billing](https://platform.openai.com/settings/organization/billing)
-- Add payment method if needed
-
 ---
 
 ## Anthropic (Claude)
@@ -163,15 +163,15 @@ source ~/.bashrc
 ### Default Model
 
 ```python
-# Default: claude-3-5-haiku-20241022
-Provider.ANTHROPIC  # Uses Claude 3.5 Haiku
+# Default: claude-haiku-4-5
+Provider.ANTHROPIC  # Uses Claude Haiku 4.5
 ```
 
 ### Available Models
 
-- `claude-3-5-haiku-20241022` - Default, fast and economical
-- `claude-3-5-sonnet-20241022` - High performance, balanced
-- `claude-3-opus-20240229` - Most capable, highest cost
+- `claude-haiku-4-5` - Default, fast and economical
+- `claude-sonnet-4-5` - High performance, balanced
+- `claude-opus-4-5` - Most capable, highest cost
 
 ### Usage
 
@@ -200,9 +200,9 @@ report = beacon.scan()
 
 | Model | Input (per 1M tokens) | Output (per 1M tokens) | Typical scan cost |
 |-------|----------------------|------------------------|-------------------|
-| Claude 3.5 Haiku | $1.00 | $5.00 | $0.03-0.06 |
-| Claude 3.5 Sonnet | $3.00 | $15.00 | $0.20-0.40 |
-| Claude 3 Opus | $15.00 | $75.00 | $1.00-2.00 |
+| Claude Haiku 4.5 | $1.00 | $5.00 | $0.03-0.06 |
+| Claude Sonnet 4.5 | $3.00 | $15.00 | $0.20-0.40 |
+| Claude Opus 4.5 | $15.00 | $75.00 | $1.00-2.00 |
 
 ### Troubleshooting
 
@@ -214,7 +214,6 @@ echo $ANTHROPIC_API_KEY
 
 **429 Rate Limit**
 ```python
-# Reduce request rate
 beacon = (
     Beacon("Nike")
     .with_providers(Provider.ANTHROPIC)
@@ -289,26 +288,6 @@ report = beacon.scan()
 |-------|----------------------|------------------------|-------------------|
 | Gemini 2.0 Flash | $0.075 | $0.30 | $0.005-0.015 |
 | Gemini 1.5 Pro | $1.25 | $5.00 | $0.08-0.15 |
-
-### Troubleshooting
-
-**400 Bad Request**
-```python
-# Some requests may fail due to content policy
-# This is normal; PromptBeacon handles gracefully
-```
-
-**429 Quota Exceeded**
-```bash
-# Free tier daily quota reached
-# Wait 24 hours or upgrade to paid tier
-```
-
-**API Key Issues**
-```bash
-# Ensure no extra spaces
-export GOOGLE_API_KEY="AIza..."
-```
 
 ---
 
@@ -526,7 +505,56 @@ beacon = Beacon("Nike")
 report = beacon.scan()
 ```
 
-### Production Environment
+### CI/CD Environment
+
+**GitHub Actions (with native PromptBeacon action):**
+
+```yaml
+- name: Check AI visibility
+  uses: yotambraun/promptbeacon@v1
+  with:
+    brand: "Nike"
+    competitors: "Adidas,Puma"
+    min-score: "40"
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+**GitHub Actions (custom script):**
+
+```yaml
+name: Brand Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PromptBeacon
+        run: pip install promptbeacon
+      - name: Run Scan
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          promptbeacon scan "Nike" \
+            --format json \
+            --assert-min-score 40 \
+            > report.json
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-report
+          path: report.json
+```
 
 **Docker:**
 
@@ -540,79 +568,6 @@ ENV GOOGLE_API_KEY=${GOOGLE_API_KEY}
 RUN pip install promptbeacon
 
 CMD ["promptbeacon", "scan", "Nike"]
-```
-
-**Kubernetes:**
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: promptbeacon-secrets
-type: Opaque
-stringData:
-  openai-key: sk-proj-...
-  anthropic-key: sk-ant-...
-  google-key: ...
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: promptbeacon
-spec:
-  containers:
-  - name: scanner
-    image: promptbeacon:latest
-    env:
-    - name: OPENAI_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: promptbeacon-secrets
-          key: openai-key
-    - name: ANTHROPIC_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: promptbeacon-secrets
-          key: anthropic-key
-    - name: GOOGLE_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: promptbeacon-secrets
-          key: google-key
-```
-
-### CI/CD Environment
-
-**GitHub Actions:**
-
-```yaml
-name: Brand Scan
-
-on:
-  schedule:
-    - cron: '0 0 * * *'  # Daily at midnight
-
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install PromptBeacon
-        run: pip install promptbeacon
-      - name: Run Scan
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        run: promptbeacon scan "Nike" --format json > report.json
-      - name: Upload Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: scan-report
-          path: report.json
 ```
 
 ---
@@ -634,12 +589,14 @@ if report.total_cost_usd:
 
 ### Cost Optimization Tips
 
-1. **Start with free tiers**: Use gpt-4o-mini, gemini-2.0-flash, mistral-small
-2. **Enable caching**: `.with_cache()` skips duplicate queries automatically
-3. **Reduce prompt count**: Lower from default 10 to 5-7 per category
-4. **Use industry templates**: `.with_industry("ecommerce")` generates relevant prompts
-5. **Use fewer categories**: Focus on most important topics
-6. **Limit providers**: Use 1-2 providers instead of all 6
+1. **Start with demo mode**: Explore the API for free before spending
+2. **Start with free tiers**: Use gpt-4o-mini, gemini-2.0-flash, mistral-small
+3. **Enable caching**: `.with_cache()` skips duplicate queries automatically
+4. **Reduce prompt count**: Lower from default 10 to 5-7 per category
+5. **Use industry templates**: `.with_industry("ecommerce")` generates relevant prompts
+6. **Use fewer categories**: Focus on most important topics
+7. **Limit providers**: Use 1-2 providers instead of all 6
+8. **Use stability carefully**: `--stability N` multiplies cost by N; start with demo first
 
 **Example: Cost-Optimized Configuration**
 
@@ -652,22 +609,6 @@ beacon = (
     .with_cache()                     # Cache responses
     .with_temperature(0.5)            # Lower temperature
 )
-```
-
-### Budget Alerts
-
-Track costs programmatically:
-
-```python
-MONTHLY_BUDGET = 10.00  # $10/month
-daily_budget = MONTHLY_BUDGET / 30
-
-report = beacon.scan()
-
-if report.total_cost_usd and report.total_cost_usd > daily_budget:
-    print(f"WARNING: Daily budget exceeded!")
-    print(f"Cost: ${report.total_cost_usd:.4f}")
-    print(f"Budget: ${daily_budget:.4f}")
 ```
 
 ---
@@ -690,17 +631,6 @@ beacon = Beacon("Nike")  # Uses max_retries=3 by default
 3. **Multiple providers**: Distribute load across providers
 4. **Caching**: Enable `.with_cache()` to avoid duplicate queries
 5. **Timing**: Schedule scans during off-peak hours
-
-**Example: Rate-Limit Friendly Configuration**
-
-```python
-beacon = (
-    Beacon("Nike")
-    .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.MISTRAL)  # Split load
-    .with_prompt_count(8)
-    .with_cache()  # Don't re-query cached responses
-)
-```
 
 ---
 
@@ -729,6 +659,7 @@ beacon = (
 - Nuanced sentiment analysis
 - Competitive comparisons
 - Complex category analysis
+- Smart mode extraction (high accuracy)
 
 ### Google (Gemini)
 
@@ -834,14 +765,12 @@ promptbeacon scan "Test" --provider perplexity --prompts 1
 - Use secrets management (AWS Secrets Manager, HashiCorp Vault)
 - Rotate keys regularly
 - Use separate keys for dev/staging/prod
-- Restrict key permissions (if provider supports)
 
 **DON'T:**
 - Commit keys to git
 - Share keys in plain text
 - Use production keys in development
 - Log API keys
-- Store in unencrypted configuration files
 
 ### .gitignore
 
@@ -862,4 +791,4 @@ secrets/
 - [API Reference](api-reference.md) - Complete API documentation
 - [Quickstart Guide](quickstart.md) - Getting started
 - [Storage Guide](storage.md) - Historical tracking
-- [Advanced Usage](advanced.md) - Custom configurations
+- [Advanced Usage](advanced.md) - Custom configurations, CI/CD

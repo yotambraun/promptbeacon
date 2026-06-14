@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for PromptBeacon. This reference covers all classes, methods, and data structures.
+Complete API documentation for PromptBeacon v1.0. This reference covers all classes, methods, and data structures.
 
 ## Table of Contents
 
@@ -9,10 +9,12 @@ Complete API documentation for PromptBeacon. This reference covers all classes, 
 - [Configuration](#configuration)
 - [Report Objects](#report-objects)
 - [Data Schemas](#data-schemas)
+- [Share of Voice](#share-of-voice)
+- [Stability](#stability)
 - [Export Functions](#export-functions)
 - [Integrations](#integrations)
 - [Exceptions](#exceptions)
-- [Provider Enum](#provider-enum)
+- [Provider Enum](#provider)
 
 ---
 
@@ -45,6 +47,27 @@ beacon = Beacon("Nike")
 ### Configuration Methods
 
 All configuration methods return `self` for method chaining.
+
+#### `demo() -> Beacon`
+
+Enable keyless demo mode. Returns realistic canned data without making any API calls. No provider keys are required. This is the recommended first-run experience.
+
+**Returns:** Self for chaining
+
+**Example:**
+```python
+report = Beacon("Nike").demo().scan()
+print(report.visibility_score)  # realistic canned value
+```
+
+The `--demo` CLI flag is equivalent:
+```bash
+promptbeacon scan "Nike" --demo
+promptbeacon quick "Nike" --demo
+promptbeacon dashboard "Nike" --demo -o report.html
+```
+
+---
 
 #### `with_aliases(*aliases: str) -> Beacon`
 
@@ -181,6 +204,8 @@ Set the temperature for LLM queries.
 
 **Default:** `0.7`
 
+**Note:** Stability scanning requires a non-zero temperature to produce meaningful variance across runs. Using `temperature=0.0` with `.with_stability()` will produce identical results per run.
+
 **Example:**
 ```python
 beacon = Beacon("Nike").with_temperature(0.5)
@@ -311,6 +336,81 @@ beacon = Beacon("Nike").with_prompts(custom_prompts)
 
 ---
 
+#### `with_stability(runs: int) -> Beacon`
+
+Configure stability scanning. When set, `.scan_stability()` runs the full scan `runs` times and computes a `StabilityReport` measuring how consistently AI mentions your brand.
+
+**Parameters:**
+- `runs` (int): Number of scan repetitions (typically 3-10)
+
+**Returns:** Self for chaining
+
+**Warning:** Multiplies API calls (and cost) by `runs`. Bypasses the response cache (each run must be fresh). Requires a non-zero temperature to produce meaningful variance.
+
+**Example:**
+```python
+report = Beacon("Nike").with_stability(5).scan_stability()
+print(f"Stability: {report.stability.stability_score}/100")
+print(f"Rating: {report.stability.volatility.stability_rating}")  # stable/moderate/volatile
+```
+
+CLI equivalent:
+```bash
+promptbeacon scan "Nike" --stability 5
+# short form:
+promptbeacon scan "Nike" -r 5
+```
+
+---
+
+#### `with_smart_extraction(model: str | None = None) -> Beacon`
+
+Enable LLM-powered mention extraction and sentiment analysis instead of regex-based extraction. Uses structured output for higher accuracy on complex or ambiguous responses.
+
+**Parameters:**
+- `model` (str | None): Model to use for extraction (default: provider's default)
+
+**Returns:** Self for chaining
+
+**Notes:**
+- Opt-in; adds one extra LLM call per provider result
+- Falls back to regex extraction on error
+- Not used in demo mode
+- Requires at least one provider API key
+
+**Example:**
+```python
+report = Beacon("Nike").with_smart_extraction().scan()
+```
+
+---
+
+#### `with_smart_recommendations() -> Beacon`
+
+Enable LLM-powered recommendation generation. Produces evidence-linked, prioritized recommendations based on scan results.
+
+**Returns:** Self for chaining
+
+**Notes:**
+- Opt-in; adds one extra LLM call
+- Falls back to rule-based recommendations on error
+- Not used in demo mode
+
+**Example:**
+```python
+report = Beacon("Nike").with_smart_recommendations().scan()
+for rec in report.recommendations:
+    print(f"[{rec.priority.upper()}] {rec.action}")
+    print(f"  Evidence: {rec.rationale}")
+```
+
+CLI equivalent (enables both smart extraction and smart recommendations):
+```bash
+promptbeacon scan "Nike" --smart
+```
+
+---
+
 ### Execution Methods
 
 #### `scan() -> Report`
@@ -320,7 +420,7 @@ Run a synchronous visibility scan.
 **Returns:** Report object with scan results
 
 **Raises:**
-- `ConfigurationError`: No API keys found or invalid configuration
+- `ConfigurationError`: No API keys found or invalid configuration (not raised in demo mode)
 - `ScanError`: All provider queries failed
 
 **Example:**
@@ -352,6 +452,43 @@ async def main():
     beacon = Beacon("Nike")
     report = await beacon.scan_async()
     print(f"Score: {report.visibility_score}")
+
+asyncio.run(main())
+```
+
+---
+
+#### `scan_stability() -> Report`
+
+Run a synchronous stability scan. Requires `.with_stability(n)` to be called first. Runs the full scan `n` times and populates `report.stability` with a `StabilityReport`.
+
+**Returns:** Report object (with `report.stability` populated)
+
+**Raises:**
+- `ConfigurationError`: Storage not configured or no API keys
+- `ScanError`: All provider queries failed
+
+**Example:**
+```python
+report = Beacon("Nike").with_stability(5).scan_stability()
+print(f"Stability score: {report.stability.stability_score}/100")
+print(f"Flip-flop count: {report.stability.flip_flop_count}")
+```
+
+---
+
+#### `async scan_stability_async() -> Report`
+
+Asynchronous version of `scan_stability()`.
+
+**Example:**
+```python
+import asyncio
+from promptbeacon import Beacon
+
+async def main():
+    report = await Beacon("Nike").with_stability(5).scan_stability_async()
+    print(f"Stability: {report.stability.stability_score}/100")
 
 asyncio.run(main())
 ```
@@ -582,7 +719,7 @@ Enum of supported LLM providers.
 | Provider | Model |
 |----------|-------|
 | OPENAI | gpt-4o-mini |
-| ANTHROPIC | claude-3-5-haiku-20241022 |
+| ANTHROPIC | claude-haiku-4-5 |
 | GOOGLE | gemini-2.0-flash |
 | MISTRAL | mistral-small-latest |
 | COHERE | command-r |
@@ -624,6 +761,8 @@ Main report object containing scan results.
 | `explanations` | list[Explanation] | Insight explanations |
 | `recommendations` | list[Recommendation] | Actionable recommendations |
 | `citation_summary` | CitationSummary | Aggregated citations from all responses |
+| `share_of_voice` | ShareOfVoiceReport | Share of Voice across all brands |
+| `stability` | StabilityReport \| None | Stability data (populated by `scan_stability()`) |
 | `timestamp` | datetime | Scan timestamp |
 | `scan_duration_seconds` | float | Duration in seconds |
 | `total_cost_usd` | float \| None | Estimated API cost |
@@ -646,7 +785,44 @@ print(f"Success rate: {report.success_rate:.1%}")
 
 if report.total_cost_usd:
     print(f"Cost: ${report.total_cost_usd:.4f}")
+
+# Share of Voice
+sov = report.share_of_voice
+print(f"SoV: {sov.target_share:.0%} | Rank: {sov.target_rank}")
 ```
+
+---
+
+### `assert_visibility(...) -> Report`
+
+Assert that the report meets minimum visibility thresholds. Raises `VisibilityAssertionError` (an `AssertionError` subclass) listing all unmet thresholds. Returns `self` for chaining.
+
+**Parameters** (all optional, omit to skip that check):
+- `min_score` (float): Minimum visibility score (0-100)
+- `min_share_of_voice` (float): Minimum Share of Voice (0-1)
+- `min_presence_rate` (float): Minimum presence rate (0-1)
+- `min_stability_score` (float): Minimum stability score (0-100; requires stability data)
+- `max_rank` (int): Maximum acceptable SoV rank (1 = must be the most-mentioned brand)
+
+**Raises:**
+- `VisibilityAssertionError`: One or more thresholds were not met (contains list of failures)
+
+**Returns:** Self for chaining
+
+**Example:**
+```python
+# Raises VisibilityAssertionError if any threshold fails
+report.assert_visibility(
+    min_score=40,
+    min_share_of_voice=0.15,
+    max_rank=3,
+)
+
+# Chain with export
+json_output = report.assert_visibility(min_score=50).to_json()
+```
+
+In pytest, use the pytest plugin instead (see [CI/CD section](advanced.md#cicd-gate-deploys-on-ai-visibility)).
 
 ---
 
@@ -667,16 +843,6 @@ Historical trend data for a brand.
 **Computed Properties:**
 
 - `visibility_trend` (list[float]): List of scores over time
-
-**Example:**
-```python
-history = beacon.get_history(days=30)
-
-print(f"Trend: {history.trend_direction}")
-print(f"Average: {history.average_score:.1f}")
-print(f"Volatility: {history.volatility:.2f}")
-print(f"Data points: {len(history.data_points)}")
-```
 
 ---
 
@@ -699,17 +865,6 @@ Comparison between two scans.
 **Computed Properties:**
 
 - `change_direction` ("up" | "down" | "stable"): Direction of change
-
-**Example:**
-```python
-comparison = beacon.compare_with_previous()
-
-if comparison:
-    print(f"Current: {comparison.current_score:.1f}")
-    print(f"Previous: {comparison.previous_score:.1f}")
-    print(f"Change: {comparison.score_change:+.1f}")
-    print(f"Direction: {comparison.change_direction}")
-```
 
 ---
 
@@ -770,15 +925,6 @@ Sentiment distribution across mentions.
 | `neutral` | float | Neutral ratio (0.0-1.0) |
 | `negative` | float | Negative ratio (0.0-1.0) |
 
-**Example:**
-```python
-sentiment = report.sentiment_breakdown
-
-print(f"Positive: {sentiment.positive:.0%}")
-print(f"Neutral: {sentiment.neutral:.0%}")
-print(f"Negative: {sentiment.negative:.0%}")
-```
-
 ---
 
 ### CompetitorScore
@@ -812,26 +958,6 @@ Detailed visibility metrics.
 | `confidence_interval` | tuple[float, float] \| None | 95% CI for score |
 | `score_breakdown` | ScoreBreakdown \| None | Breakdown of the 4 scoring factors |
 
-**Example:**
-```python
-metrics = report.metrics
-
-print(f"Score: {metrics.visibility_score:.1f}")
-print(f"Rec. rate: {metrics.recommendation_rate:.0%}")
-
-if metrics.average_position:
-    print(f"Avg. position: {metrics.average_position:.1f}")
-
-if metrics.confidence_interval:
-    lower, upper = metrics.confidence_interval
-    print(f"95% CI: [{lower:.1f}, {upper:.1f}]")
-
-if metrics.score_breakdown:
-    bd = metrics.score_breakdown
-    print(f"Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
-    print(f"Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
-```
-
 ---
 
 ### ScoreBreakdown
@@ -846,15 +972,6 @@ Breakdown of the four factors that compose the visibility score. Each factor is 
 | `sentiment` | float | Sentiment sub-score (0-100) |
 | `position` | float | Position/prominence sub-score (0-100) |
 | `recommendation` | float | Recommendation rate sub-score (0-100) |
-
-**Example:**
-```python
-bd = report.metrics.score_breakdown
-print(f"Mention Frequency: {bd.mention_frequency:.0f}/100")
-print(f"Sentiment: {bd.sentiment:.0f}/100")
-print(f"Position: {bd.position:.0f}/100")
-print(f"Recommendation: {bd.recommendation:.0f}/100")
-```
 
 ---
 
@@ -885,17 +1002,6 @@ Aggregated citation summary for a report.
 | `unique_domains` | list[str] | List of unique domains cited |
 | `citations` | list[Citation] | All individual citations |
 
-**Example:**
-```python
-cs = report.citation_summary
-print(f"Total citations: {cs.total_citations}")
-print(f"Unique domains: {', '.join(cs.unique_domains)}")
-
-for cit in cs.citations[:5]:
-    source = cit.url or cit.source_name
-    print(f"  {source} -> {cit.brand_associated}")
-```
-
 ---
 
 ### Explanation
@@ -911,14 +1017,6 @@ An insight explanation.
 | `evidence` | list[str] | Supporting quotes |
 | `impact` | "high" \| "medium" \| "low" | Impact level |
 
-**Example:**
-```python
-for exp in report.explanations:
-    print(f"[{exp.impact.upper()}] {exp.message}")
-    for quote in exp.evidence:
-        print(f"  - {quote}")
-```
-
 ---
 
 ### Recommendation
@@ -933,14 +1031,6 @@ An actionable recommendation.
 | `rationale` | str | Why recommended |
 | `priority` | "high" \| "medium" \| "low" | Priority level |
 | `expected_impact` | str | Expected impact |
-
-**Example:**
-```python
-for rec in report.recommendations:
-    print(f"[{rec.priority.upper()}] {rec.action}")
-    print(f"  Why: {rec.rationale}")
-    print(f"  Impact: {rec.expected_impact}")
-```
 
 ---
 
@@ -959,6 +1049,131 @@ A single historical data point.
 
 ---
 
+## Share of Voice
+
+Share of Voice (SoV) is computed automatically on every scan. It measures what fraction of all brand mentions across all prompts belongs to each brand.
+
+### `calculate_share_of_voice(results, target, competitors) -> ShareOfVoiceReport`
+
+Standalone function to compute SoV from a list of provider results.
+
+```python
+from promptbeacon import calculate_share_of_voice
+
+sov = calculate_share_of_voice(
+    results=report.provider_results,
+    target="Nike",
+    competitors=["Adidas", "Puma"],
+)
+```
+
+---
+
+### ShareOfVoiceReport
+
+Top-level SoV report, available as `report.share_of_voice`.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `target_share` | float | Target brand's SoV (0-1) |
+| `target_presence_rate` | float | Fraction of prompts where target was mentioned (0-1) |
+| `target_rank` | int | Target brand's rank (1 = most-mentioned) |
+| `aggregate` | dict[str, ShareOfVoiceEntry] | SoV entry per brand |
+| `by_provider` | dict[str, ShareOfVoiceReport] | Per-provider breakdown |
+
+**Example:**
+```python
+sov = report.share_of_voice
+
+print(f"Nike SoV: {sov.target_share:.0%}")
+print(f"Nike presence: {sov.target_presence_rate:.0%}")
+print(f"Nike rank: #{sov.target_rank}")
+
+for brand, entry in sov.aggregate.items():
+    print(f"  {brand}: {entry.share_of_voice:.0%} ({entry.appearances}/{entry.total_prompts} prompts)")
+```
+
+---
+
+### ShareOfVoiceEntry
+
+SoV data for a single brand.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `brand_name` | str | Brand name |
+| `appearances` | int | Number of prompts the brand appeared in |
+| `total_prompts` | int | Total prompts run |
+| `presence_rate` | float | appearances / total_prompts (0-1) |
+| `share_of_voice` | float | This brand's fraction of all brand mentions (0-1) |
+
+---
+
+## Stability
+
+Stability scanning runs the full scan `N` times and measures how consistently AI mentions your brand. Enable with `.with_stability(N)` and run via `.scan_stability()`.
+
+### StabilityReport
+
+Available as `report.stability` after a stability scan.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `stability_score` | float | Overall stability (0-100; 100 = perfectly consistent) |
+| `score_confidence_interval` | tuple[float, float] | 95% CI across runs |
+| `score_per_run` | list[float] | Visibility score for each run |
+| `volatility` | VolatilityMetrics | Volatility breakdown |
+| `overall_presence_consistency` | float | Fraction of runs where brand appeared (0-1) |
+| `flip_flop_count` | int | Number of times brand appeared in one run but not the next |
+| `prompt_stability` | list[PromptStability] | Per-prompt stability breakdown |
+
+**Example:**
+```python
+report = Beacon("Nike").with_stability(5).scan_stability()
+s = report.stability
+
+print(f"Stability score: {s.stability_score:.1f}/100")
+lower, upper = s.score_confidence_interval
+print(f"95% CI: [{lower:.1f}, {upper:.1f}]")
+print(f"Per-run scores: {[f'{x:.1f}' for x in s.score_per_run]}")
+print(f"Presence consistency: {s.overall_presence_consistency:.0%}")
+print(f"Flip-flops: {s.flip_flop_count}")
+print(f"Rating: {s.volatility.stability_rating}")  # stable / moderate / volatile
+```
+
+---
+
+### VolatilityMetrics
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `stability_rating` | "stable" \| "moderate" \| "volatile" | Human-readable rating |
+| (additional numeric fields) | float | Raw volatility measures |
+
+---
+
+### PromptStability
+
+Per-prompt stability breakdown.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `prompt` | str | The prompt text |
+| `presence_rate` | float | Fraction of runs where brand appeared (0-1) |
+| `score_variance` | float | Variance of visibility score across runs |
+
+---
+
 ## Export Functions
 
 All export functions accept a Report object and return formatted output.
@@ -972,9 +1187,6 @@ Export report as JSON string.
 from promptbeacon import to_json
 
 json_output = to_json(report)
-print(json_output)
-
-# Save to file
 with open("report.json", "w") as f:
     f.write(json_output)
 ```
@@ -985,47 +1197,44 @@ with open("report.json", "w") as f:
 
 Export report as CSV string.
 
-**Example:**
-```python
-from promptbeacon import to_csv
-
-csv_output = to_csv(report)
-
-with open("report.csv", "w") as f:
-    f.write(csv_output)
-```
-
 ---
 
 ### `to_markdown(report: Report) -> str`
 
 Export report as Markdown.
 
-**Example:**
-```python
-from promptbeacon import to_markdown
-
-markdown = to_markdown(report)
-print(markdown)
-
-with open("report.md", "w") as f:
-    f.write(markdown)
-```
-
 ---
 
 ### `to_html(report: Report) -> str`
 
-Export report as HTML page.
+Export report as a basic HTML page.
+
+---
+
+### `to_dashboard_html(report: Report, history: HistoryReport | None = None) -> str`
+
+Export report as a single self-contained HTML dashboard with interactive charts: Share of Voice bar chart, score breakdown, sentiment donut, stability band (if stability data present), and optional history sparkline.
+
+**Parameters:**
+- `report` (Report): The scan report
+- `history` (HistoryReport | None): Optional historical data to include a sparkline
+
+**Returns:** Self-contained HTML string (no external dependencies)
 
 **Example:**
 ```python
-from promptbeacon import to_html
+from promptbeacon import to_dashboard_html
 
-html = to_html(report)
-
-with open("report.html", "w") as f:
+html = to_dashboard_html(report)
+with open("dashboard.html", "w") as f:
     f.write(html)
+```
+
+CLI equivalent (auto-opens in browser):
+```bash
+promptbeacon dashboard "Nike" -o report.html
+promptbeacon dashboard "Nike" --demo -o demo_report.html
+promptbeacon dashboard "Nike" -o report.html --no-open
 ```
 
 ---
@@ -1034,30 +1243,11 @@ with open("report.html", "w") as f:
 
 Export report as pandas DataFrame.
 
-**Example:**
-```python
-from promptbeacon import to_dataframe
-
-df = to_dataframe(report)
-print(df.head())
-
-# Analysis with pandas
-print(df.groupby('provider')['visibility_score'].mean())
-```
-
 ---
 
 ### `to_dict(report: Report) -> dict`
 
 Export report as Python dictionary.
-
-**Example:**
-```python
-from promptbeacon import to_dict
-
-data = to_dict(report)
-print(data['visibility_score'])
-```
 
 ---
 
@@ -1079,10 +1269,6 @@ mw = BeaconGuardMiddleware(
 
 result = mw("Try CompetitorX instead of Acme.")
 ```
-
-**Parameters:**
-- `guard` (BeaconGuard): The guard instance
-- `on_high_risk` (Callable[[GuardResult], None] | None): Optional callback for high-risk results
 
 ---
 
@@ -1132,7 +1318,8 @@ PromptBeaconError
 │   └── ProviderAPIError
 ├── ExtractionError
 ├── ScanError
-└── StorageError
+├── StorageError
+└── VisibilityAssertionError  (also subclasses AssertionError)
 ```
 
 ### Exception Details
@@ -1154,6 +1341,8 @@ try:
     report = beacon.scan()
 except ConfigurationError as e:
     print(f"Configuration error: {e}")
+    # Use demo mode as fallback
+    report = Beacon("Nike").demo().scan()
 ```
 
 ---
@@ -1174,29 +1363,11 @@ Base exception for provider-related errors.
 
 Raised when API key authentication fails.
 
-**Example:**
-```python
-try:
-    report = beacon.scan()
-except ProviderAuthenticationError as e:
-    print(f"Authentication failed: {e}")
-    print("Check your API key")
-```
-
 ---
 
 #### `ProviderRateLimitError`
 
 Raised when rate limit is exceeded.
-
-**Example:**
-```python
-try:
-    report = beacon.scan()
-except ProviderRateLimitError as e:
-    print(f"Rate limit exceeded: {e}")
-    print("Reduce prompt_count or wait before retrying")
-```
 
 ---
 
@@ -1227,6 +1398,28 @@ Raised for database/storage errors.
 
 ---
 
+#### `VisibilityAssertionError`
+
+Raised by `report.assert_visibility(...)` when one or more thresholds are not met. Subclasses `AssertionError` so it integrates naturally with pytest and `assert` statements.
+
+**Attributes:**
+- `failures` (list[str]): Human-readable list of unmet thresholds
+
+**Example:**
+```python
+from promptbeacon.core.exceptions import VisibilityAssertionError
+
+try:
+    report.assert_visibility(min_score=70, min_share_of_voice=0.3)
+except VisibilityAssertionError as e:
+    print(f"CI check failed:")
+    for failure in e.failures:
+        print(f"  - {failure}")
+    sys.exit(1)
+```
+
+---
+
 ## Type Hints
 
 PromptBeacon is fully type-hinted. Use with type checkers like mypy:
@@ -1246,7 +1439,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "0.3.0"
+print(__version__)  # e.g., "1.0.0"
 ```
 
 ---
@@ -1254,8 +1447,8 @@ print(__version__)  # e.g., "0.3.0"
 ## Full Example
 
 ```python
-from promptbeacon import Beacon, Provider, to_json, to_dataframe
-from promptbeacon.core.exceptions import ConfigurationError, ScanError
+from promptbeacon import Beacon, Provider, to_json, to_dashboard_html, to_dataframe
+from promptbeacon.core.exceptions import ConfigurationError, ScanError, VisibilityAssertionError
 
 try:
     # Configure beacon with full options
@@ -1279,6 +1472,10 @@ try:
     print(f"Mentions: {report.mention_count}")
     print(f"Sentiment: {report.sentiment_breakdown.positive:.0%} positive")
 
+    # Share of Voice
+    sov = report.share_of_voice
+    print(f"SoV: {sov.target_share:.0%} (rank #{sov.target_rank})")
+
     # Competitor comparison
     for name, score in report.competitor_comparison.items():
         print(f"{name}: {score.visibility_score:.1f}")
@@ -1295,8 +1492,12 @@ try:
     for rec in report.recommendations[:3]:
         print(f"[{rec.priority}] {rec.action}")
 
+    # CI assertion
+    report.assert_visibility(min_score=40, min_share_of_voice=0.1)
+
     # Export
     json_output = to_json(report)
+    html = to_dashboard_html(report)
     df = to_dataframe(report)
 
     # Historical analysis
@@ -1311,6 +1512,8 @@ except ConfigurationError as e:
     print(f"Configuration error: {e}")
 except ScanError as e:
     print(f"Scan failed: {e}")
+except VisibilityAssertionError as e:
+    print(f"Visibility check failed: {e.failures}")
 finally:
     beacon.close()
 ```

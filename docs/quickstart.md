@@ -1,6 +1,6 @@
 # Quickstart Guide
 
-Get started with PromptBeacon in less than 5 minutes. This guide will walk you through installation, setup, and your first brand visibility scan.
+Get started with PromptBeacon in minutes. No API keys required to try it out.
 
 ## Installation
 
@@ -21,11 +21,59 @@ uv add promptbeacon
 ### Requirements
 
 - Python 3.10 or higher
-- At least one LLM provider API key
+- No API keys required for demo mode; at least one provider key for live scans
 
-## Provider Setup
+---
 
-PromptBeacon supports 6 LLM providers. Set up at least one:
+## Step 1: Try It in Demo Mode (Zero Keys)
+
+The fastest way to explore PromptBeacon is the keyless demo mode. It returns realistic canned data — no API keys, no network calls, no cost:
+
+```bash
+promptbeacon demo "Nike"
+```
+
+Or in Python:
+
+```python
+from promptbeacon import Beacon
+
+report = Beacon("Nike").demo().scan()
+print(f"Visibility Score: {report.visibility_score}/100")
+print(f"Share of Voice: {report.share_of_voice.target_share:.0%}")
+print(f"Total Mentions: {report.mention_count}")
+print(f"Positive Sentiment: {report.sentiment_breakdown.positive:.0%}")
+```
+
+You can chain `.demo()` with the full configuration API:
+
+```python
+report = (
+    Beacon("Nike")
+    .demo()
+    .with_competitors("Adidas", "Puma")
+    .scan()
+)
+
+sov = report.share_of_voice
+print(f"Nike SoV: {sov.target_share:.0%}")
+for brand, entry in sov.aggregate.items():
+    print(f"  {brand}: {entry.share_of_voice:.0%}")
+```
+
+The `--demo` flag is also available on other CLI commands:
+
+```bash
+promptbeacon scan "Nike" --demo
+promptbeacon quick "Nike" --demo
+promptbeacon dashboard "Nike" --demo -o report.html
+```
+
+---
+
+## Step 2: Provider Setup (for Live Scans)
+
+PromptBeacon supports 6 LLM providers. Set up at least one to run real scans:
 
 ### OpenAI
 
@@ -83,11 +131,11 @@ Check which providers are configured:
 promptbeacon providers
 ```
 
-## Your First Scan
+---
+
+## Your First Real Scan
 
 ### Quick Scan (CLI)
-
-The fastest way to check brand visibility:
 
 ```bash
 promptbeacon quick "Nike"
@@ -110,7 +158,7 @@ print(f"Positive Sentiment: {report.sentiment_breakdown.positive:.0%}")
 promptbeacon scan "Nike"
 ```
 
-That's it! You've just completed your first brand visibility scan.
+---
 
 ## Quick Start: BeaconGuard
 
@@ -126,6 +174,8 @@ print(f"Flags: {result.flags}")
 ```
 
 See [Advanced Usage: Real-Time Brand Safety](advanced.md#real-time-brand-safety) for LangChain integration and middleware patterns.
+
+---
 
 ## Understanding Your Results
 
@@ -147,6 +197,21 @@ print(f"Mention Frequency: {bd.mention_frequency:.0f}/100")
 print(f"Sentiment: {bd.sentiment:.0f}/100")
 print(f"Position: {bd.position:.0f}/100")
 print(f"Recommendation: {bd.recommendation:.0f}/100")
+```
+
+### Share of Voice
+
+Share of Voice measures your brand's proportion of AI mindshare relative to all brands mentioned:
+
+```python
+sov = report.share_of_voice
+print(f"Target Share: {sov.target_share:.0%}")          # your fraction of total mentions
+print(f"Presence Rate: {sov.target_presence_rate:.0%}") # % of prompts you appear in
+print(f"Rank: {sov.target_rank}")                        # 1 = most-mentioned
+
+# Per-brand breakdown
+for brand, entry in sov.aggregate.items():
+    print(f"  {brand}: {entry.share_of_voice:.0%} ({entry.appearances} appearances)")
 ```
 
 ### Mention Count
@@ -172,6 +237,8 @@ for cit in report.citation_summary.citations[:5]:
     print(f"Source: {cit.source_name} -> {cit.brand_associated}")
 ```
 
+---
+
 ## Adding Competitors
 
 Compare your brand against competitors:
@@ -196,6 +263,8 @@ for name, score in report.competitor_comparison.items():
 promptbeacon compare "Nike" --against "Adidas" --against "Puma"
 ```
 
+---
+
 ## Brand Aliases
 
 Count all name variants as the same brand:
@@ -208,6 +277,8 @@ report = (
 )
 ```
 
+---
+
 ## Industry Templates
 
 Use pre-built prompts tuned for your industry:
@@ -219,6 +290,8 @@ report = (
     .scan()
 )
 ```
+
+---
 
 ## Customizing Your Scan
 
@@ -261,9 +334,11 @@ report = (
 )
 ```
 
+---
+
 ## Complete Example
 
-Here's a comprehensive scan combining all options:
+Here's a comprehensive scan combining multiple options:
 
 ```python
 from promptbeacon import Beacon, Provider
@@ -287,6 +362,10 @@ bd = report.metrics.score_breakdown
 print(f"  Mentions: {bd.mention_frequency:.0f}  Sentiment: {bd.sentiment:.0f}")
 print(f"  Position: {bd.position:.0f}  Recommendations: {bd.recommendation:.0f}")
 
+# Share of Voice
+sov = report.share_of_voice
+print(f"\nShare of Voice: {sov.target_share:.0%} (rank #{sov.target_rank})")
+
 # Competitors
 print(f"\nCompetitor Comparison:")
 for name, score in report.competitor_comparison.items():
@@ -304,6 +383,8 @@ print(f"\nTop Insights:")
 for exp in report.explanations[:3]:
     print(f"  [{exp.impact.upper()}] {exp.message}")
 ```
+
+---
 
 ## Enabling Historical Tracking
 
@@ -328,6 +409,8 @@ if comparison:
 ```
 
 See the [Storage Guide](storage.md) for more details.
+
+---
 
 ## Exporting Results
 
@@ -360,6 +443,23 @@ markdown = to_markdown(report)
 print(markdown)
 ```
 
+### HTML Dashboard
+
+```python
+from promptbeacon import to_dashboard_html
+
+html = to_dashboard_html(report)
+with open("nike_dashboard.html", "w") as f:
+    f.write(html)
+```
+
+Or via CLI (auto-opens browser):
+
+```bash
+promptbeacon dashboard "Nike" --demo -o report.html
+promptbeacon dashboard "Nike" -o report.html --no-open   # skip auto-open
+```
+
 ### pandas DataFrame
 
 ```python
@@ -378,6 +478,8 @@ promptbeacon scan "Nike" --format json > nike.json
 # Markdown
 promptbeacon scan "Nike" --format markdown > nike.md
 ```
+
+---
 
 ## Async Usage
 
@@ -402,20 +504,22 @@ async def scan_multiple_brands():
 asyncio.run(scan_multiple_brands())
 ```
 
+---
+
 ## Troubleshooting
 
 ### No API Keys Found
 
 **Error**: `ConfigurationError: No API keys found for configured providers`
 
-**Solution**: Set environment variables for at least one provider:
+**Solution**: Use demo mode (no keys needed) or set at least one provider key:
 
 ```bash
+# Demo mode — no keys required
+promptbeacon demo "Nike"
+
+# Or set a key
 export OPENAI_API_KEY="sk-..."
-# OR
-export ANTHROPIC_API_KEY="sk-ant-..."
-# OR
-export GOOGLE_API_KEY="..."
 ```
 
 ### Rate Limiting
@@ -445,14 +549,18 @@ beacon = (
 )
 ```
 
+---
+
 ## Next Steps
 
 - [Explore the complete API Reference](api-reference.md)
 - [Learn about CLI commands](cli.md)
 - [Configure all 6 providers](providers.md)
 - [Set up historical tracking](storage.md)
-- [Check out advanced patterns](advanced.md)
+- [Check out advanced patterns](advanced.md) — stability, smart mode, CI/CD gating
 - [See real-world examples](examples.md)
+
+---
 
 ## Quick Reference
 
@@ -461,6 +569,7 @@ beacon = (
 ```python
 # Configuration
 Beacon(brand)
+.demo()                        # Keyless demo mode (no API calls)
 .with_aliases(*names)          # Alternative brand names
 .with_competitors(*brands)     # Competitor brands
 .with_providers(*providers)    # LLM providers
@@ -473,10 +582,24 @@ Beacon(brand)
 .with_temperature(t)           # LLM temperature
 .with_timeout(seconds)         # Request timeout
 .with_prompts(list)            # Fully custom prompts
+.with_stability(n)             # Stability scan (n runs)
+.with_smart_extraction()       # LLM-powered extraction
+.with_smart_recommendations()  # LLM-powered recommendations
 
 # Execution
-.scan()              # Sync scan
-.scan_async()        # Async scan
+.scan()                        # Sync scan
+.scan_async()                  # Async scan
+.scan_stability()              # Stability scan (sync)
+.scan_stability_async()        # Stability scan (async)
+
+# CI Assertions
+.assert_visibility(
+    min_score=,
+    min_share_of_voice=,
+    min_presence_rate=,
+    min_stability_score=,
+    max_rank=,
+)
 
 # History
 .get_history(days)
@@ -486,21 +609,29 @@ Beacon(brand)
 ### Essential CLI Commands
 
 ```bash
+promptbeacon demo "Brand"                            # Keyless demo scan
 promptbeacon quick "Brand"                           # Fast 3-prompt scan
+promptbeacon quick "Brand" --demo                    # Quick scan in demo mode
 promptbeacon scan "Brand"                            # Full scan
+promptbeacon scan "Brand" --demo                     # Full scan in demo mode
+promptbeacon scan "Brand" --stability 5              # Stability scan (5 runs)
+promptbeacon scan "Brand" --smart                    # Smart LLM extraction
+promptbeacon scan "Brand" --assert-min-score 40      # CI assertion
 promptbeacon compare "Brand" --against "Competitor"  # Compare brands
 promptbeacon history "Brand" --days 30               # View trends
+promptbeacon dashboard "Brand" -o report.html        # HTML dashboard
 promptbeacon providers                               # Check API keys
 ```
 
 ### Essential Exports
 
 ```python
-from promptbeacon import to_json, to_csv, to_markdown, to_html, to_dataframe
+from promptbeacon import to_json, to_csv, to_markdown, to_html, to_dashboard_html, to_dataframe
 
 to_json(report)
 to_csv(report)
 to_markdown(report)
 to_html(report)
+to_dashboard_html(report)       # Self-contained visual dashboard
 to_dataframe(report)
 ```

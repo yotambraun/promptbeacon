@@ -1,0 +1,55 @@
+site_name: PromptBeacon
+site_description: The open-source GEO engine to measure, track, and CI-test how AI recommends your brand.
+site_url: https://yotambraun.github.io/promptbeacon/
+repo_url: https://github.com/yotambraun/promptbeacon
+repo_name: yotambraun/promptbeacon
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  logo: https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/logo.svg
+  favicon: https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/favicon.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Providers: providers.md
+  - CLI: cli.md
+  - Storage & History: storage.md
+  - Advanced: advanced.md
+  - Examples: examples.md
+  - API Reference: api-reference.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import webbrowser
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -14,11 +16,16 @@ from rich.table import Table
 
 from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import Provider
-from promptbeacon.reporting.formats import to_json, to_markdown
+from promptbeacon.core.exceptions import VisibilityAssertionError
+from promptbeacon.reporting.formats import to_dashboard_html, to_json, to_markdown
 
 app = typer.Typer(
     name="promptbeacon",
-    help="LLM visibility monitoring for brands - track how your brand appears in AI-generated responses.",
+    help=(
+        "Does AI recommend your brand? Measure, track, and CI-test your "
+        "visibility across ChatGPT, Claude, Gemini and more. Try keyless: "
+        'promptbeacon demo "Nike"'
+    ),
     no_args_is_help=True,
 )
 console = Console()
@@ -73,6 +80,42 @@ def scan(
         Path | None,
         typer.Option("--storage", "-s", help="Path to DuckDB storage file"),
     ] = None,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Keyless demo mode (no API keys, canned data)"),
+    ] = False,
+    smart: Annotated[
+        bool,
+        typer.Option(
+            "--smart",
+            help="LLM-based extraction + recommendations (more accurate, costs more)",
+        ),
+    ] = False,
+    stability: Annotated[
+        int,
+        typer.Option(
+            "--stability",
+            "-r",
+            help="Repeat the scan N times to measure stability (multiplies cost)",
+        ),
+    ] = 0,
+    assert_min_score: Annotated[
+        float | None,
+        typer.Option("--assert-min-score", help="Fail (exit 1) if score is below this"),
+    ] = None,
+    assert_min_sov: Annotated[
+        float | None,
+        typer.Option(
+            "--assert-min-sov", help="Fail if Share of Voice (0-1) is below this"
+        ),
+    ] = None,
+    assert_min_stability: Annotated[
+        float | None,
+        typer.Option(
+            "--assert-min-stability",
+            help="Fail if stability score (0-100) is below this (needs --stability)",
+        ),
+    ] = None,
     output_format: Annotated[
         OutputFormat,
         typer.Option("--format", "-f", help="Output format"),
@@ -82,6 +125,10 @@ def scan(
 
     Example:
         promptbeacon scan "Nike" --competitor "Adidas" --provider openai
+
+        promptbeacon scan "Nike" --demo            # no API keys needed
+
+        promptbeacon scan "Nike" --assert-min-score 50   # CI gate (exit 1 on fail)
     """
     # Build beacon configuration
     beacon = Beacon(brand)
@@ -103,6 +150,15 @@ def scan(
     if storage:
         beacon = beacon.with_storage(storage)
 
+    if demo:
+        beacon = beacon.demo()
+
+    if smart:
+        beacon = beacon.with_smart_extraction().with_smart_recommendations()
+
+    if stability > 0:
+        beacon = beacon.with_stability(stability)
+
     # Run scan with progress indicator
     with Progress(
         SpinnerColumn(),
@@ -111,7 +167,7 @@ def scan(
     ) as progress:
         progress.add_task(description=f"Scanning visibility for {brand}...", total=None)
         try:
-            report = beacon.scan()
+            report = beacon.scan_stability() if stability > 0 else beacon.scan()
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
@@ -124,10 +180,29 @@ def scan(
     else:
         _print_text_report(report)
 
+    # CI assertions (exit non-zero on failure)
+    if any(
+        v is not None for v in (assert_min_score, assert_min_sov, assert_min_stability)
+    ):
+        try:
+            report.assert_visibility(
+                min_score=assert_min_score,
+                min_share_of_voice=assert_min_sov,
+                min_stability_score=assert_min_stability,
+            )
+            console.print("[green]✓ Visibility assertions passed.[/green]")
+        except VisibilityAssertionError as e:
+            console.print(f"[red]✗ Visibility assertion failed:[/red] {e}")
+            raise typer.Exit(1) from None
+
 
 @app.command()
 def quick(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Keyless demo mode (no API keys needed)"),
+    ] = False,
     output_format: Annotated[
         OutputFormat,
         typer.Option("--format", "-f", help="Output format"),
@@ -141,6 +216,8 @@ def quick(
         promptbeacon quick "Nike"
     """
     beacon = Beacon(brand).with_prompt_count(3)
+    if demo:
+        beacon = beacon.demo()
 
     with Progress(
         SpinnerColumn(),
@@ -160,6 +237,99 @@ def quick(
         console.print(to_markdown(report))
     else:
         _print_text_report(report)
+
+
+@app.command()
+def demo(
+    brand: Annotated[str, typer.Argument(help="The brand name to analyze")] = "Nike",
+    competitors: Annotated[
+        list[str] | None,
+        typer.Option("--competitor", "-c", help="Competitor brands to compare"),
+    ] = None,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format"),
+    ] = OutputFormat.text,
+) -> None:
+    """Run a keyless demo scan with realistic canned data (no API keys).
+
+    The fastest way to see what PromptBeacon does. Uses an offline mock, so it
+    works the moment you `pip install promptbeacon`.
+
+    Example:
+        promptbeacon demo "Nike" --competitor "Adidas"
+    """
+    beacon = Beacon(brand).demo()
+    if competitors:
+        beacon = beacon.with_competitors(*competitors)
+    else:
+        beacon = beacon.with_competitors("Adidas", "Puma")
+
+    console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
+    report = beacon.scan()
+
+    if output_format == OutputFormat.json:
+        console.print(to_json(report))
+    elif output_format == OutputFormat.markdown:
+        console.print(to_markdown(report))
+    else:
+        _print_comparison_report(report)
+
+
+@app.command()
+def dashboard(
+    brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    competitors: Annotated[
+        list[str] | None,
+        typer.Option("--competitor", "-c", help="Competitor brands to compare"),
+    ] = None,
+    providers: Annotated[
+        list[str] | None,
+        typer.Option("--provider", "-p", help="LLM providers to use"),
+    ] = None,
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", help="Where to write the HTML dashboard"),
+    ] = Path("promptbeacon-report.html"),
+    demo: Annotated[
+        bool, typer.Option("--demo", help="Keyless demo mode (no API keys needed)")
+    ] = False,
+    open_browser: Annotated[
+        bool, typer.Option("--open/--no-open", help="Open the dashboard in a browser")
+    ] = True,
+) -> None:
+    """Generate a shareable HTML dashboard for a brand.
+
+    Example:
+        promptbeacon dashboard "Nike" --competitor "Adidas" --demo
+    """
+    beacon = Beacon(brand)
+    if competitors:
+        beacon = beacon.with_competitors(*competitors)
+    if providers:
+        provider_enums = provider_callback(providers)
+        if provider_enums:
+            beacon = beacon.with_providers(*provider_enums)
+    if demo:
+        beacon = beacon.demo()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task(description=f"Building dashboard for {brand}...", total=None)
+        try:
+            report = beacon.scan()
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    output.write_text(to_dashboard_html(report), encoding="utf-8")
+    console.print(f"[green]Dashboard written to[/green] {output}")
+    if open_browser:
+        with contextlib.suppress(Exception):
+            webbrowser.open(output.resolve().as_uri())
 
 
 @app.command()
@@ -315,6 +485,49 @@ def _print_text_report(report) -> None:
         table.add_row("Estimated Cost", f"${report.total_cost_usd:.4f}")
 
     console.print(table)
+
+    # Share of Voice
+    sov = getattr(report, "share_of_voice", None)
+    if sov and sov.aggregate:
+        console.print(
+            f"\n[bold]Share of Voice:[/bold] [cyan]{sov.target_share:.0%}[/cyan] "
+            f"(rank {sov.target_rank}, {sov.target_presence_rate:.0%} of prompts)"
+        )
+        sov_table = Table(title="Share of Voice")
+        sov_table.add_column("Brand", style="cyan")
+        sov_table.add_column("Appears In")
+        sov_table.add_column("Presence")
+        sov_table.add_column("Share of Voice")
+        ordered = sorted(
+            sov.aggregate.values(), key=lambda e: e.appearances, reverse=True
+        )
+        for entry in ordered:
+            is_target = entry.brand_name == report.brand
+            name = f"[bold]{entry.brand_name}[/bold]" if is_target else entry.brand_name
+            sov_table.add_row(
+                name,
+                f"{entry.appearances}/{entry.total_prompts}",
+                f"{entry.presence_rate:.0%}",
+                f"{entry.share_of_voice:.0%}",
+            )
+        console.print(sov_table)
+
+    # Stability
+    stability = getattr(report, "stability", None)
+    if stability:
+        rating_color = {
+            "stable": "green",
+            "moderate": "yellow",
+            "volatile": "red",
+        }.get(stability.volatility.stability_rating, "white")
+        lo, hi = stability.score_confidence_interval
+        console.print(
+            f"\n[bold]Stability[/bold] ({stability.runs} runs): "
+            f"[{rating_color}]{stability.stability_score:.0f}/100 "
+            f"({stability.volatility.stability_rating})[/{rating_color}]  "
+            f"95% CI [{lo:.0f}, {hi:.0f}]  "
+            f"{stability.flip_flop_count} flip-flopping prompt(s)"
+        )
 
     # Score breakdown
     bd = getattr(report.metrics, "score_breakdown", None) if report.metrics else None

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "promptbeacon"
-version = "0.3.0"
-description = "LLM visibility monitoring for brands - track how your brand appears in AI-generated responses"
+version = "1.0.0"
+description = "The open-source GEO engine to measure, track, and CI-test how AI (ChatGPT, Claude, Gemini) recommends your brand"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
@@ -36,8 +36,9 @@ keywords = [
     "llm-brand-monitoring",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -45,6 +46,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Framework :: Pytest",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
     "Typing :: Typed",
@@ -82,6 +84,9 @@ langchain = [
 pandas = [
     "pandas>=2.0.0",
 ]
+docs = [
+    "mkdocs-material>=9.5.0",
+]
 all = [
     "promptbeacon[cli,pandas]",
 ]
@@ -89,9 +94,12 @@ all = [
 [project.scripts]
 promptbeacon = "promptbeacon.cli.main:app"
 
+[project.entry-points.pytest11]
+promptbeacon = "promptbeacon.pytest_plugin"
+
 [project.urls]
 Homepage = "https://github.com/yotambraun/promptbeacon"
-Documentation = "https://github.com/yotambraun/promptbeacon/tree/main/docs"
+Documentation = "https://yotambraun.github.io/promptbeacon/"
 Repository = "https://github.com/yotambraun/promptbeacon"
 Changelog = "https://github.com/yotambraun/promptbeacon/blob/main/CHANGELOG.md"
 Issues = "https://github.com/yotambraun/promptbeacon/issues"
@@ -136,6 +144,7 @@ addopts = "-v --tb=short"
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
+    "visibility: run a PromptBeacon scan and assert AI visibility thresholds",
 ]
 
 [tool.coverage.run]
