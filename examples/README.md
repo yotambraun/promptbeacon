@@ -11,24 +11,31 @@ This directory contains example scripts demonstrating how to use PromptBeacon fo
    uv add promptbeacon
    ```
 
-2. Set your API key:
+2. **No keys needed to start** — the demo/guard/CI examples run keyless. For real
+   scans, set an API key:
    ```bash
    export OPENAI_API_KEY="sk-..."
    ```
-   Or create a `.env` file in the project root:
-   ```
-   OPENAI_API_KEY=sk-...
-   ```
+   Or create a `.env` file in the project root.
 
 ## Examples
 
-| Example | Description |
-|---------|-------------|
-| [`basic_scan.py`](basic_scan.py) | Simple brand visibility analysis |
-| [`competitor_analysis.py`](competitor_analysis.py) | Compare against competitors |
-| [`export_formats.py`](export_formats.py) | Export reports in various formats |
-| [`guard_example.py`](guard_example.py) | BeaconGuard: real-time brand safety analysis |
-| [`langchain_guard.py`](langchain_guard.py) | Using BeaconGuard as middleware in LLM pipelines |
+| Example | Keyless? | Description |
+|---------|:---:|-------------|
+| [`demo_quickstart.py`](demo_quickstart.py) | ✅ | Keyless demo + Share of Voice — start here |
+| [`stability_scan.py`](stability_scan.py) | ✅ | Repeat-N stability score & flip-flop detection |
+| [`ci_visibility_check.py`](ci_visibility_check.py) | ✅ | Gate a deploy on AI visibility (inline / pytest / Action) |
+| [`basic_scan.py`](basic_scan.py) | | Simple brand visibility analysis (needs a key) |
+| [`competitor_analysis.py`](competitor_analysis.py) | | Compare against competitors |
+| [`export_formats.py`](export_formats.py) | | Export reports in various formats |
+| [`guard_example.py`](guard_example.py) | ✅ | BeaconGuard: real-time brand safety analysis |
+| [`langchain_guard.py`](langchain_guard.py) | ✅ | Using BeaconGuard as middleware in LLM pipelines |
+
+### Start here — keyless demo
+
+```bash
+python examples/demo_quickstart.py
+```
 
 ### 1. Basic Scan
 

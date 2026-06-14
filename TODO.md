@@ -46,13 +46,41 @@
 - [x] Generic middleware with `on_high_risk` callback
 - [x] Optional `[langchain]` dependency group
 
-## High Priority
+## Completed in v1.0.0
+
+### Measurement & rigor
+- [x] Share of Voice (presence-based, per-provider + aggregate + rank)
+- [x] Stability scanning (repeat-N trust score, confidence interval, flip-flop detection)
+- [x] LLM-based smart extraction (opt-in `with_smart_extraction()`)
+- [x] LLM-generated, evidence-linked recommendations (opt-in `with_smart_recommendations()`)
+
+### Adoption & DX
+- [x] Keyless demo mode (`MockLLMClient` + fixtures, `Beacon.demo()`, `promptbeacon demo`)
+- [x] HTML dashboard (`to_dashboard_html`, `promptbeacon dashboard`)
+- [x] Modern logo + README screenshots
+
+### CI-native
+- [x] `Report.assert_visibility()` + `VisibilityAssertionError`
+- [x] pytest plugin (`@pytest.mark.visibility`)
+- [x] GitHub Action (`action.yml`)
+- [x] CLI assertion flags (`--assert-min-score/-sov/-stability`)
+
+### Polish
+- [x] Refresh default models (claude-haiku-4-5); Production/Stable status
+- [x] Hosted docs site (mkdocs-material)
+
+---
+
+## High Priority (next)
+
+### Continuous monitoring (the big remaining gap)
+- [ ] Scheduled / repeatable scans (cron-like)
+- [ ] Webhook + Slack notifications on visibility / Share of Voice drop
+- [ ] Email alerts for significant changes
 
 ### Enhanced Extraction
-- [ ] LLM-based mention extraction (using Instructor)
-- [ ] More sophisticated sentiment analysis
 - [ ] Entity disambiguation (Nike vs Nike, Inc.)
-- [ ] Context-aware recommendation detection
+- [ ] Multi-language extraction
 
 ### Prompt Library
 - [x] Industry-specific prompt templates
@@ -64,26 +92,18 @@
 - [ ] Provider-specific rate limiting
 - [ ] Automatic retry with exponential backoff
 - [ ] Cost tracking and budgeting
-- [ ] Model selection per provider
 
 ---
 
 ## Medium Priority
 
 ### Visualization
+- [x] HTML dashboard generation
 - [ ] Terminal-based charts (sparklines, bar charts)
-- [ ] HTML report with interactive charts
-- [ ] Dashboard generation
-- [ ] Trend visualization
-
-### Scheduling & Automation
-- [ ] Scheduled scans (cron-like)
-- [ ] Webhook notifications
-- [ ] Email alerts for significant changes
-- [ ] Slack/Discord integration
+- [ ] Interactive (JS) dashboard charts
 
 ### Advanced Analytics
-- [ ] Share of Voice calculation
+- [x] Share of Voice calculation
 - [ ] Competitive gap analysis
 - [ ] Sentiment trend correlation
 - [ ] Brand mention co-occurrence
