@@ -19,11 +19,49 @@ All commands support these options:
 
 ## Commands
 
+- [`demo`](#demo) - Keyless demo scan (no API keys required)
 - [`quick`](#quick) - Fast 3-prompt scan with cheapest provider
 - [`scan`](#scan) - Run a full brand visibility scan
 - [`compare`](#compare) - Compare brand against competitors
 - [`history`](#history) - View historical visibility data
+- [`dashboard`](#dashboard) - Generate HTML dashboard
 - [`providers`](#providers) - List available providers and status
+
+---
+
+## `demo`
+
+Run a full demo scan using realistic canned data. No API keys required. This is the recommended first step to explore PromptBeacon's output format.
+
+### Usage
+
+```bash
+promptbeacon demo BRAND [OPTIONS]
+```
+
+### Arguments
+
+- `BRAND` (required): The brand name to simulate
+
+### Options
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
+| `--output` | `-o` | PATH | None | Write output to file instead of stdout |
+
+### Examples
+
+```bash
+# Demo scan
+promptbeacon demo "Nike"
+
+# Demo with JSON output
+promptbeacon demo "Nike" --format json
+
+# Save demo report to file
+promptbeacon demo "Nike" --format json -o demo_report.json
+```
 
 ---
 
@@ -46,12 +84,16 @@ promptbeacon quick BRAND [OPTIONS]
 | Option | Short | Type | Default | Description |
 |--------|-------|------|---------|-------------|
 | `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
+| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
 
 ### Examples
 
 ```bash
 # Quick check
 promptbeacon quick "Nike"
+
+# Quick check in demo mode
+promptbeacon quick "Nike" --demo
 
 # Quick check with JSON output
 promptbeacon quick "Nike" --format json
@@ -77,12 +119,18 @@ promptbeacon scan BRAND [OPTIONS]
 
 | Option | Short | Type | Default | Description |
 |--------|-------|------|---------|-------------|
-| `--competitor` | `-c` | TEXT | None | Competitor brand (can be used multiple times) |
-| `--provider` | `-p` | TEXT | None | LLM provider: openai, anthropic, google, mistral, cohere, perplexity (can be used multiple times) |
-| `--category` | `-t` | TEXT | None | Category/topic to analyze (can be used multiple times) |
+| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
+| `--provider` | `-p` | TEXT | None | Provider: openai, anthropic, google, mistral, cohere, perplexity (repeatable) |
+| `--category` | `-t` | TEXT | None | Category/topic to analyze (repeatable) |
 | `--prompts` | `-n` | INT | 10 | Number of prompts per category |
 | `--storage` | `-s` | PATH | None | Path to DuckDB storage file |
 | `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
+| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
+| `--smart` | | FLAG | false | Enable LLM-powered extraction and recommendations |
+| `--stability` | `-r` | INT | None | Number of stability runs (multiplies API cost) |
+| `--assert-min-score` | | FLOAT | None | Fail (exit 1) if score below threshold |
+| `--assert-min-sov` | | FLOAT | None | Fail (exit 1) if Share of Voice below threshold |
+| `--assert-min-stability` | | FLOAT | None | Fail (exit 1) if stability score below threshold (requires `--stability`) |
 
 ### Examples
 
@@ -96,7 +144,7 @@ Output:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Visibility Score: Nike
-Generated: 2026-02-06 10:30:00
+Generated: 2026-06-14 10:30:00
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
          73.5 / 100
 
@@ -105,6 +153,9 @@ Generated: 2026-02-06 10:30:00
 ┃ Metric             ┃ Value       ┃
 ┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
 │ Total Mentions     │ 42          │
+│ Share of Voice     │ 38%         │
+│ SoV Rank           │ #1          │
+│ Presence Rate      │ 85%         │
 │ Positive Sentiment │ 67.0%       │
 │ Neutral Sentiment  │ 28.0%       │
 │ Negative Sentiment │ 5.0%        │
@@ -124,7 +175,7 @@ Generated: 2026-02-06 10:30:00
 └───────────────────────┴────────┘
 
 Key Insights:
-  ● Brand is mentioned prominently across all queries.
+  • Brand is mentioned prominently across all queries.
 
 Recommendations:
   [HIGH] Increase presence in "athletic wear" queries.
@@ -132,6 +183,12 @@ Recommendations:
 Sources Cited:
   • nike.com [Nike]
   • runnersworld.com [Nike]
+```
+
+#### Demo Mode
+
+```bash
+promptbeacon scan "Nike" --demo
 ```
 
 #### With Competitors
@@ -153,6 +210,48 @@ promptbeacon scan "Nike" \
   --provider mistral
 ```
 
+#### Smart Mode (LLM Extraction + Recommendations)
+
+```bash
+promptbeacon scan "Nike" --smart
+```
+
+#### Stability Scan
+
+Run the scan N times and compute stability metrics:
+
+```bash
+# 5 stability runs
+promptbeacon scan "Nike" --stability 5
+
+# Short form
+promptbeacon scan "Nike" -r 5
+
+# Stability in demo mode (free exploration)
+promptbeacon scan "Nike" --stability 3 --demo
+```
+
+#### CI Assertions (Exit Code 1 on Failure)
+
+```bash
+# Fail if score < 40
+promptbeacon scan "Nike" --assert-min-score 40
+
+# Fail if Share of Voice < 15%
+promptbeacon scan "Nike" --assert-min-sov 0.15
+
+# Combined thresholds
+promptbeacon scan "Nike" \
+  --competitor "Adidas" \
+  --assert-min-score 40 \
+  --assert-min-sov 0.15
+
+# Stability + stability assertion
+promptbeacon scan "Nike" \
+  --stability 5 \
+  --assert-min-stability 70
+```
+
 #### Custom Categories
 
 ```bash
@@ -162,12 +261,6 @@ promptbeacon scan "Nike" \
   --category "sports brand"
 ```
 
-#### Increased Prompt Count
-
-```bash
-promptbeacon scan "Nike" --prompts 25
-```
-
 #### With Storage
 
 ```bash
@@ -175,15 +268,10 @@ promptbeacon scan "Nike" \
   --storage ~/.promptbeacon/nike.db
 ```
 
-#### JSON Output
+#### JSON / Markdown Output
 
 ```bash
 promptbeacon scan "Nike" --format json > report.json
-```
-
-#### Markdown Output
-
-```bash
 promptbeacon scan "Nike" --format markdown > report.md
 ```
 
@@ -200,6 +288,8 @@ promptbeacon scan "Nike" \
   --category "athletic wear" \
   --prompts 20 \
   --storage ~/.promptbeacon/nike.db \
+  --smart \
+  --assert-min-score 40 \
   --format text
 ```
 
@@ -223,56 +313,33 @@ promptbeacon compare BRAND --against COMPETITOR [OPTIONS]
 
 | Option | Short | Type | Default | Description |
 |--------|-------|------|---------|-------------|
-| `--against` | `-a` | TEXT | required | Competitor brand (can be used multiple times, at least one required) |
-| `--provider` | `-p` | TEXT | None | LLM provider (can be used multiple times) |
+| `--against` | `-a` | TEXT | required | Competitor brand (repeatable, at least one required) |
+| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
 | `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
+| `--demo` | | FLAG | false | Use demo mode |
 
 ### Examples
 
-#### Basic Comparison
-
 ```bash
+# Basic comparison
 promptbeacon compare "Nike" --against "Adidas"
-```
 
-Output includes competitor comparison table:
-```
-        Competitor Comparison
-┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┓
-┃ Brand       ┃ Visibility Score ┃ Mentions ┃ Positive % ┃
-┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━┩
-│ Nike        │ 73.5            │ 42      │ 67%       │
-│ Adidas      │ 68.2            │ 38      │ 64%       │
-└─────────────┴─────────────────┴─────────┴───────────┘
-```
-
-#### Multiple Competitors
-
-```bash
+# Multiple competitors
 promptbeacon compare "Nike" \
   --against "Adidas" \
   --against "Puma" \
-  --against "New Balance" \
-  --against "Under Armour"
-```
+  --against "New Balance"
 
-#### With Specific Providers
-
-```bash
+# JSON export
 promptbeacon compare "Nike" \
   --against "Adidas" \
-  --provider openai \
-  --provider anthropic
-```
-
-#### JSON Export
-
-```bash
-promptbeacon compare "Nike" \
-  --against "Adidas" \
-  --against "Puma" \
   --format json > comparison.json
+
+# Demo mode
+promptbeacon compare "Nike" --against "Adidas" --demo
 ```
+
+Output includes a competitor comparison table with scores, Share of Voice, and sentiment.
 
 ---
 
@@ -300,30 +367,55 @@ promptbeacon history BRAND [OPTIONS]
 
 ### Examples
 
-#### View 30-Day History
-
 ```bash
 promptbeacon history "Nike"
-```
-
-#### Custom Time Range
-
-```bash
 promptbeacon history "Nike" --days 90
-```
-
-#### Custom Storage Location
-
-```bash
-promptbeacon history "Nike" \
-  --storage /data/promptbeacon/nike.db \
-  --days 60
-```
-
-#### JSON Export
-
-```bash
 promptbeacon history "Nike" --format json > history.json
+```
+
+---
+
+## `dashboard`
+
+Generate a self-contained HTML dashboard with interactive charts: Share of Voice bar, score breakdown, sentiment donut, stability band (if stability data present), and optional history sparkline.
+
+### Usage
+
+```bash
+promptbeacon dashboard BRAND [OPTIONS]
+```
+
+### Arguments
+
+- `BRAND` (required): The brand name
+
+### Options
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
+| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
+| `--storage` | `-s` | PATH | None | DuckDB path (enables history sparkline) |
+| `--output` | `-o` | PATH | report.html | Output HTML file path |
+| `--demo` | | FLAG | false | Use demo mode |
+| `--no-open` | | FLAG | false | Do not auto-open in browser |
+| `--format` | `-f` | TEXT | html | Output format (currently only html) |
+
+### Examples
+
+```bash
+# Demo dashboard (no keys, auto-opens browser)
+promptbeacon dashboard "Nike" --demo -o report.html
+
+# Real scan with competitors
+promptbeacon dashboard "Nike" \
+  --competitor "Adidas" \
+  --provider openai \
+  --storage ~/.promptbeacon/nike.db \
+  -o nike_dashboard.html
+
+# Generate only, do not open browser
+promptbeacon dashboard "Nike" --demo -o report.html --no-open
 ```
 
 ---
@@ -359,13 +451,15 @@ Output:
 └────────────┴──────────────────┴────────────────────────┘
 ```
 
+Note: No API keys are required to use demo mode. The `demo` command and the `--demo` flag work without any configured providers.
+
 ---
 
 ## Output Formats
 
 ### Text Format (Default)
 
-Rich formatted output with tables, colors, score breakdown, and visual hierarchy. Best for terminal display.
+Rich formatted output with tables, colors, score breakdown, Share of Voice, and visual hierarchy. Best for terminal display.
 
 ```bash
 promptbeacon scan "Nike"
@@ -379,23 +473,27 @@ Machine-readable JSON for parsing and integration.
 promptbeacon scan "Nike" --format json
 ```
 
-Example output:
+Example output (abbreviated):
 ```json
 {
   "brand": "Nike",
   "visibility_score": 73.5,
   "mention_count": 42,
+  "share_of_voice": {
+    "target_share": 0.38,
+    "target_presence_rate": 0.85,
+    "target_rank": 1,
+    "aggregate": {
+      "Nike": {"share_of_voice": 0.38, "appearances": 34, "total_prompts": 40},
+      "Adidas": {"share_of_voice": 0.29, "appearances": 26, "total_prompts": 40}
+    }
+  },
   "sentiment_breakdown": {
     "positive": 0.67,
     "neutral": 0.28,
     "negative": 0.05
   },
-  "citation_summary": {
-    "total_citations": 5,
-    "unique_domains": ["nike.com", "runnersworld.com"],
-    "citations": [...]
-  },
-  "timestamp": "2026-02-06T10:30:00Z",
+  "timestamp": "2026-06-14T10:30:00Z",
   "scan_duration_seconds": 12.3
 }
 ```
@@ -407,6 +505,42 @@ Formatted Markdown for documentation and reports.
 ```bash
 promptbeacon scan "Nike" --format markdown
 ```
+
+---
+
+## Environment Variables
+
+### Provider API Keys
+
+Required for live scans; not needed for demo mode:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GOOGLE_API_KEY="..."
+export MISTRAL_API_KEY="..."
+export COHERE_API_KEY="..."
+export PERPLEXITY_API_KEY="pplx-..."
+```
+
+### Demo Mode Override
+
+Force demo mode for all commands (useful in CI without API keys):
+
+```bash
+export PROMPTBEACON_DEMO=1
+```
+
+---
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Error (configuration, scan failure, assertion failure, etc.) |
+
+CI assertion flags (`--assert-min-score`, `--assert-min-sov`, `--assert-min-stability`) return exit code `1` when thresholds are not met.
 
 ---
 
@@ -424,7 +558,6 @@ OUTPUT_DIR="./reports"
 
 mkdir -p "$OUTPUT_DIR"
 
-# Run scan with storage
 promptbeacon scan "$BRAND" \
   --storage ~/.promptbeacon/nike.db \
   --competitor "Adidas" \
@@ -432,9 +565,27 @@ promptbeacon scan "$BRAND" \
   --provider openai \
   --provider anthropic \
   --prompts 25 \
+  --assert-min-score 40 \
   --format json > "$OUTPUT_DIR/nike_$DATE.json"
 
 echo "Scan completed: $OUTPUT_DIR/nike_$DATE.json"
+```
+
+### Weekly Dashboard Generation
+
+```bash
+#!/bin/bash
+# weekly_dashboard.sh
+
+promptbeacon dashboard "Nike" \
+  --competitor "Adidas" \
+  --competitor "Puma" \
+  --provider openai \
+  --storage ~/.promptbeacon/nike.db \
+  -o "reports/nike_dashboard_$(date +%Y%m%d).html" \
+  --no-open
+
+echo "Dashboard saved"
 ```
 
 ### Multi-Brand Monitoring
@@ -481,32 +632,6 @@ fi
 
 ---
 
-## Environment Variables
-
-### Provider API Keys
-
-Required for provider access:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
-export MISTRAL_API_KEY="..."
-export COHERE_API_KEY="..."
-export PERPLEXITY_API_KEY="pplx-..."
-```
-
----
-
-## Exit Codes
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Error (configuration, scan failure, etc.) |
-
----
-
 ## Integration Examples
 
 ### With jq
@@ -517,9 +642,12 @@ Process JSON output with jq:
 # Extract visibility score
 promptbeacon scan "Nike" --format json | jq '.visibility_score'
 
-# Get competitor scores
-promptbeacon compare "Nike" --against "Adidas" --format json | \
-  jq '.competitor_comparison | to_entries[] | "\(.key): \(.value.visibility_score)"'
+# Get Share of Voice
+promptbeacon scan "Nike" --format json | jq '.share_of_voice.target_share'
+
+# Get competitor SoV breakdown
+promptbeacon scan "Nike" --format json | \
+  jq '.share_of_voice.aggregate | to_entries[] | "\(.key): \(.value.share_of_voice)"'
 
 # Filter high-priority recommendations
 promptbeacon scan "Nike" --format json | \
@@ -528,17 +656,6 @@ promptbeacon scan "Nike" --format json | \
 # List cited sources
 promptbeacon scan "Nike" --format json | \
   jq '.citation_summary.citations[] | .source_name'
-```
-
-### With curl for API Integration
-
-```bash
-# Post results to webhook
-REPORT=$(promptbeacon scan "Nike" --format json)
-
-curl -X POST https://api.example.com/reports \
-  -H "Content-Type: application/json" \
-  -d "$REPORT"
 ```
 
 ---
@@ -551,7 +668,6 @@ curl -X POST https://api.example.com/reports \
 
 **Solution:**
 ```bash
-# Ensure package is installed
 pip install promptbeacon
 
 # Or with uv
@@ -561,17 +677,20 @@ uv add promptbeacon
 python -m promptbeacon --help
 ```
 
-### Provider Not Configured
+### No API Keys (Live Scan Fails)
 
 **Problem:** `Error: No API keys found for configured providers`
 
-**Solution:**
-```bash
-# Check provider status
-promptbeacon providers
+**Solution:** Use demo mode, or set at least one key:
 
-# Set missing API keys
+```bash
+# Demo mode (no keys needed)
+promptbeacon demo "Nike"
+promptbeacon scan "Nike" --demo
+
+# Or set a provider key
 export OPENAI_API_KEY="sk-..."
+promptbeacon providers  # verify configuration
 ```
 
 ### Timeout Errors
@@ -595,3 +714,4 @@ promptbeacon scan "Nike" --prompts 5
 - [Examples](examples.md) - Real-world usage patterns
 - [Storage Guide](storage.md) - Historical tracking details
 - [Provider Configuration](providers.md) - API key setup
+- [Advanced Usage](advanced.md) - CI/CD, stability, smart mode

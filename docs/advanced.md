@@ -12,6 +12,10 @@ Advanced patterns and techniques for power users of PromptBeacon.
 - [Performance Optimization](#performance-optimization)
 - [Integration Patterns](#integration-patterns)
 - [Custom Scoring](#custom-scoring)
+- [Stability & Confidence](#stability-confidence)
+- [Smart Mode (LLM Extraction & Recommendations)](#smart-mode-llm-extraction-recommendations)
+- [CI/CD: Gate Deploys on AI Visibility](#cicd-gate-deploys-on-ai-visibility)
+- [Real-Time Brand Safety](#real-time-brand-safety)
 
 ---
 
@@ -94,31 +98,6 @@ beacon_fr = (
     .with_prompts(french_prompts)
     .with_categories("chaussures de course")
 )
-```
-
-### Targeted Prompts
-
-```python
-# Price-focused
-price_prompts = [
-    "What's the most affordable {category} brand?",
-    "Which {category} offers the best value?",
-    "What are budget-friendly {category} options?",
-]
-
-# Quality-focused
-quality_prompts = [
-    "What's the highest quality {category} brand?",
-    "Which {category} is known for durability?",
-    "What {category} brand do professionals use?",
-]
-
-# Innovation-focused
-innovation_prompts = [
-    "What's the most innovative {category} brand?",
-    "Which {category} company is leading in technology?",
-    "What {category} brand has the best features?",
-]
 ```
 
 ---
@@ -250,50 +229,6 @@ results = asyncio.run(batch_scan(brands))
 print(f"Scanned {len(results)} brands")
 ```
 
-### Multi-Category Batch Analysis
-
-```python
-from promptbeacon import Beacon
-from itertools import product
-
-def batch_category_analysis(brand: str, categories: list[str]):
-    """Analyze brand across multiple categories."""
-    results = {}
-
-    for category in categories:
-        beacon = (
-            Beacon(brand)
-            .with_categories(category)
-            .with_prompt_count(15)
-        )
-
-        report = beacon.scan()
-        results[category] = {
-            "score": report.visibility_score,
-            "mentions": report.mention_count,
-            "sentiment": report.sentiment_breakdown.positive,
-        }
-
-    return results
-
-# Usage
-categories = [
-    "running shoes",
-    "athletic wear",
-    "sports equipment",
-    "fitness apparel",
-    "training gear",
-]
-
-results = batch_category_analysis("Nike", categories)
-
-for category, metrics in results.items():
-    print(f"\n{category}:")
-    print(f"  Score: {metrics['score']:.1f}")
-    print(f"  Mentions: {metrics['mentions']}")
-    print(f"  Positive: {metrics['sentiment']:.0%}")
-```
-
 ### Competitive Matrix
 
 ```python
@@ -312,7 +247,6 @@ async def competitive_matrix(brands: list[str], categories: list[str]):
         report = await beacon.scan_async()
         return (brand, category, report.visibility_score)
 
-    # Generate all combinations
     tasks = [
         scan_brand_category(brand, category)
         for brand in brands
@@ -321,7 +255,6 @@ async def competitive_matrix(brands: list[str], categories: list[str]):
 
     results = await asyncio.gather(*tasks)
 
-    # Create DataFrame
     data = {
         "Brand": [r[0] for r in results],
         "Category": [r[1] for r in results],
@@ -345,82 +278,6 @@ print(matrix)
 
 ## Custom Analysis
 
-### Sentiment Deep Dive
-
-```python
-from promptbeacon import Beacon
-from collections import Counter
-
-def sentiment_analysis(brand: str):
-    """Detailed sentiment analysis."""
-    beacon = (
-        Beacon(brand)
-        .with_prompt_count(25)
-        .with_categories("product quality", "customer service", "value")
-    )
-
-    report = beacon.scan()
-
-    # Analyze by category
-    category_sentiment = {}
-
-    for result in report.provider_results:
-        for mention in result.mentions:
-            if mention.brand_name.lower() == brand.lower():
-                category = extract_category(result.prompt)
-                if category not in category_sentiment:
-                    category_sentiment[category] = []
-                category_sentiment[category].append(mention.sentiment)
-
-    # Calculate sentiment by category
-    for category, sentiments in category_sentiment.items():
-        sentiment_counts = Counter(sentiments)
-        total = len(sentiments)
-
-        print(f"\n{category}:")
-        print(f"  Positive: {sentiment_counts['positive']/total:.0%}")
-        print(f"  Neutral: {sentiment_counts['neutral']/total:.0%}")
-        print(f"  Negative: {sentiment_counts['negative']/total:.0%}")
-
-def extract_category(prompt: str) -> str:
-    """Extract category from prompt."""
-    # Simple extraction - customize based on your prompts
-    for word in ["quality", "service", "value", "price"]:
-        if word in prompt.lower():
-            return word
-    return "general"
-
-sentiment_analysis("Nike")
-```
-
-### Position Analysis
-
-```python
-from promptbeacon import Beacon
-import statistics
-
-def position_analysis(brand: str):
-    """Analyze brand mention positions."""
-    beacon = Beacon(brand).with_prompt_count(20)
-    report = beacon.scan()
-
-    positions = []
-    for result in report.provider_results:
-        for mention in result.mentions:
-            if mention.brand_name.lower() == brand.lower():
-                positions.append(mention.position)
-
-    if positions:
-        print(f"\n{brand} Position Analysis:")
-        print(f"  Average position: {statistics.mean(positions):.1f}")
-        print(f"  Median position: {statistics.median(positions):.1f}")
-        print(f"  Best position: {min(positions)}")
-        print(f"  Worst position: {max(positions)}")
-        print(f"  First mentions: {sum(1 for p in positions if p == 0)}")
-
-position_analysis("Nike")
-```
-
 ### Provider Comparison
 
 ```python
@@ -437,7 +294,6 @@ def provider_comparison(brand: str):
 
     report = beacon.scan()
 
-    # Aggregate by provider
     provider_stats = defaultdict(lambda: {"mentions": 0, "positive": 0, "total": 0})
 
     for result in report.provider_results:
@@ -449,7 +305,6 @@ def provider_comparison(brand: str):
                 if mention.sentiment == "positive":
                     provider_stats[provider]["positive"] += 1
 
-    # Display results
     print(f"\n{brand} by Provider:")
     for provider, stats in provider_stats.items():
         if stats["total"] > 0:
@@ -457,6 +312,10 @@ def provider_comparison(brand: str):
             print(f"\n{provider}:")
             print(f"  Mentions: {stats['mentions']}")
             print(f"  Positive rate: {positive_rate:.0%}")
+
+    # Also compare SoV per provider
+    for provider_name, provider_sov in report.share_of_voice.by_provider.items():
+        print(f"\n{provider_name} SoV: {provider_sov.target_share:.0%}")
 
 provider_comparison("Nike")
 ```
@@ -479,7 +338,7 @@ from promptbeacon.core.exceptions import (
 import time
 
 def robust_scan(brand: str, max_retries: int = 3):
-    """Scan with comprehensive error handling."""
+    """Scan with comprehensive error handling, demo fallback."""
     for attempt in range(max_retries):
         try:
             beacon = Beacon(brand).with_providers(Provider.OPENAI)
@@ -488,72 +347,31 @@ def robust_scan(brand: str, max_retries: int = 3):
 
         except ConfigurationError as e:
             print(f"Configuration error: {e}")
-            print("Please set OPENAI_API_KEY")
-            return None
+            print("Falling back to demo mode")
+            return Beacon(brand).demo().scan()
 
         except ProviderAuthenticationError as e:
             print(f"Authentication failed: {e}")
-            print("Check your API key")
             return None
 
         except ProviderRateLimitError as e:
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff
+                wait_time = 2 ** attempt
                 print(f"Rate limit hit. Waiting {wait_time}s...")
                 time.sleep(wait_time)
             else:
                 print("Rate limit exceeded after retries")
                 return None
 
-        except ProviderAPIError as e:
-            if attempt < max_retries - 1:
-                print(f"API error: {e}. Retrying...")
-                time.sleep(2)
-            else:
-                print("API error after retries")
-                return None
-
         except ScanError as e:
             print(f"Scan failed: {e}")
             return None
 
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            return None
-
     return None
 
-# Usage
 report = robust_scan("Nike")
 if report:
     print(f"Score: {report.visibility_score:.1f}")
-```
-
-### Fallback Providers
-
-```python
-from promptbeacon import Beacon, Provider
-from promptbeacon.core.exceptions import ProviderError
-
-def scan_with_fallback(brand: str):
-    """Try multiple providers with fallback."""
-    providers = [Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE]
-
-    for provider in providers:
-        try:
-            beacon = Beacon(brand).with_providers(provider)
-            report = beacon.scan()
-            print(f"Successfully scanned with {provider.value}")
-            return report
-
-        except ProviderError as e:
-            print(f"{provider.value} failed: {e}")
-            continue
-
-    print("All providers failed")
-    return None
-
-report = scan_with_fallback("Nike")
 ```
 
 ---
@@ -575,42 +393,9 @@ report1 = beacon.scan()
 
 # Second scan - uses cached responses (instant, free)
 report2 = beacon.scan()
-
-# Custom TTL (1 hour) and cache directory
-beacon = Beacon("Nike").with_cache(
-    cache_dir="~/.promptbeacon/cache",
-    ttl_seconds=3600,
-)
 ```
 
-The cache is keyed by `(prompt, provider, model)`, so changing providers or prompts will trigger fresh queries. Cached responses are stored as JSON files in the cache directory.
-
-### Parallel Processing with multiprocessing
-
-```python
-from multiprocessing import Pool
-from promptbeacon import Beacon
-
-def scan_brand(brand: str) -> tuple[str, float]:
-    """Scan a single brand."""
-    beacon = Beacon(brand)
-    report = beacon.scan()
-    return brand, report.visibility_score
-
-def parallel_scan(brands: list[str], num_workers: int = 4):
-    """Scan brands in parallel using multiprocessing."""
-    with Pool(processes=num_workers) as pool:
-        results = pool.map(scan_brand, brands)
-
-    return dict(results)
-
-# Usage
-brands = ["Nike", "Adidas", "Puma", "New Balance", "Under Armour"]
-scores = parallel_scan(brands, num_workers=4)
-
-for brand, score in scores.items():
-    print(f"{brand}: {score:.1f}")
-```
+The cache is keyed by `(prompt, provider, model)`, so changing providers or prompts will trigger fresh queries. Note that stability scans intentionally bypass the cache — each run must be a fresh query.
 
 ### Optimized Configuration
 
@@ -653,11 +438,12 @@ def send_to_slack(webhook_url: str, brand: str):
     beacon = Beacon(brand).with_competitors("Competitor A", "Competitor B")
     report = beacon.scan()
 
-    # Format message
+    sov = report.share_of_voice
     message = f"""
     *Visibility Report: {brand}*
 
     Score: *{report.visibility_score:.1f}/100*
+    Share of Voice: *{sov.target_share:.0%}* (rank #{sov.target_rank})
     Mentions: {report.mention_count}
     Sentiment: {report.sentiment_breakdown.positive:.0%} positive
 
@@ -673,14 +459,13 @@ def send_to_slack(webhook_url: str, brand: str):
 
     return response.status_code == 200
 
-# Usage
 send_to_slack("https://hooks.slack.com/services/YOUR/WEBHOOK/URL", "Nike")
 ```
 
 ### API Endpoint
 
 ```python
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI
 from promptbeacon import Beacon
 from pydantic import BaseModel
 
@@ -690,10 +475,12 @@ class ScanRequest(BaseModel):
     brand: str
     competitors: list[str] = []
     prompt_count: int = 10
+    demo: bool = False
 
 class ScanResponse(BaseModel):
     brand: str
     visibility_score: float
+    share_of_voice: float
     mention_count: int
     sentiment_positive: float
 
@@ -702,76 +489,22 @@ async def scan_brand(request: ScanRequest):
     """API endpoint for brand scanning."""
     beacon = Beacon(request.brand)
 
+    if request.demo:
+        beacon = beacon.demo()
+
     if request.competitors:
         beacon = beacon.with_competitors(*request.competitors)
 
     beacon = beacon.with_prompt_count(request.prompt_count)
-
     report = await beacon.scan_async()
 
     return ScanResponse(
         brand=report.brand,
         visibility_score=report.visibility_score,
+        share_of_voice=report.share_of_voice.target_share,
         mention_count=report.mention_count,
         sentiment_positive=report.sentiment_breakdown.positive,
     )
-
-# Run with: uvicorn script:app --reload
-```
-
-### Dashboard Integration
-
-```python
-from promptbeacon import Beacon
-import streamlit as st
-import plotly.graph_objects as go
-
-def create_dashboard(brand: str):
-    """Create interactive dashboard with Streamlit."""
-    st.title(f"{brand} Visibility Dashboard")
-
-    # Sidebar configuration
-    competitors = st.sidebar.text_input("Competitors (comma-separated)").split(",")
-    prompt_count = st.sidebar.slider("Prompts per category", 5, 50, 10)
-
-    if st.sidebar.button("Run Scan"):
-        with st.spinner("Scanning..."):
-            beacon = Beacon(brand).with_storage("~/.promptbeacon/data.db")
-
-            if competitors and competitors[0]:
-                beacon = beacon.with_competitors(*competitors)
-
-            beacon = beacon.with_prompt_count(prompt_count)
-            report = beacon.scan()
-
-            # Display score
-            st.metric("Visibility Score", f"{report.visibility_score:.1f}")
-
-            # Sentiment chart
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=["Positive", "Neutral", "Negative"],
-                    y=[
-                        report.sentiment_breakdown.positive,
-                        report.sentiment_breakdown.neutral,
-                        report.sentiment_breakdown.negative,
-                    ]
-                )
-            ])
-            st.plotly_chart(fig)
-
-            # Historical trend
-            history = beacon.get_history(days=30)
-            if history.data_points:
-                dates = [dp.timestamp for dp in history.data_points]
-                scores = [dp.visibility_score for dp in history.data_points]
-
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=dates, y=scores, mode="lines+markers"))
-                st.plotly_chart(fig)
-
-# Run with: streamlit run script.py
-create_dashboard("Nike")
 ```
 
 ---
@@ -807,92 +540,281 @@ print(f"Recommendation: {bd.recommendation:.0f}/100")
 print(f"Weighted total: {report.visibility_score:.1f}/100")
 ```
 
-### Fully Custom Scoring
+---
 
-For completely custom scoring logic, use the raw data from the report:
+## Stability & Confidence
+
+Stability scanning answers the question: "Does AI mention my brand consistently, or does it flip-flop?" It runs the full scan N times and computes a `StabilityReport`.
+
+### Running a Stability Scan
 
 ```python
 from promptbeacon import Beacon
 
-def custom_weighted_score(report) -> float:
-    """Calculate custom weighted visibility score."""
-    weights = {
-        "visibility": 0.4,
-        "sentiment": 0.3,
-        "position": 0.2,
-        "recommendations": 0.1,
-    }
+report = (
+    Beacon("Nike")
+    .with_competitors("Adidas", "Puma")
+    .with_stability(5)         # Run 5 times
+    .with_temperature(0.7)     # Non-zero temperature required
+    .scan_stability()
+)
 
-    visibility_component = report.visibility_score * weights["visibility"]
-
-    sentiment_score = (
-        report.sentiment_breakdown.positive * 100
-        - report.sentiment_breakdown.negative * 50
-    )
-    sentiment_component = sentiment_score * weights["sentiment"]
-
-    avg_position = report.metrics.average_position or 5.0
-    position_score = max(0, 100 - (avg_position * 10))
-    position_component = position_score * weights["position"]
-
-    rec_rate = report.metrics.recommendation_rate * 100
-    rec_component = rec_rate * weights["recommendations"]
-
-    return round(
-        visibility_component + sentiment_component + position_component + rec_component,
-        1,
-    )
-
-beacon = Beacon("Nike")
-report = beacon.scan()
-
-print(f"Standard score: {report.visibility_score:.1f}")
-print(f"Custom score: {custom_weighted_score(report):.1f}")
+s = report.stability
+print(f"Stability score: {s.stability_score:.1f}/100")
+print(f"Rating: {s.volatility.stability_rating}")  # stable / moderate / volatile
+print(f"95% CI: [{s.score_confidence_interval[0]:.1f}, {s.score_confidence_interval[1]:.1f}]")
+print(f"Per-run scores: {[f'{x:.1f}' for x in s.score_per_run]}")
+print(f"Presence consistency: {s.overall_presence_consistency:.0%}")
+print(f"Flip-flops: {s.flip_flop_count}")
 ```
 
-### Category-Specific Scoring
+CLI equivalent:
+
+```bash
+promptbeacon scan "Nike" --stability 5
+# short form:
+promptbeacon scan "Nike" -r 5
+```
+
+### Important Warnings
+
+- **Cost**: Multiplies API calls (and cost) by N. A 10-prompt scan with `--stability 5` makes 50 API calls.
+- **Cache**: Stability scans bypass the response cache intentionally. Each run must query providers fresh.
+- **Temperature**: Use a non-zero temperature (e.g., `0.7`). At `temperature=0`, all runs will produce identical results and the stability score will be artificially inflated.
+
+### Async Stability Scan
 
 ```python
-def category_specific_analysis(brand: str, categories: list[str]):
-    """Analyze brand with category-specific scoring."""
-    scores = {}
+import asyncio
+from promptbeacon import Beacon
 
-    for category in categories:
-        beacon = (
-            Beacon(brand)
-            .with_categories(category)
-            .with_prompt_count(15)
-        )
+async def main():
+    report = await (
+        Beacon("Nike")
+        .with_stability(5)
+        .scan_stability_async()
+    )
+    print(f"Stability: {report.stability.stability_score:.1f}/100")
 
-        report = beacon.scan()
-
-        # Custom scoring per category
-        if "price" in category.lower() or "value" in category.lower():
-            # For price categories, weight sentiment higher
-            score = (
-                report.visibility_score * 0.3 +
-                report.sentiment_breakdown.positive * 70
-            )
-        elif "quality" in category.lower():
-            # For quality, weight recommendations higher
-            score = (
-                report.visibility_score * 0.4 +
-                report.metrics.recommendation_rate * 60
-            )
-        else:
-            score = report.visibility_score
-
-        scores[category] = round(score, 1)
-
-    return scores
-
-# Usage
-categories = ["product quality", "pricing value", "customer service"]
-scores = category_specific_analysis("Nike", categories)
-
-for category, score in scores.items():
-    print(f"{category}: {score:.1f}")
+asyncio.run(main())
 ```
+
+### Interpreting Stability
+
+| Stability Score | Rating | Meaning |
+|----------------|--------|---------|
+| 80-100 | stable | AI consistently mentions your brand |
+| 50-79 | moderate | Presence varies run to run |
+| 0-49 | volatile | AI rarely or inconsistently mentions your brand |
+
+A high `flip_flop_count` means the brand appears in some runs but not others for the same prompt — often a sign of marginal awareness that is sensitive to LLM temperature and prompt phrasing.
+
+---
+
+## Smart Mode (LLM Extraction & Recommendations)
+
+Smart mode replaces regex-based extraction and rule-based recommendations with LLM calls that use structured output. It is opt-in and adds one extra API call per smart operation.
+
+### Smart Extraction
+
+Use an LLM to extract mentions and sentiment rather than regex:
+
+```python
+from promptbeacon import Beacon
+
+report = (
+    Beacon("Nike")
+    .with_smart_extraction()   # LLM extraction
+    .scan()
+)
+
+# Mentions are extracted with higher accuracy on complex responses
+for result in report.provider_results:
+    for mention in result.mentions:
+        print(f"{mention.brand_name}: {mention.sentiment} (confidence: {mention.confidence:.2f})")
+```
+
+### Smart Recommendations
+
+Generate evidence-linked, prioritized recommendations via LLM:
+
+```python
+from promptbeacon import Beacon
+
+report = (
+    Beacon("Nike")
+    .with_smart_recommendations()
+    .scan()
+)
+
+for rec in report.recommendations:
+    print(f"[{rec.priority.upper()}] {rec.action}")
+    print(f"  Rationale: {rec.rationale}")
+    print(f"  Expected impact: {rec.expected_impact}")
+```
+
+### Enable Both
+
+```python
+report = (
+    Beacon("Nike")
+    .with_smart_extraction()
+    .with_smart_recommendations()
+    .scan()
+)
+```
+
+CLI equivalent (enables both):
+
+```bash
+promptbeacon scan "Nike" --smart
+```
+
+### Notes
+
+- Smart mode is **not** used in demo mode (`.demo()`)
+- Falls back gracefully to regex/rule-based on error (no exception raised)
+- Requires at least one provider API key
+- Adds approximately one extra LLM call per feature enabled
+
+---
+
+## CI/CD: Gate Deploys on AI Visibility
+
+PromptBeacon provides three layers of CI integration: a Python assertion API, a pytest plugin, and a GitHub Action composite workflow.
+
+### 1. Assertion API
+
+Call `report.assert_visibility(...)` to fail fast when brand health drops below thresholds. It raises `VisibilityAssertionError` (an `AssertionError` subclass) listing all unmet thresholds:
+
+```python
+from promptbeacon import Beacon
+from promptbeacon.core.exceptions import VisibilityAssertionError
+import sys
+
+report = Beacon("Nike").with_competitors("Adidas", "Puma").scan()
+
+try:
+    report.assert_visibility(
+        min_score=40,
+        min_share_of_voice=0.15,
+        min_presence_rate=0.5,
+        max_rank=3,
+    )
+    print("Visibility check passed")
+except VisibilityAssertionError as e:
+    print("Visibility check failed:")
+    for failure in e.failures:
+        print(f"  - {failure}")
+    sys.exit(1)
+```
+
+CLI flags on `scan` command:
+
+```bash
+promptbeacon scan "Nike" \
+  --assert-min-score 40 \
+  --assert-min-sov 0.15 \
+  --assert-min-stability 70   # requires --stability N
+```
+
+Exit code is `1` on assertion failure, `0` on success.
+
+### 2. Pytest Plugin
+
+The pytest plugin auto-registers via the `promptbeacon` entry point — no import needed. Use the `@pytest.mark.visibility` mark to run a scan and assert thresholds:
+
+```python
+# test_brand_visibility.py
+import pytest
+
+@pytest.mark.visibility(
+    brand="Nike",
+    competitors=["Adidas", "Puma"],
+    min_score=40,
+    min_share_of_voice=0.15,
+    demo=True,   # Use demo mode (no keys needed in CI)
+)
+def test_nike_visibility():
+    pass  # Assertion is performed by the plugin; test body is optional
+
+@pytest.mark.visibility(brand="Nike", min_score=50)
+def test_nike_score_threshold():
+    pass
+```
+
+A `beacon` fixture factory is also available for custom assertions:
+
+```python
+def test_custom_visibility_check(beacon):
+    report = beacon("Nike", competitors=["Adidas"]).scan()
+    assert report.visibility_score >= 30
+    assert report.share_of_voice.target_rank <= 2
+```
+
+**Demo mode in CI**: Tests skip cleanly when no API keys are present and `demo=True` is not set. Set the environment variable `PROMPTBEACON_DEMO=1` to force demo mode for all visibility tests in CI without API keys:
+
+```bash
+PROMPTBEACON_DEMO=1 pytest tests/
+```
+
+Run the tests:
+
+```bash
+pip install 'promptbeacon[test]'
+pytest tests/test_brand_visibility.py -v
+```
+
+### 3. GitHub Action
+
+A composite GitHub Action lives at the repository root `action.yml`. Use it to gate any workflow on AI visibility:
+
+```yaml
+# .github/workflows/brand-check.yml
+name: AI Visibility Gate
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1'   # Weekly on Monday morning
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check AI visibility
+        uses: yotambraun/promptbeacon@v1
+        with:
+          brand: "Nike"
+          competitors: "Adidas,Puma,New Balance"
+          providers: "openai,anthropic"
+          min-score: "40"
+          min-share-of-voice: "0.15"
+          stability: "3"
+          min-stability: "60"
+          demo: "false"   # set to "true" to use demo mode (no keys)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+**Action inputs:**
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `brand` | yes | Brand to check |
+| `competitors` | no | Comma-separated competitor list |
+| `providers` | no | Comma-separated provider list |
+| `min-score` | no | Minimum visibility score (0-100) |
+| `min-share-of-voice` | no | Minimum SoV (0-1) |
+| `stability` | no | Number of stability runs |
+| `min-stability` | no | Minimum stability score (0-100) |
+| `demo` | no | Use demo mode (`"true"`/`"false"`) |
+
+The action exits with code `1` if any threshold is not met, failing the workflow.
 
 ---
 
@@ -900,7 +822,7 @@ for category, score in scores.items():
 
 ### BeaconGuard Basics
 
-BeaconGuard analyzes LLM outputs for brand safety concerns. It's synchronous, uses no API calls, and processes everything locally:
+BeaconGuard analyzes LLM outputs for brand safety concerns. It is synchronous, uses no API calls, and processes everything locally:
 
 ```python
 from promptbeacon import BeaconGuard
@@ -963,13 +885,11 @@ from promptbeacon.integrations.middleware import BeaconGuardMiddleware
 guard = BeaconGuard("Acme", competitors=["CompetitorX"])
 
 def handle_risk(result):
-    # Log, alert, or block the response
     if result.is_anti_recommendation:
         raise ValueError(f"Blocked: anti-recommendation detected")
 
 middleware = BeaconGuardMiddleware(guard, on_high_risk=handle_risk)
 
-# In your LLM pipeline:
 llm_output = get_llm_response(prompt)
 result = middleware(llm_output)
 # result.risk_level tells you if the output is safe

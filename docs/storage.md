@@ -2,6 +2,8 @@
 
 PromptBeacon uses DuckDB for local-first historical data storage. This guide covers setup, usage, and advanced storage patterns.
 
+Every scan computes Share of Voice (`report.share_of_voice`) and, when you run a stability scan, stability data (`report.stability`) on the returned `Report`. Storage persists the core trend fields — visibility score, mention count, sentiment, cost, providers, plus per-provider results, mentions, competitor scores, and citations. Share of Voice and stability are **not yet persisted** to the database (they're available on the in-memory report); persisting them for historical trends is on the [roadmap](https://github.com/yotambraun/promptbeacon/blob/main/TODO.md).
+
 ## Why DuckDB?
 
 DuckDB provides:
