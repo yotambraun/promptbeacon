@@ -9,12 +9,21 @@
 </p>
 
 <p align="center">
+  <a href="https://yotambraun.github.io/promptbeacon/"><img src="https://img.shields.io/badge/docs-online-6366f1?logo=readthedocs&logoColor=white" alt="Documentation"></a>
   <a href="https://pypi.org/project/promptbeacon/"><img src="https://badge.fury.io/py/promptbeacon.svg" alt="PyPI version"></a>
   <a href="https://pepy.tech/project/promptbeacon"><img src="https://static.pepy.tech/badge/promptbeacon" alt="Downloads"></a>
   <a href="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml"><img src="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
   <a href="https://codecov.io/gh/yotambraun/promptbeacon"><img src="https://codecov.io/gh/yotambraun/promptbeacon/branch/main/graph/badge.svg" alt="codecov"></a>
+</p>
+
+<p align="center">
+  <b>📖 <a href="https://yotambraun.github.io/promptbeacon/">Documentation</a></b>
+  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/quickstart/">Quickstart</a>
+  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/examples/">Examples</a>
+  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/api-reference/">API Reference</a>
+  &nbsp;·&nbsp; <a href="https://pypi.org/project/promptbeacon/">PyPI</a>
 </p>
 
 ---
@@ -47,6 +56,9 @@ report = Beacon("Nike").demo().with_competitors("Adidas", "Puma").scan()
 print(f"Visibility:      {report.visibility_score}/100")
 print(f"Share of Voice:  {report.share_of_voice.target_share:.0%} (rank {report.share_of_voice.target_rank})")
 ```
+
+> [!TIP]
+> Liked that? The **[documentation](https://yotambraun.github.io/promptbeacon/)** covers Share of Voice, stability scoring, smart mode, and wiring PromptBeacon into your CI — every example runs keyless. New here → [Quickstart](https://yotambraun.github.io/promptbeacon/quickstart/).
 
 ## Why PromptBeacon
 
