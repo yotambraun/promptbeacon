@@ -48,3 +48,33 @@ def test_demo_scan_no_keys_produces_report():
     assert "Adidas" in report.share_of_voice.aggregate
     assert set(report.providers_used) == {"openai", "anthropic"}
     assert report.total_cost_usd in (None, 0.0)
+
+
+def test_demo_scan_labels_tier_and_populates_source_attribution():
+    report = (
+        Beacon("Nike")
+        .with_competitors("Adidas", "Puma")
+        .with_categories("running shoes")
+        .with_prompt_count(10)
+        .demo()
+        .scan()
+    )
+    # Honesty label: demo data is clearly marked, not passed off as real.
+    assert report.measurement_tier == "demo"
+
+    sa = report.source_attribution
+    assert sa is not None
+    # Demo answers weave in citations, so attribution should be non-empty.
+    assert sa.total_citations > 0
+    assert len(sa.entries) > 0
+    # Entries are ranked by citation count (descending).
+    counts = [e.citations for e in sa.entries]
+    assert counts == sorted(counts, reverse=True)
+    # by_type sums to the total citation count.
+    assert sum(sa.by_type.values()) == sa.total_citations
+
+
+def test_with_grounding_is_chainable_and_sets_flag():
+    beacon = Beacon("Nike").with_grounding()
+    assert beacon._grounded is True
+    assert Beacon("Nike")._measurement_tier() == "base_model"

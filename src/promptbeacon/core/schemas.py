@@ -41,6 +41,25 @@ class Citation(BaseModel):
         default=None,
         description="Brand name nearest to this citation, if any",
     )
+    source_rank: int | None = Field(
+        default=None,
+        description="Rank of this source among the engine's retrieved results "
+        "(grounded mode only; None when unknown)",
+    )
+    source_type: str | None = Field(
+        default=None,
+        description="Classified source type (web, news, reddit, wikipedia, "
+        "academic, review, social, code, video, attribution)",
+    )
+    query: str | None = Field(
+        default=None,
+        description="The prompt or sub-query that surfaced this citation",
+    )
+    retrieved_but_uncited: bool = Field(
+        default=False,
+        description="True if the engine retrieved this source but did not cite it "
+        "in the final answer (grounded/funnel mode only)",
+    )
 
 
 class CitationSummary(BaseModel):
@@ -49,6 +68,57 @@ class CitationSummary(BaseModel):
     total_citations: int = Field(default=0, ge=0)
     unique_domains: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(default_factory=list)
+
+
+class SourceAttributionEntry(BaseModel):
+    """How much a single source domain contributes to AI-search visibility."""
+
+    domain: str = Field(..., description="Source domain or attribution name")
+    source_type: str = Field(
+        default="web", description="Classified source type (see Citation.source_type)"
+    )
+    citations: int = Field(default=0, ge=0, description="Citations from this source")
+    share: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="citations / total citations across all sources",
+    )
+    brands_cited: list[str] = Field(
+        default_factory=list,
+        description="Distinct brands associated with citations from this source",
+    )
+    cites_target: bool = Field(
+        default=False,
+        description="True if the target brand was associated with this source",
+    )
+
+
+class SourceAttributionReport(BaseModel):
+    """Which source domains drive (or are missing from) AI-search visibility.
+
+    Web-grounded AI answers cite their sources; this aggregates those citations
+    by domain so you can see which sites the engines trust for your category —
+    the actionable GEO lever ("get cited on these sites"). Surfaces the
+    Reddit/Wikipedia/news concentration that decides most brand visibility.
+    """
+
+    target_brand: str = Field(..., description="The brand being analyzed")
+    total_citations: int = Field(default=0, ge=0)
+    entries: list[SourceAttributionEntry] = Field(
+        default_factory=list,
+        description="Source domains ranked by citation count (descending)",
+    )
+    by_type: dict[str, int] = Field(
+        default_factory=dict,
+        description="Citation counts grouped by source type",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def target_cited_domains(self) -> list[str]:
+        """Domains whose citations were associated with the target brand."""
+        return [e.domain for e in self.entries if e.cites_target]
 
 
 class ProviderResult(BaseModel):
@@ -361,6 +431,17 @@ class Report(BaseModel):
     stability: StabilityReport | None = Field(
         default=None,
         description="Run-to-run stability of the visibility score (if measured)",
+    )
+    source_attribution: SourceAttributionReport | None = Field(
+        default=None,
+        description="Which source domains the engines cite for this brand/category",
+    )
+    measurement_tier: Literal["demo", "base_model", "api_grounded"] = Field(
+        default="base_model",
+        description="How this scan was measured: 'demo' (mock data), 'base_model' "
+        "(LLM completion, no web search — measures training memory), or "
+        "'api_grounded' (provider web search — approximates, but does NOT equal, "
+        "the consumer product).",
     )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     scan_duration_seconds: float = Field(default=0.0, ge=0)

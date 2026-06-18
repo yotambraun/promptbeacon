@@ -48,10 +48,15 @@ _NEGATIVE = [
     "A few reviewers suggest looking beyond {brand} for better alternatives.",
 ]
 
+# Realistic, varied sources so demo source-attribution mirrors the real GEO
+# landscape (Reddit/Wikipedia/news/review dominate AI citations). These are
+# illustrative URLs on real domains — no real page is fetched in demo mode.
 _SOURCES = [
-    ("TechRadar", "https://example.com/reviews"),
-    ("Consumer Reports", "https://example.com/guide"),
-    ("Wirecutter", "https://example.com/best-picks"),
+    ("Reddit", "https://www.reddit.com/r/BuyItForLife"),
+    ("Wikipedia", "https://en.wikipedia.org/wiki/Comparison_of_brands"),
+    ("Consumer Reports", "https://www.consumerreports.org/best"),
+    ("The New York Times", "https://www.nytimes.com/wirecutter/reviews"),
+    ("CNBC Select", "https://www.cnbc.com/select/best"),
 ]
 
 
@@ -130,10 +135,23 @@ def build_demo_response(
         leader = field[0] if field else "established brands"
         lines.append(f"Overall, {leader} is often considered a strong choice.")
 
-    if _seed(prompt, variation, "cite") % 100 < 30:
+    cite_roll = _seed(prompt, variation, "cite") % 100
+    if cite_roll < 55:
         name, url = _SOURCES[_seed(prompt, variation, "src") % len(_SOURCES)]
-        lines.append(
-            f"According to {name}, these picks lead the {topic} market ({url})."
-        )
+        if brand_mentioned and cite_roll < 28:
+            # Citation that names the brand -> source gets attributed to it.
+            lines.append(
+                f"According to {name}, {brand} ranks among the top "
+                f"{topic} picks ({url})."
+            )
+        else:
+            lines.append(
+                f"According to {name}, these picks lead the {topic} market ({url})."
+            )
+        # ~35% of cited answers reference a second, distinct source.
+        if _seed(prompt, variation, "cite2") % 100 < 35:
+            name2, url2 = _SOURCES[_seed(prompt, variation, "src2") % len(_SOURCES)]
+            if url2 != url:
+                lines.append(f"{name2} reaches a similar conclusion ({url2}).")
 
     return "\n".join(lines)

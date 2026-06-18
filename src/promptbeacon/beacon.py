@@ -32,6 +32,7 @@ from promptbeacon.analysis.scorer import (
     calculate_share_of_voice,
     calculate_visibility_score,
 )
+from promptbeacon.analysis.sources import aggregate_source_attribution
 from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import calculate_confidence_interval
 from promptbeacon.core.config import BeaconConfig, Provider
@@ -108,6 +109,7 @@ class Beacon:
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
         self._demo_mode: bool = False
+        self._grounded: bool = False
         self._stability_runs: int | None = None
         self._smart_extraction: bool = False
         self._extraction_model: str | None = None
@@ -357,6 +359,30 @@ class Beacon:
             Self for chaining.
         """
         self._demo_mode = True
+        return self
+
+    def with_grounding(self, enabled: bool = True) -> Self:
+        """Measure web-grounded answers — what AI *search* returns, not memory.
+
+        By default a scan queries plain LLM completions, which reflect the
+        model's training memory. Grounded mode enables each provider's native
+        web-search/grounding tool so the scan reflects what users actually see
+        when the engine searches the live web, and captures the real sources it
+        cites. The report is tagged ``measurement_tier="api_grounded"``.
+
+        Honesty note: the provider APIs approximate but do **not** equal the
+        consumer products (ChatGPT.com etc.), which run extra orchestration.
+
+        Costs more per scan (search fees + tokens) and is billed to your own
+        keys; ``demo()`` stays free. No effect in demo mode.
+
+        Args:
+            enabled: Whether to enable web-grounded scanning.
+
+        Returns:
+            Self for chaining.
+        """
+        self._grounded = enabled
         return self
 
     def with_stability(self, runs: int = 5) -> Self:
@@ -649,6 +675,11 @@ class Beacon:
             citations=all_citations,
         )
 
+        # Rank the source domains the engines cite (actionable GEO lever)
+        source_attribution = aggregate_source_attribution(
+            results, self._config.brand, self._config.competitors
+        )
+
         scan_duration = time.time() - start_time
         return Report(
             brand=self._config.brand,
@@ -662,10 +693,20 @@ class Beacon:
             recommendations=recommendations,
             citation_summary=citation_summary,
             share_of_voice=share_of_voice,
+            source_attribution=source_attribution,
+            measurement_tier=self._measurement_tier(),
             timestamp=datetime.utcnow(),
             scan_duration_seconds=round(scan_duration, 2),
             total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
         )
+
+    def _measurement_tier(self) -> str:
+        """How this scan was measured (drives the honesty label on the report)."""
+        if self._demo_mode:
+            return "demo"
+        if self._grounded:
+            return "api_grounded"
+        return "base_model"
 
     async def _apply_smart_recommendations(self, report: Report) -> None:
         """Replace rule-based recommendations with LLM-generated ones (opt-in)."""
@@ -789,6 +830,7 @@ class Beacon:
                         source_name=c.source_name,
                         context=c.context,
                         brand_associated=c.brand_associated,
+                        query=prompt,
                     )
                     for c in citation_result.citations
                 ],

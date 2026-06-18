@@ -91,6 +91,14 @@ def scan(
             help="LLM-based extraction + recommendations (more accurate, costs more)",
         ),
     ] = False,
+    grounded: Annotated[
+        bool,
+        typer.Option(
+            "--grounded",
+            help="Measure web-grounded answers (provider web search) instead of "
+            "base-model memory — costs more, uses your API keys",
+        ),
+    ] = False,
     stability: Annotated[
         int,
         typer.Option(
@@ -155,6 +163,9 @@ def scan(
 
     if smart:
         beacon = beacon.with_smart_extraction().with_smart_recommendations()
+
+    if grounded:
+        beacon = beacon.with_grounding()
 
     if stability > 0:
         beacon = beacon.with_stability(stability)
@@ -383,6 +394,106 @@ def compare(
 
 
 @app.command()
+def sources(
+    brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    competitors: Annotated[
+        list[str] | None,
+        typer.Option("--competitor", "-c", help="Competitor brands"),
+    ] = None,
+    providers: Annotated[
+        list[str] | None,
+        typer.Option("--provider", "-p", help="LLM providers to use"),
+    ] = None,
+    categories: Annotated[
+        list[str] | None,
+        typer.Option("--category", "-t", help="Categories/topics to analyze"),
+    ] = None,
+    prompt_count: Annotated[
+        int,
+        typer.Option("--prompts", "-n", help="Number of prompts per category"),
+    ] = 10,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Keyless demo mode (no API keys needed)"),
+    ] = False,
+    grounded: Annotated[
+        bool,
+        typer.Option(
+            "--grounded",
+            help="Web-grounded measurement with real citations (uses your keys)",
+        ),
+    ] = False,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format"),
+    ] = OutputFormat.text,
+) -> None:
+    """Show which source domains AI engines cite for your brand/category.
+
+    Web-grounded answers cite their sources; this ranks those domains so you
+    can see which sites feed your AI visibility — the actionable GEO lever
+    ("get cited on these sites"). Pair with --grounded for real citations, or
+    --demo to preview the output.
+
+    Example:
+        promptbeacon sources "Nike" --competitor "Adidas" --grounded
+
+        promptbeacon sources "Nike" --demo
+    """
+    beacon = Beacon(brand)
+    if competitors:
+        beacon = beacon.with_competitors(*competitors)
+    if providers:
+        provider_enums = provider_callback(providers)
+        if provider_enums:
+            beacon = beacon.with_providers(*provider_enums)
+    if categories:
+        beacon = beacon.with_categories(*categories)
+    if prompt_count != 10:
+        beacon = beacon.with_prompt_count(prompt_count)
+    if demo:
+        beacon = beacon.demo()
+    if grounded:
+        beacon = beacon.with_grounding()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task(description=f"Finding sources for {brand}...", total=None)
+        try:
+            report = beacon.scan()
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    sa = report.source_attribution
+    if output_format == OutputFormat.json:
+        console.print(sa.model_dump_json(indent=2) if sa else "{}")
+        return
+
+    _print_tier_banner(report)
+    if not sa or not sa.entries:
+        console.print(
+            "[yellow]No citations found.[/yellow] "
+            "Try --grounded to measure web-grounded sources."
+        )
+        return
+    _print_source_attribution(report)
+    if sa.target_cited_domains:
+        console.print(
+            f"\n[green]Domains that cite {brand}:[/green] "
+            + ", ".join(sa.target_cited_domains)
+        )
+    else:
+        console.print(
+            f"\n[yellow]No cited source was associated with {brand} "
+            "in this scan.[/yellow]"
+        )
+
+
+@app.command()
 def history(
     brand: Annotated[str, typer.Argument(help="The brand name")],
     days: Annotated[
@@ -451,6 +562,55 @@ def providers() -> None:
     console.print(table)
 
 
+_TIER_NOTES = {
+    "demo": ("yellow", "Demo data — canned responses, not a real measurement."),
+    "base_model": (
+        "yellow",
+        "Base-model tier: measures the model's training memory, NOT live AI "
+        "search. Add --grounded to measure web-grounded answers.",
+    ),
+    "api_grounded": (
+        "cyan",
+        "Web-grounded tier: provider web search. Approximates — but does NOT "
+        "equal — the consumer product (ChatGPT.com etc.).",
+    ),
+}
+
+
+def _print_tier_banner(report) -> None:
+    """Print an honest one-line label of how the scan was measured."""
+    tier = getattr(report, "measurement_tier", "base_model")
+    color, note = _TIER_NOTES.get(tier, ("white", ""))
+    if note:
+        console.print(f"[{color}]measurement: {tier}[/{color}] — {note}")
+
+
+def _print_source_attribution(report) -> None:
+    """Print the ranked source-domain table (which sites the engines cite)."""
+    sa = getattr(report, "source_attribution", None)
+    if not sa or not sa.entries:
+        return
+    console.print(
+        f"\n[bold]Top Source Domains[/bold] "
+        f"({sa.total_citations} citations across {len(sa.entries)} sources)"
+    )
+    table = Table(title="Which sites the engines cite")
+    table.add_column("Domain", style="cyan")
+    table.add_column("Type")
+    table.add_column("Citations")
+    table.add_column("Share")
+    table.add_column(f"Cites {report.brand}?")
+    for entry in sa.entries[:10]:
+        table.add_row(
+            entry.domain,
+            entry.source_type,
+            str(entry.citations),
+            f"{entry.share:.0%}",
+            "[green]yes[/green]" if entry.cites_target else "[dim]no[/dim]",
+        )
+    console.print(table)
+
+
 def _print_text_report(report) -> None:
     """Print a text report to the console."""
     # Score color
@@ -469,6 +629,8 @@ def _print_text_report(report) -> None:
             subtitle=f"Generated: {report.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
         )
     )
+
+    _print_tier_banner(report)
 
     # Metrics table
     table = Table(title="Metrics")
@@ -568,6 +730,9 @@ def _print_text_report(report) -> None:
             source = cit.url or cit.source_name
             brand_tag = f" [{cit.brand_associated}]" if cit.brand_associated else ""
             console.print(f"  [cyan]•[/cyan] {source}{brand_tag}")
+
+    # Source-domain attribution (which sites the engines cite)
+    _print_source_attribution(report)
 
 
 def _print_comparison_report(report) -> None:

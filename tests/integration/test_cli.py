@@ -85,6 +85,20 @@ class TestCLI:
         assert result.exit_code == 0
         assert "openai" in result.output.lower()
 
+    def test_scan_demo_shows_measurement_tier_banner(self):
+        result = runner.invoke(app, ["scan", "Nike", "--demo"])
+        assert result.exit_code == 0
+        assert "measurement: demo" in result.output
+
+    def test_sources_command_demo(self):
+        result = runner.invoke(
+            app, ["sources", "Nike", "--demo", "--competitor", "Adidas", "-n", "12"]
+        )
+        assert result.exit_code == 0
+        assert "measurement: demo" in result.output
+        # Either a populated source table or the explicit empty-state message.
+        assert "Source Domains" in result.output or "No citations" in result.output
+
     def test_no_args_shows_help(self):
         result = runner.invoke(app, [])
         # Typer returns exit code 0 or 2 when showing help with no_args_is_help
