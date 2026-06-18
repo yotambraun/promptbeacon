@@ -126,7 +126,10 @@ def _core(name: str) -> str:
     if "." in s and "/" not in s and " " not in s:  # looks like a domain
         if s.startswith("www."):
             s = s[4:]
-        s = s.split(".")[0]
+        parts = s.split(".")
+        # Registrable-ish domain: the label before the TLD (handles subdomains
+        # like en.wikipedia.org -> "wikipedia"). Good enough for dedup.
+        s = parts[-2] if len(parts) >= 2 else parts[0]
     return re.sub(r"[^a-z0-9]", "", s)
 
 

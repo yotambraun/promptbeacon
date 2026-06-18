@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Source attribution**: every scan now ranks the source **domains** that AI
+  answers cite (`report.source_attribution`), classifies each
+  (reddit / wikipedia / news / review / academic / social / video / code / web),
+  shows its share of all citations, and flags which domains cite your brand —
+  the actionable GEO lever ("get cited on these sites"). New
+  `promptbeacon sources "<brand>"` command and a **Top Source Domains** table in
+  text reports. New `SourceAttributionReport` / `SourceAttributionEntry` schemas
+  and `analysis.sources.aggregate_source_attribution()`.
+- **Measurement-tier honesty label**: `report.measurement_tier`
+  (`demo` | `base_model` | `api_grounded`) makes explicit how a scan was
+  measured — shown as a one-line banner in the CLI and included in JSON — so
+  base-model results (the model's training memory) are never mistaken for live
+  AI-search results.
+- **Richer citations**: `Citation` now carries `source_rank`, `source_type`,
+  `query` (the prompt that surfaced it), and `retrieved_but_uncited` (all
+  additive and back-compatible).
+
+### Changed
+
+- Demo fixtures now cite realistic, varied domains (Reddit, Wikipedia, Consumer
+  Reports, major news) so `promptbeacon demo` / `--demo` showcases source
+  attribution with no API keys.
+
 ## [1.0.0] - 2026-06-14
 
 The first stable release — PromptBeacon is now **the open-source GEO engine to

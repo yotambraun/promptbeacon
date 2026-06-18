@@ -14,6 +14,7 @@ Advanced patterns and techniques for power users of PromptBeacon.
 - [Custom Scoring](#custom-scoring)
 - [Stability & Confidence](#stability-confidence)
 - [Smart Mode (LLM Extraction & Recommendations)](#smart-mode-llm-extraction-recommendations)
+- [Source Attribution & Measurement Tiers](#source-attribution--measurement-tiers)
 - [CI/CD: Gate Deploys on AI Visibility](#cicd-gate-deploys-on-ai-visibility)
 - [Real-Time Brand Safety](#real-time-brand-safety)
 
@@ -676,6 +677,57 @@ promptbeacon scan "Nike" --smart
 - Falls back gracefully to regex/rule-based on error (no exception raised)
 - Requires at least one provider API key
 - Adds approximately one extra LLM call per feature enabled
+
+---
+
+## Source Attribution & Measurement Tiers
+
+### Which sites the engines cite
+
+Web-grounded AI answers cite their sources. Every scan aggregates those
+citations by **domain** so you can see which sites the engines trust for your
+category — and which of them cite *you*. This is the actionable GEO lever: to
+get recommended, get cited on the sources the engines already trust.
+
+```python
+from promptbeacon import Beacon
+
+report = Beacon("Nike").with_competitors("Adidas").demo().scan()
+
+sa = report.source_attribution
+print(f"{sa.total_citations} citations across {len(sa.entries)} domains")
+for entry in sa.entries[:10]:
+    flag = "cites you" if entry.cites_target else ""
+    print(f"{entry.domain:<28} {entry.source_type:<10} "
+          f"{entry.citations:>3} ({entry.share:.0%}) {flag}")
+
+# Citation mix by source type (reddit / wikipedia / news / review / ...)
+print(sa.by_type)
+# Domains that cited your brand specifically
+print(sa.target_cited_domains)
+```
+
+CLI:
+
+```bash
+promptbeacon sources "Nike" --competitor "Adidas" --demo
+```
+
+### Measurement tiers (honesty label)
+
+Not every scan measures the same thing. `report.measurement_tier` makes it
+explicit so you never mistake one for another:
+
+| Tier | What it measures |
+|------|------------------|
+| `demo` | Canned offline data — for exploration, not a real measurement |
+| `base_model` | A plain LLM completion with **no web search** — the model's *training memory*, not live AI search |
+| `api_grounded` | The provider's web-search/grounding tool — approximates, but does **not** equal, the consumer product (ChatGPT.com etc.) |
+
+The CLI prints this as a one-line banner on every text report, and it is
+included in JSON output.
+
+> Web-grounded scanning (`api_grounded`) is rolling out — see the CHANGELOG.
 
 ---
 

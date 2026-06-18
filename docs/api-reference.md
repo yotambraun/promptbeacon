@@ -10,6 +10,7 @@ Complete API documentation for PromptBeacon v1.0. This reference covers all clas
 - [Report Objects](#report-objects)
 - [Data Schemas](#data-schemas)
 - [Share of Voice](#share-of-voice)
+- [Source Attribution](#source-attribution)
 - [Stability](#stability)
 - [Export Functions](#export-functions)
 - [Integrations](#integrations)
@@ -763,9 +764,13 @@ Main report object containing scan results.
 | `citation_summary` | CitationSummary | Aggregated citations from all responses |
 | `share_of_voice` | ShareOfVoiceReport | Share of Voice across all brands |
 | `stability` | StabilityReport \| None | Stability data (populated by `scan_stability()`) |
+| `source_attribution` | SourceAttributionReport \| None | Source domains the engines cite (see [Source Attribution](#source-attribution)) |
+| `measurement_tier` | "demo" \| "base_model" \| "api_grounded" | How the scan was measured (honesty label) |
 | `timestamp` | datetime | Scan timestamp |
 | `scan_duration_seconds` | float | Duration in seconds |
 | `total_cost_usd` | float \| None | Estimated API cost |
+
+**Measurement tier** — `demo` (canned data), `base_model` (LLM completion, no web search — training memory), or `api_grounded` (provider web search; approximates but does not equal the consumer product). Surfaced in the CLI banner and JSON.
 
 **Computed Properties:**
 
@@ -984,9 +989,13 @@ A single citation found in an LLM response.
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `url` | str \| None | URL if one was cited |
-| `source_name` | str | Name of the cited source |
+| `source_name` | str | Name of the cited source (domain for URL citations) |
 | `context` | str | Surrounding text where the citation appeared |
 | `brand_associated` | str \| None | Brand name nearest to this citation |
+| `source_rank` | int \| None | Rank among the engine's retrieved results (grounded mode) |
+| `source_type` | str \| None | Classified type (reddit / wikipedia / news / review / ...) |
+| `query` | str \| None | The prompt/sub-query that surfaced this citation |
+| `retrieved_but_uncited` | bool | Retrieved by the engine but not cited in the answer (grounded/funnel mode) |
 
 ---
 
@@ -1110,6 +1119,61 @@ SoV data for a single brand.
 | `total_prompts` | int | Total prompts run |
 | `presence_rate` | float | appearances / total_prompts (0-1) |
 | `share_of_voice` | float | This brand's fraction of all brand mentions (0-1) |
+
+---
+
+## Source Attribution
+
+Every scan aggregates the citations in AI answers by **source domain** so you can see which sites the engines cite for your category — and which cite your brand. Available as `report.source_attribution`.
+
+### `aggregate_source_attribution(results, target_brand, competitors=None) -> SourceAttributionReport`
+
+Standalone function in `promptbeacon.analysis.sources` to compute attribution from provider results.
+
+```python
+from promptbeacon.analysis.sources import aggregate_source_attribution
+
+sa = aggregate_source_attribution(report.provider_results, "Nike", ["Adidas"])
+```
+
+### SourceAttributionReport
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `target_brand` | str | Brand being analyzed |
+| `total_citations` | int | Total citations counted |
+| `entries` | list[SourceAttributionEntry] | Domains ranked by citation count (descending) |
+| `by_type` | dict[str, int] | Citation counts grouped by source type |
+
+**Computed Properties:**
+
+- `target_cited_domains` (list[str]): Domains whose citations were associated with the target brand
+
+### SourceAttributionEntry
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `domain` | str | Source domain or attribution name |
+| `source_type` | str | reddit / wikipedia / news / review / academic / social / video / code / web / attribution |
+| `citations` | int | Citations from this source |
+| `share` | float | citations / total citations (0-1) |
+| `brands_cited` | list[str] | Distinct brands associated with this source |
+| `cites_target` | bool | Whether the target brand was associated with this source |
+
+**Example:**
+```python
+sa = report.source_attribution
+print(f"{sa.total_citations} citations across {len(sa.entries)} domains")
+for entry in sa.entries[:10]:
+    print(f"{entry.domain} ({entry.source_type}): {entry.citations} "
+          f"— cites you: {entry.cites_target}")
+print(sa.by_type)               # {'reddit': 4, 'news': 2, ...}
+print(sa.target_cited_domains)  # ['reddit.com', ...]
+```
 
 ---
 

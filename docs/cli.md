@@ -23,6 +23,7 @@ All commands support these options:
 - [`quick`](#quick) - Fast 3-prompt scan with cheapest provider
 - [`scan`](#scan) - Run a full brand visibility scan
 - [`compare`](#compare) - Compare brand against competitors
+- [`sources`](#sources) - Show which source domains AI engines cite for your brand
 - [`history`](#history) - View historical visibility data
 - [`dashboard`](#dashboard) - Generate HTML dashboard
 - [`providers`](#providers) - List available providers and status
@@ -340,6 +341,59 @@ promptbeacon compare "Nike" --against "Adidas" --demo
 ```
 
 Output includes a competitor comparison table with scores, Share of Voice, and sentiment.
+
+---
+
+## `sources`
+
+Show which **source domains** AI answers cite for your brand and category — and which of them cite *you*. Web-grounded answers cite their sources; this ranks those domains so you can act on them ("get cited on these sites"). Works keyless in demo mode.
+
+### Usage
+
+```bash
+promptbeacon sources BRAND [OPTIONS]
+```
+
+### Arguments
+
+- `BRAND` (required): The brand name to analyze
+
+### Options
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
+| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
+| `--category` | `-t` | TEXT | None | Category/topic to analyze (repeatable) |
+| `--prompts` | `-n` | INT | 10 | Number of prompts per category |
+| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
+| `--format` | `-f` | TEXT | text | Output format: text, json |
+
+### Examples
+
+```bash
+# Preview source attribution, keyless
+promptbeacon sources "Nike" --demo --competitor "Adidas"
+
+# Machine-readable for pipelines
+promptbeacon sources "Nike" --demo --format json
+```
+
+### Output
+
+```
+measurement: demo — Demo data — canned responses, not a real measurement.
+
+Top Source Domains (5 citations across 3 sources)
+ Domain                    Type     Citations  Share  Cites Nike?
+ www.consumerreports.org   review   3          60%    yes
+ www.cnbc.com              news     1          20%    yes
+ www.reddit.com            reddit   1          20%    yes
+
+Domains that cite Nike: www.consumerreports.org, www.cnbc.com, www.reddit.com
+```
+
+> Web-grounded scanning with real provider citations (`--grounded`) is rolling out — see the [CHANGELOG](https://github.com/yotambraun/promptbeacon/blob/main/CHANGELOG.md).
 
 ---
 

@@ -55,7 +55,7 @@ _SOURCES = [
     ("Reddit", "https://www.reddit.com/r/BuyItForLife"),
     ("Wikipedia", "https://en.wikipedia.org/wiki/Comparison_of_brands"),
     ("Consumer Reports", "https://www.consumerreports.org/best"),
-    ("The New York Times", "https://www.nytimes.com/wirecutter/reviews"),
+    ("NYTimes", "https://www.nytimes.com/wirecutter/reviews"),
     ("CNBC Select", "https://www.cnbc.com/select/best"),
 ]
 
