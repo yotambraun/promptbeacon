@@ -13,11 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   / `sources --grounded`): query a provider's **native web-search tool** through its
   official SDK so results reflect what AI *search* returns — with the **real sources
   it cited** and a `retrieved_but_uncited` flag for sources the engine pulled but
-  didn't use. Anthropic ships first (Brave-backed `web_search`) via the new
-  `[grounded]` extra (`pip install 'promptbeacon[grounded]'`); providers without an
-  adapter fall back to base completion. `ProviderResult.grounded` records which
-  results were grounded, and `measurement_tier` is `api_grounded` only when grounding
-  actually ran (honest: it approximates, but does not equal, the consumer product).
+  didn't use. Covers **Anthropic** (Brave-backed `web_search`), **OpenAI** (Responses
+  `web_search`), **Gemini** (Google Search grounding), and **Perplexity** (sonar) via
+  the new `[grounded]` extra (`pip install 'promptbeacon[grounded]'`); Mistral/Cohere
+  fall back to base completion. `ProviderResult.grounded` records which results were
+  grounded, and `measurement_tier` is `api_grounded` only when grounding actually ran
+  (honest: it approximates, but does not equal, the consumer product).
 - **Source attribution**: every scan now ranks the source **domains** that AI
   answers cite (`report.source_attribution`), classifies each
   (reddit / wikipedia / news / review / academic / social / video / code / web),

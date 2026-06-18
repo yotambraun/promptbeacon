@@ -89,8 +89,12 @@ docs = [
 ]
 grounded = [
     # Official provider SDKs for web-grounded scanning (reliable structured
-    # citations). Anthropic ships first; OpenAI/Gemini adapters follow.
+    # citations). Anthropic (Brave-backed web search), OpenAI (Responses
+    # web_search), Gemini (Google Search grounding); Perplexity sonar uses the
+    # OpenAI-compatible client.
     "anthropic>=0.40.0",
+    "openai>=1.40.0",
+    "google-genai>=1.0.0",
 ]
 all = [
     "promptbeacon[cli,pandas,grounded]",

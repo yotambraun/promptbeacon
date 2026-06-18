@@ -423,7 +423,7 @@ Measure **web-grounded** answers — what AI *search* returns — instead of bas
 
 **Notes:**
 - Requires the `[grounded]` extra: `pip install 'promptbeacon[grounded]'`
-- Anthropic ships first (Brave-backed web search; needs `ANTHROPIC_API_KEY`). Providers without an adapter fall back to base completion, and the scan stays labelled `base_model`.
+- Covered: OpenAI (Responses `web_search`), Anthropic (Brave-backed web search), Gemini (Google Search grounding), and Perplexity (sonar) — set the matching provider key. Mistral/Cohere fall back to base completion, and the scan stays labelled `base_model`.
 - Costs more per scan (search fees + tokens), billed to your own keys. No effect in demo mode.
 - The provider API approximates, but does **not** equal, the consumer product (ChatGPT.com etc.).
 

@@ -751,7 +751,8 @@ for entry in report.source_attribution.entries[:5]:
 
 CLI: `promptbeacon scan "Nike" --grounded` or `promptbeacon sources "Nike" --grounded`.
 
-Anthropic ships first (Brave-backed web search); providers without an adapter
+Covered: OpenAI (Responses `web_search`), Anthropic (Brave-backed web search),
+Gemini (Google Search grounding), and Perplexity (sonar); Mistral and Cohere
 fall back to base completion, and the scan stays honestly labelled `base_model`.
 The provider API approximates, but does **not** equal, the consumer product.
 

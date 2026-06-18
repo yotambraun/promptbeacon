@@ -12,6 +12,9 @@ from promptbeacon.providers.grounding import (
     associate_brands,
     get_grounded_client,
     parse_anthropic_grounded,
+    parse_gemini_grounded,
+    parse_openai_grounded,
+    parse_perplexity_grounded,
 )
 
 # Mirrors the documented Anthropic web-search response content blocks.
@@ -161,9 +164,103 @@ def test_associate_brands_from_context():
     assert citations[1].brand_associated is None
 
 
-def test_get_grounded_client_only_anthropic_for_now():
-    assert get_grounded_client(Provider.ANTHROPIC) is not None
+def test_get_grounded_client_supported_providers():
+    for provider in (
+        Provider.ANTHROPIC,
+        Provider.OPENAI,
+        Provider.GOOGLE,
+        Provider.PERPLEXITY,
+    ):
+        assert get_grounded_client(provider) is not None
+    # Providers without a native grounded adapter fall back to base completion.
     assert get_grounded_client(Provider.MISTRAL) is None
+    assert get_grounded_client(Provider.COHERE) is None
+
+
+def test_parse_openai_grounded():
+    text = "Nike leads the running market per reviewers."
+    output = [
+        {"type": "web_search_call", "id": "ws_1"},
+        {
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": text,
+                    "annotations": [
+                        {
+                            "type": "url_citation",
+                            "url": "https://www.reddit.com/r/running",
+                            "title": "Reddit",
+                            "start_index": 0,
+                            "end_index": 4,
+                        },
+                        {
+                            "type": "url_citation",
+                            "url": "https://www.nytimes.com/wirecutter",
+                            "title": "NYT",
+                            "start_index": 5,
+                            "end_index": 9,
+                        },
+                    ],
+                }
+            ],
+        },
+    ]
+    citations = parse_openai_grounded(output, text, query="best running shoes")
+    by_domain = {c.source_name: c for c in citations}
+    assert set(by_domain) == {"www.reddit.com", "www.nytimes.com"}
+    reddit = by_domain["www.reddit.com"]
+    assert reddit.source_type == "reddit"
+    assert reddit.source_rank == 1
+    assert reddit.retrieved_but_uncited is False
+    assert reddit.context == "Nike"  # text[0:4]
+
+
+def test_parse_gemini_grounded_marks_uncited_chunks():
+    candidate = SimpleNamespace(
+        grounding_metadata=SimpleNamespace(
+            grounding_chunks=[
+                SimpleNamespace(
+                    web=SimpleNamespace(
+                        uri="https://www.reddit.com/r/x", title="Reddit"
+                    )
+                ),
+                SimpleNamespace(
+                    web=SimpleNamespace(uri="https://www.example.com/y", title="Ex")
+                ),
+            ],
+            grounding_supports=[
+                SimpleNamespace(grounding_chunk_indices=[0]),
+            ],
+        )
+    )
+    citations = parse_gemini_grounded(candidate, query="q")
+    by_domain = {c.source_name: c for c in citations}
+    assert by_domain["www.reddit.com"].retrieved_but_uncited is False
+    # chunk 1 is never referenced by a grounding support -> retrieved-only
+    assert by_domain["www.example.com"].retrieved_but_uncited is True
+    assert by_domain["www.reddit.com"].source_rank == 1
+
+
+def test_parse_gemini_no_metadata_returns_empty():
+    assert parse_gemini_grounded(SimpleNamespace(grounding_metadata=None), "q") == []
+
+
+def test_parse_perplexity_grounded_dedupes():
+    citations = parse_perplexity_grounded(
+        [
+            "https://www.reddit.com/r/x",
+            "https://en.wikipedia.org/wiki/Nike",
+            "https://www.reddit.com/r/x",  # duplicate
+        ],
+        query="q",
+    )
+    assert len(citations) == 2
+    assert citations[0].source_type == "reddit"
+    assert citations[1].source_type == "wikipedia"
+    assert all(c.retrieved_but_uncited is False for c in citations)
 
 
 class _FakeGrounded(GroundedClient):

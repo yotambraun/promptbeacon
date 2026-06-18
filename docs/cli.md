@@ -377,8 +377,8 @@ promptbeacon sources BRAND [OPTIONS]
 # Preview source attribution, keyless
 promptbeacon sources "Nike" --demo --competitor "Adidas"
 
-# Real, web-grounded citations (Anthropic; needs ANTHROPIC_API_KEY + [grounded] extra)
-promptbeacon sources "Nike" --grounded --competitor "Adidas"
+# Real, web-grounded citations (needs the [grounded] extra + a provider key)
+promptbeacon sources "Nike" --grounded --competitor "Adidas" --provider openai
 
 # Machine-readable for pipelines
 promptbeacon sources "Nike" --demo --format json
@@ -398,7 +398,7 @@ Top Source Domains (5 citations across 3 sources)
 Domains that cite Nike: www.consumerreports.org, www.cnbc.com, www.reddit.com
 ```
 
-> `--grounded` measures web-grounded answers with the **real provider citations** (Anthropic via the `[grounded]` extra; providers without an adapter fall back to base completion). Install with `pip install 'promptbeacon[grounded]'`.
+> `--grounded` measures web-grounded answers with the **real provider citations**. Covered: OpenAI, Anthropic, Gemini, and Perplexity (Mistral/Cohere fall back to base completion). Install with `pip install 'promptbeacon[grounded]'`.
 
 ---
 
