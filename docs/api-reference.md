@@ -412,6 +412,34 @@ promptbeacon scan "Nike" --smart
 
 ---
 
+#### `with_grounding(enabled: bool = True) -> Beacon`
+
+Measure **web-grounded** answers — what AI *search* returns — instead of base-model memory. Enables the provider's native web-search tool (via its official SDK) and captures the real cited sources. The report is tagged `measurement_tier="api_grounded"` when grounding actually runs.
+
+**Parameters:**
+- `enabled` (bool): Whether to enable web-grounded scanning (default: True)
+
+**Returns:** Self for chaining
+
+**Notes:**
+- Requires the `[grounded]` extra: `pip install 'promptbeacon[grounded]'`
+- Anthropic ships first (Brave-backed web search; needs `ANTHROPIC_API_KEY`). Providers without an adapter fall back to base completion, and the scan stays labelled `base_model`.
+- Costs more per scan (search fees + tokens), billed to your own keys. No effect in demo mode.
+- The provider API approximates, but does **not** equal, the consumer product (ChatGPT.com etc.).
+
+**Example:**
+```python
+report = Beacon("Nike").with_grounding().scan()
+print(report.measurement_tier)  # "api_grounded" when grounding ran
+```
+
+CLI equivalent:
+```bash
+promptbeacon scan "Nike" --grounded
+```
+
+---
+
 ### Execution Methods
 
 #### `scan() -> Report`
@@ -909,6 +937,7 @@ Result from a single provider query.
 | `latency_ms` | float | Response latency (ms) |
 | `cost_usd` | float \| None | Estimated cost |
 | `error` | str \| None | Error message if failed |
+| `grounded` | bool | True if this result came from a web-grounded query (provider web search) |
 | `timestamp` | datetime | Query timestamp |
 
 **Computed Properties:**

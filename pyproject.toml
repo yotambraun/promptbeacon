@@ -87,8 +87,13 @@ pandas = [
 docs = [
     "mkdocs-material>=9.5.0",
 ]
+grounded = [
+    # Official provider SDKs for web-grounded scanning (reliable structured
+    # citations). Anthropic ships first; OpenAI/Gemini adapters follow.
+    "anthropic>=0.40.0",
+]
 all = [
-    "promptbeacon[cli,pandas]",
+    "promptbeacon[cli,pandas,grounded]",
 ]
 
 [project.scripts]

@@ -77,4 +77,5 @@ def test_demo_scan_labels_tier_and_populates_source_attribution():
 def test_with_grounding_is_chainable_and_sets_flag():
     beacon = Beacon("Nike").with_grounding()
     assert beacon._grounded is True
-    assert Beacon("Nike")._measurement_tier() == "base_model"
+    # No grounded results -> tier stays base_model (honest fallback).
+    assert Beacon("Nike")._measurement_tier([]) == "base_model"

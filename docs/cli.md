@@ -128,6 +128,7 @@ promptbeacon scan BRAND [OPTIONS]
 | `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
 | `--demo` | | FLAG | false | Use demo mode (no API keys required) |
 | `--smart` | | FLAG | false | Enable LLM-powered extraction and recommendations |
+| `--grounded` | | FLAG | false | Measure web-grounded answers (provider web search) instead of base-model memory — costs more, uses your keys |
 | `--stability` | `-r` | INT | None | Number of stability runs (multiplies API cost) |
 | `--assert-min-score` | | FLOAT | None | Fail (exit 1) if score below threshold |
 | `--assert-min-sov` | | FLOAT | None | Fail (exit 1) if Share of Voice below threshold |
@@ -367,6 +368,7 @@ promptbeacon sources BRAND [OPTIONS]
 | `--category` | `-t` | TEXT | None | Category/topic to analyze (repeatable) |
 | `--prompts` | `-n` | INT | 10 | Number of prompts per category |
 | `--demo` | | FLAG | false | Use demo mode (no API keys required) |
+| `--grounded` | | FLAG | false | Web-grounded measurement with real provider citations (uses your keys) |
 | `--format` | `-f` | TEXT | text | Output format: text, json |
 
 ### Examples
@@ -374,6 +376,9 @@ promptbeacon sources BRAND [OPTIONS]
 ```bash
 # Preview source attribution, keyless
 promptbeacon sources "Nike" --demo --competitor "Adidas"
+
+# Real, web-grounded citations (Anthropic; needs ANTHROPIC_API_KEY + [grounded] extra)
+promptbeacon sources "Nike" --grounded --competitor "Adidas"
 
 # Machine-readable for pipelines
 promptbeacon sources "Nike" --demo --format json
@@ -393,7 +398,7 @@ Top Source Domains (5 citations across 3 sources)
 Domains that cite Nike: www.consumerreports.org, www.cnbc.com, www.reddit.com
 ```
 
-> Web-grounded scanning with real provider citations (`--grounded`) is rolling out — see the [CHANGELOG](https://github.com/yotambraun/promptbeacon/blob/main/CHANGELOG.md).
+> `--grounded` measures web-grounded answers with the **real provider citations** (Anthropic via the `[grounded]` extra; providers without an adapter fall back to base completion). Install with `pip install 'promptbeacon[grounded]'`.
 
 ---
 

@@ -14,7 +14,7 @@ Advanced patterns and techniques for power users of PromptBeacon.
 - [Custom Scoring](#custom-scoring)
 - [Stability & Confidence](#stability-confidence)
 - [Smart Mode (LLM Extraction & Recommendations)](#smart-mode-llm-extraction-recommendations)
-- [Source Attribution & Measurement Tiers](#source-attribution--measurement-tiers)
+- [Source Attribution & Measurement Tiers](#source-attribution-measurement-tiers)
 - [CI/CD: Gate Deploys on AI Visibility](#cicd-gate-deploys-on-ai-visibility)
 - [Real-Time Brand Safety](#real-time-brand-safety)
 
@@ -727,7 +727,33 @@ explicit so you never mistake one for another:
 The CLI prints this as a one-line banner on every text report, and it is
 included in JSON output.
 
-> Web-grounded scanning (`api_grounded`) is rolling out — see the CHANGELOG.
+### Web-grounded scanning
+
+By default a scan queries plain LLM completions (the model's training memory).
+`with_grounding()` enables a provider's **native web-search tool** so the scan
+reflects what AI *search* returns, capturing the real sources it cited:
+
+```python
+from promptbeacon import Beacon
+
+# Requires: pip install 'promptbeacon[grounded]' and ANTHROPIC_API_KEY
+report = Beacon("Nike").with_competitors("Adidas").with_grounding().scan()
+
+assert report.measurement_tier == "api_grounded"
+for entry in report.source_attribution.entries[:5]:
+    state = "cited" if any(
+        not c.retrieved_but_uncited
+        for r in report.provider_results for c in r.citations
+        if c.source_name == entry.domain
+    ) else "retrieved-only"
+    print(entry.domain, entry.source_type, state)
+```
+
+CLI: `promptbeacon scan "Nike" --grounded` or `promptbeacon sources "Nike" --grounded`.
+
+Anthropic ships first (Brave-backed web search); providers without an adapter
+fall back to base completion, and the scan stays honestly labelled `base_model`.
+The provider API approximates, but does **not** equal, the consumer product.
 
 ---
 

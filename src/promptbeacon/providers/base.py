@@ -29,6 +29,12 @@ class BaseLLMClient(ABC):
         """Return the name of the provider."""
         pass
 
+    @property
+    @abstractmethod
+    def model(self) -> str:
+        """Return the model identifier used by this client."""
+        pass
+
     @abstractmethod
     async def complete(
         self,

@@ -141,6 +141,11 @@ class ProviderResult(BaseModel):
     error: str | None = Field(
         default=None, description="Error message if request failed"
     )
+    grounded: bool = Field(
+        default=False,
+        description="True if this result came from a web-grounded query "
+        "(provider web search) rather than a base-model completion",
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     @computed_field  # type: ignore[prop-decorator]

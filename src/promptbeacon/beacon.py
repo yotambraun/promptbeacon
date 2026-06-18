@@ -7,10 +7,10 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from typing import Self
+    from typing_extensions import Self
 else:
     try:
         from typing import Self
@@ -53,6 +53,11 @@ from promptbeacon.extraction.llm_extraction import (
 from promptbeacon.extraction.mentions import MentionExtractionResult, extract_mentions
 from promptbeacon.prompts.templates import get_industry_prompts
 from promptbeacon.providers.base import BaseLLMClient
+from promptbeacon.providers.grounding import (
+    GroundedClient,
+    associate_brands,
+    get_grounded_client,
+)
 from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_providers
 from promptbeacon.providers.mock_client import MockLLMClient
 from promptbeacon.storage.cache import ResponseCache
@@ -694,17 +699,24 @@ class Beacon:
             citation_summary=citation_summary,
             share_of_voice=share_of_voice,
             source_attribution=source_attribution,
-            measurement_tier=self._measurement_tier(),
+            measurement_tier=self._measurement_tier(results),
             timestamp=datetime.utcnow(),
             scan_duration_seconds=round(scan_duration, 2),
             total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
         )
 
-    def _measurement_tier(self) -> str:
-        """How this scan was measured (drives the honesty label on the report)."""
+    def _measurement_tier(
+        self, results: list[ProviderResult]
+    ) -> Literal["demo", "base_model", "api_grounded"]:
+        """How this scan was measured (drives the honesty label on the report).
+
+        Truthful: ``api_grounded`` only when web-grounded queries actually ran.
+        If grounding was requested but every provider fell back to base
+        completion, the tier stays ``base_model``.
+        """
         if self._demo_mode:
             return "demo"
-        if self._grounded:
+        if any(r.grounded for r in results):
             return "api_grounded"
         return "base_model"
 
@@ -763,6 +775,38 @@ class Beacon:
             aliases=self._config.brand_aliases or None,
         )
 
+    async def _query_provider_grounded(
+        self, gclient: GroundedClient, prompt: str
+    ) -> ProviderResult:
+        """Query a provider's native web search and build a grounded result."""
+        resp = await gclient.complete_grounded(
+            prompt, max_tokens=self._config.max_tokens
+        )
+        extraction = extract_mentions(
+            resp.content,
+            self._config.brand,
+            self._config.competitors,
+            aliases=self._config.brand_aliases or None,
+        )
+        brands = (
+            [self._config.brand]
+            + (self._config.brand_aliases or [])
+            + (self._config.competitors or [])
+        )
+        citations = associate_brands(resp.citations, brands)
+        return ProviderResult(
+            provider=resp.provider,
+            model=resp.model,
+            prompt=prompt,
+            response=resp.content,
+            mentions=extraction.mentions,
+            citations=citations,
+            latency_ms=resp.latency_ms,
+            cost_usd=resp.cost_usd,
+            grounded=True,
+            timestamp=datetime.utcnow(),
+        )
+
     async def _query_provider(
         self, client: BaseLLMClient, prompt: str, use_cache: bool = True
     ) -> ProviderResult:
@@ -775,6 +819,24 @@ class Beacon:
         Returns:
             ProviderResult with the response.
         """
+        # Web-grounded path: provider-native web search via the official SDK.
+        # Falls back to the base-model path on any failure or unsupported provider.
+        if self._grounded and not self._demo_mode:
+            try:
+                provider: Provider | None = Provider(client.provider_name)
+            except ValueError:
+                provider = None
+            gclient = get_grounded_client(provider) if provider else None
+            if gclient is not None and gclient.is_available():
+                try:
+                    return await self._query_provider_grounded(gclient, prompt)
+                except Exception as e:  # noqa: BLE001 — any failure falls back to base
+                    logger.warning(
+                        "Grounded query failed for %s, falling back to base: %s",
+                        client.provider_name,
+                        e,
+                    )
+
         try:
             # Check cache first (bypassed during stability scans)
             cached_content: str | None = None
