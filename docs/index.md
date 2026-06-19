@@ -8,7 +8,7 @@ PromptBeacon is the **open-source GEO engine to measure, track, and CI-test how 
 
 PromptBeacon gives developers, GEO/SEO agencies, and AI/eval engineers a production-grade toolkit to measure and improve brand visibility across large language models. As AI assistants replace traditional search for product discovery, knowing how they represent your brand is essential — and now measurable.
 
-> **The AI visibility space is dominated by $99-300+/month SaaS tools.**
+> **The AI visibility space is dominated by $29-490+/month SaaS tools.**
 > PromptBeacon is the **only open-source alternative** — free, local-first, and extensible.
 
 ## Zero-Key Quick Start
@@ -34,6 +34,12 @@ The demo mode returns realistic canned data so you can explore the full report s
 
 ## Key Features
 
+### v1.1 Highlights — measure real AI search
+- **Web-grounded scanning** — `--grounded` queries each provider's **native web search** (OpenAI, Anthropic, Gemini, Perplexity) and captures the **real cited sources**; every report carries an honest `measurement_tier` (`demo` / `base_model` / `api_grounded`).
+- **Source attribution** — rank the source **domains** AI cites for your category, and which cite you (`promptbeacon sources`).
+- **Glass-box funnel** — `promptbeacon funnel` models the agentic-search funnel (fan-out → retrieve → rerank → cite) and shows **where your brand drops out**.
+- **Distribution-grade rigor** — percentile-bootstrap confidence intervals, per-source stability across runs, buyer-intent prompt sets, and pinned **`--protocol`** runs for reproducible CI trends.
+
 ### v1.0 Highlights
 - **Keyless demo mode** — explore the full API with no setup (`Beacon("Nike").demo().scan()` or `promptbeacon demo "Nike"`)
 - **Share of Voice** — quantify your brand's share of AI mindshare vs. competitors
@@ -47,7 +53,7 @@ The demo mode returns realistic canned data so you can explore the full report s
 - **BeaconGuard**: Real-time brand safety for LLM outputs — flag competitors, negative sentiment, anti-recommendations. No API calls, pure local processing.
 - **LangChain Integration**: Callback handler + output parser for LangChain pipelines (optional dependency)
 - **6 LLM Providers**: Query OpenAI, Anthropic, Google, Mistral, Cohere, and Perplexity simultaneously
-- **Citation Tracking**: See which sources LLMs cite when discussing your brand
+- **Source Attribution**: Rank the source domains AI cites for your category — and which cite you (`promptbeacon sources`)
 - **Brand Aliases**: "Nike Inc", "Nike Corporation" all count as Nike mentions
 - **Industry Templates**: Pre-built prompts for ecommerce, SaaS, finance, healthcare, travel, food, tech
 - **Response Caching**: Skip identical queries with file-based caching (configurable TTL)
