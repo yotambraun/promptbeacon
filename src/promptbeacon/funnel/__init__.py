@@ -18,7 +18,8 @@ from promptbeacon.funnel.backends import (
     TavilyBackend,
 )
 from promptbeacon.funnel.pipeline import run_funnel
-from promptbeacon.funnel.planner import generate_sub_queries
+from promptbeacon.funnel.planner import generate_sub_queries, llm_generate_sub_queries
+from promptbeacon.funnel.reranker import lexical_rerank, llm_rerank
 from promptbeacon.funnel.schemas import FunnelReport, RetrievedSource, SubQueryResult
 
 __all__ = [
@@ -30,5 +31,8 @@ __all__ = [
     "SubQueryResult",
     "TavilyBackend",
     "generate_sub_queries",
+    "lexical_rerank",
+    "llm_generate_sub_queries",
+    "llm_rerank",
     "run_funnel",
 ]

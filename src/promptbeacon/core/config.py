@@ -7,7 +7,32 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
+
+_ENV_LOADED = False
+
+
+def load_env(dotenv_path: str | Path | None = None, *, override: bool = False) -> None:
+    """Load environment variables from a ``.env`` file (idempotent).
+
+    Searches the working directory (and parents) for a ``.env`` file and loads
+    keys such as ``OPENAI_API_KEY``, ``ANTHROPIC_API_KEY``, and
+    ``TAVILY_API_KEY`` into the environment — **without** overriding values
+    already set in the real environment (explicit env wins). Called
+    automatically on import so keys "just work" from a ``.env`` file for both
+    library and CLI users.
+    """
+    global _ENV_LOADED
+    if _ENV_LOADED and dotenv_path is None:
+        return
+    load_dotenv(dotenv_path=dotenv_path, override=override)
+    if dotenv_path is None:
+        _ENV_LOADED = True
+
+
+# Auto-load .env on import so a .env file populates the environment.
+load_env()
 
 
 class Provider(str, Enum):
@@ -126,3 +151,17 @@ def get_api_key(provider: Provider) -> str | None:
 def has_api_key(provider: Provider) -> bool:
     """Check if an API key is available for a provider."""
     return get_api_key(provider) is not None
+
+
+# Tavily powers the funnel's live web search (it is not an LLM provider).
+TAVILY_ENV_VAR = "TAVILY_API_KEY"
+
+
+def get_tavily_api_key() -> str | None:
+    """Get the Tavily API key (used by the funnel's live web search), if set."""
+    return os.environ.get(TAVILY_ENV_VAR)
+
+
+def has_tavily_api_key() -> bool:
+    """Whether a Tavily API key is configured."""
+    return get_tavily_api_key() is not None

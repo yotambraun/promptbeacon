@@ -73,7 +73,7 @@ from promptbeacon.reporting.formats import (
     to_markdown,
 )
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __all__ = [
     # Main class
     "Beacon",

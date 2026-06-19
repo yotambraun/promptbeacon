@@ -1,5 +1,7 @@
 """Tests for configuration module."""
 
+import os
+
 import pytest
 
 from promptbeacon.core.config import (
@@ -7,7 +9,10 @@ from promptbeacon.core.config import (
     Provider,
     get_api_key,
     get_default_storage_path,
+    get_tavily_api_key,
     has_api_key,
+    has_tavily_api_key,
+    load_env,
 )
 
 
@@ -112,3 +117,33 @@ class TestStoragePath:
         assert path is not None
         assert path.name == "data.db"
         assert ".promptbeacon" in str(path)
+
+
+class TestEnvLoading:
+    """Tests for .env loading and the Tavily key helpers."""
+
+    def test_load_env_loads_dotenv_file(self, tmp_path):
+        env_file = tmp_path / ".env"
+        env_file.write_text("PROMPTBEACON_TEST_KEY=abc123\n", encoding="utf-8")
+        try:
+            load_env(env_file, override=True)
+            assert os.environ.get("PROMPTBEACON_TEST_KEY") == "abc123"
+        finally:
+            os.environ.pop("PROMPTBEACON_TEST_KEY", None)
+
+    def test_load_env_does_not_override_real_env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PROMPTBEACON_TEST_KEY2", "from-env")
+        env_file = tmp_path / ".env"
+        env_file.write_text("PROMPTBEACON_TEST_KEY2=from-dotenv\n", encoding="utf-8")
+        load_env(env_file)  # override=False by default
+        assert os.environ.get("PROMPTBEACON_TEST_KEY2") == "from-env"
+
+    def test_tavily_key_absent(self, monkeypatch):
+        monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+        assert get_tavily_api_key() is None
+        assert has_tavily_api_key() is False
+
+    def test_tavily_key_present(self, monkeypatch):
+        monkeypatch.setenv("TAVILY_API_KEY", "tvly-xyz")
+        assert get_tavily_api_key() == "tvly-xyz"
+        assert has_tavily_api_key() is True

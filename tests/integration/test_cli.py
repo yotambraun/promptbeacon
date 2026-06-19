@@ -86,6 +86,18 @@ class TestCLI:
         assert result.exit_code == 0
         assert "openai" in result.output.lower()
 
+    def test_providers_command_lists_tavily(self):
+        result = runner.invoke(app, ["providers"])
+        assert result.exit_code == 0
+        assert "tavily" in result.output.lower()
+        assert "TAVILY_API_KEY" in result.output
+
+    def test_funnel_without_demo_or_key_errors_with_link(self, monkeypatch):
+        monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+        result = runner.invoke(app, ["funnel", "Nike", "-t", "running shoes"])
+        assert result.exit_code == 1
+        assert "tavily.com" in result.output
+
     def test_scan_demo_shows_measurement_tier_banner(self):
         result = runner.invoke(app, ["scan", "Nike", "--demo"])
         assert result.exit_code == 0

@@ -258,8 +258,8 @@ jobs:
         uses: yotambraun/promptbeacon@v1
         with:
           brand: "Nike"
-          competitors: "Adidas,Puma,New Balance"
-          providers: "openai,anthropic"
+          competitors: "Adidas Puma New Balance"
+          providers: "openai anthropic"
           min-score: "40"
           min-share-of-voice: "0.15"
           stability: "3"

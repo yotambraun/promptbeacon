@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-20
+
+### Added
+- **Funnel LLM mode**: the glass-box funnel can now use an **LLM planner + LLM-judge
+  reranker** — `run_funnel(..., complete=...)` or `promptbeacon funnel --smart` — for
+  higher-fidelity fan-out and ranking, with graceful fallback to the deterministic
+  planner / lexical reranker (the keyless demo is unchanged). New
+  `funnel.llm_generate_sub_queries` and `funnel.llm_rerank`.
+- **First-class Tavily key handling**: `get_tavily_api_key()` / `has_tavily_api_key()`,
+  shown in `promptbeacon providers`, with an actionable error linking to tavily.com.
+
+### Fixed
+- **`.env` files now load.** `python-dotenv` was a dependency but `load_dotenv()` was
+  never called, so a `.env` file silently did nothing. PromptBeacon now auto-loads
+  `.env` on import (new `core.config.load_env()`), so `OPENAI_API_KEY`,
+  `TAVILY_API_KEY`, etc. work from a `.env` for both the library and the CLI — without
+  overriding values already set in the real environment.
+
 ## [1.1.0] - 2026-06-19
 
 The web-grounded, glass-box release — PromptBeacon now measures **real AI-search

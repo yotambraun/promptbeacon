@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import os
 import webbrowser
+from collections.abc import Awaitable, Callable
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -17,7 +17,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from promptbeacon.beacon import Beacon
-from promptbeacon.core.config import Provider
+from promptbeacon.core.config import Provider, get_tavily_api_key, has_tavily_api_key
 from promptbeacon.core.exceptions import VisibilityAssertionError
 from promptbeacon.reporting.formats import to_dashboard_html, to_json, to_markdown
 
@@ -553,6 +553,14 @@ def funnel(
         int,
         typer.Option("--sub-queries", help="Fan-out width (sub-queries per prompt)"),
     ] = 8,
+    smart: Annotated[
+        bool,
+        typer.Option(
+            "--smart",
+            help="Use an LLM planner + LLM-judge reranker (needs an LLM key; "
+            "not in demo mode)",
+        ),
+    ] = False,
     output_format: Annotated[
         OutputFormat,
         typer.Option("--format", "-f", help="Output format"),
@@ -588,14 +596,36 @@ def funnel(
     if demo:
         backend = MockSearchBackend(brand, competitors or [])
     else:
-        api_key = os.environ.get("TAVILY_API_KEY")
+        api_key = get_tavily_api_key()
         if not api_key:
             console.print(
-                "[red]Error:[/red] funnel needs --demo, or set TAVILY_API_KEY "
-                "for live web search (Tavily)."
+                "[red]Error:[/red] funnel needs --demo, or a Tavily API key for "
+                "live web search.\n"
+                "Get a free key at https://tavily.com, then set [bold]TAVILY_API_KEY[/bold] "
+                "(an environment variable or a .env file in this directory)."
             )
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
         backend = TavilyBackend(api_key)
+
+    complete_fn: Callable[[str], Awaitable[str]] | None = None
+    if smart and not demo:
+        from promptbeacon.providers.litellm_client import (
+            LiteLLMClient,
+            get_available_providers,
+        )
+
+        available = get_available_providers()
+        if not available:
+            console.print(
+                "[red]Error:[/red] --smart needs an LLM provider key "
+                "(e.g. OPENAI_API_KEY). Run 'promptbeacon providers' to check."
+            )
+            raise typer.Exit(1) from None
+        _llm = LiteLLMClient(available[0])
+
+        async def complete_fn(text: str) -> str:
+            resp = await _llm.complete(text, temperature=0.2, max_tokens=400)
+            return resp.content
 
     with Progress(
         SpinnerColumn(),
@@ -611,6 +641,7 @@ def funnel(
                     backend=backend,
                     competitors=competitors or [],
                     n_sub_queries=sub_queries,
+                    complete=complete_fn,
                 )
             )
         except Exception as e:
@@ -663,7 +694,7 @@ def history(
 
 @app.command()
 def providers() -> None:
-    """List available LLM providers and their status."""
+    """List available providers and search backends, and their key status."""
     from promptbeacon.core.config import has_api_key
 
     table = Table(title="Available Providers")
@@ -689,7 +720,22 @@ def providers() -> None:
             env_vars.get(provider, ""),
         )
 
+    # Tavily powers the funnel's live web search (not an LLM provider).
+    tav = has_tavily_api_key()
+    tav_status = "✓ Configured" if tav else "✗ Not configured"
+    tav_style = "green" if tav else "red"
+    table.add_row(
+        "tavily (funnel search)",
+        f"[{tav_style}]{tav_status}[/{tav_style}]",
+        "TAVILY_API_KEY",
+    )
+
     console.print(table)
+    console.print(
+        "[dim]Keys load from the environment or a .env file. LLM keys power "
+        "scan/--grounded; TAVILY_API_KEY powers funnel live search "
+        "(get one at https://tavily.com).[/dim]"
+    )
 
 
 _TIER_NOTES = {

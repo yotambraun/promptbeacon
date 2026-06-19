@@ -415,6 +415,25 @@ Perplexity is unique because its models are grounded in real-time web search. Th
 
 ---
 
+## Funnel Search Backend (Tavily)
+
+The glass-box `promptbeacon funnel` runs its **own** live web retrieval (separate from the LLM providers above), using **Tavily**:
+
+1. **Get a key**: sign up at [tavily.com](https://tavily.com) (free tier available) → copy the `tvly-...` key.
+2. **Set it** (environment variable or `.env`):
+
+```bash
+export TAVILY_API_KEY="tvly-..."          # macOS/Linux
+# Windows PowerShell:  setx TAVILY_API_KEY "tvly-..."
+# Windows cmd:         set TAVILY_API_KEY=tvly-...
+```
+
+3. **Run live**: `promptbeacon funnel "Nike" --category "running shoes"` (omit `--demo`). Add `--smart` to use an LLM planner + LLM-judge reranker (uses one of your LLM provider keys).
+
+No key? `promptbeacon funnel ... --demo` runs the whole funnel keyless on a deterministic mock backend. Check status anytime with `promptbeacon providers` (Tavily is listed there).
+
+---
+
 ## Multi-Provider Strategy
 
 ### Using All Providers
@@ -481,7 +500,7 @@ report = beacon.scan()
 
 ### Development Environment
 
-Create `.env` file in project root:
+Create a `.env` file in your project (or any parent) directory:
 
 ```bash
 # .env
@@ -491,15 +510,14 @@ GOOGLE_API_KEY=...
 MISTRAL_API_KEY=...
 COHERE_API_KEY=...
 PERPLEXITY_API_KEY=pplx-...
+TAVILY_API_KEY=tvly-...        # for `promptbeacon funnel` live web search
 ```
 
-Load with python-dotenv:
+PromptBeacon **auto-loads `.env` on import** — no manual `load_dotenv()` needed
+(real environment variables still take precedence):
 
 ```python
-from dotenv import load_dotenv
-load_dotenv()
-
-from promptbeacon import Beacon
+from promptbeacon import Beacon  # .env is loaded automatically
 
 beacon = Beacon("Nike")
 report = beacon.scan()
@@ -514,7 +532,7 @@ report = beacon.scan()
   uses: yotambraun/promptbeacon@v1
   with:
     brand: "Nike"
-    competitors: "Adidas,Puma"
+    competitors: "Adidas Puma"
     min-score: "40"
   env:
     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

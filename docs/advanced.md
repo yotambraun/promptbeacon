@@ -909,8 +909,8 @@ jobs:
         uses: yotambraun/promptbeacon@v1
         with:
           brand: "Nike"
-          competitors: "Adidas,Puma,New Balance"
-          providers: "openai,anthropic"
+          competitors: "Adidas Puma New Balance"
+          providers: "openai anthropic"
           min-score: "40"
           min-share-of-voice: "0.15"
           stability: "3"
@@ -926,13 +926,14 @@ jobs:
 | Input | Required | Description |
 |-------|----------|-------------|
 | `brand` | yes | Brand to check |
-| `competitors` | no | Comma-separated competitor list |
-| `providers` | no | Comma-separated provider list |
+| `competitors` | no | Space-separated competitor list |
+| `providers` | no | Space-separated provider list |
 | `min-score` | no | Minimum visibility score (0-100) |
 | `min-share-of-voice` | no | Minimum SoV (0-1) |
 | `stability` | no | Number of stability runs |
 | `min-stability` | no | Minimum stability score (0-100) |
 | `demo` | no | Use demo mode (`"true"`/`"false"`) |
+| `grounded` | no | Web-grounded scan — provider web search (`"true"`/`"false"`) |
 
 The action exits with code `1` if any threshold is not met, failing the workflow.
 
@@ -964,7 +965,7 @@ print(report.stage_failure)                # retrieval | rerank | citation | non
 
 For live web search, set `TAVILY_API_KEY` and use `TavilyBackend(api_key)` (called over httpx — no extra SDK). CLI: `promptbeacon funnel "Nike" --category "running shoes" --demo`.
 
-It is a **model** of agentic search (tier `funnel_model`), not a clone of any consumer product. The default planner (deterministic fan-out) and reranker (lexical) keep it dependency-free; an LLM planner/reranker can be layered on for higher fidelity.
+It is a **model** of agentic search (tier `funnel_model`), not a clone of any consumer product. The default planner (deterministic fan-out) and reranker (lexical) keep it dependency-free and keyless. For higher fidelity, pass `complete=` (an async `prompt -> text` LLM callable) to `run_funnel`, or use `promptbeacon funnel --smart`, to switch to an **LLM planner + LLM-judge reranker** — both fall back gracefully on error.
 
 ---
 

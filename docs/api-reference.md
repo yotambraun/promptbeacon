@@ -1211,9 +1211,9 @@ print(sa.target_cited_domains)  # ['reddit.com', ...]
 
 Glass-box funnel measurement — where a brand survives or drops out of agentic search. In `promptbeacon.funnel`.
 
-### `run_funnel(brand, prompt, *, backend, competitors=None, n_sub_queries=8, retrieve_k=8, top_k=5, cite_k=3) -> FunnelReport`
+### `run_funnel(brand, prompt, *, backend, competitors=None, n_sub_queries=8, retrieve_k=8, top_k=5, cite_k=3, complete=None) -> FunnelReport`
 
-Async. Fans `prompt` into sub-queries, retrieves per sub-query via `backend`, reranks to `top_k`, "cites" the top `cite_k`, and reports where the brand drops out.
+Async. Fans `prompt` into sub-queries, retrieves per sub-query via `backend`, reranks to `top_k`, "cites" the top `cite_k`, and reports where the brand drops out. Pass `complete` (an async `prompt -> text` LLM callable) to use an **LLM planner + LLM-judge reranker** instead of the deterministic defaults — both fall back gracefully on error.
 
 ```python
 import asyncio
@@ -1635,7 +1635,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "1.1.0"
+print(__version__)  # e.g., "1.2.0"
 ```
 
 ---

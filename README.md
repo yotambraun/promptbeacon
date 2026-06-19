@@ -187,7 +187,7 @@ Retrieval → citation:        29%     ← retrieved often, cited rarely
 Dominant drop-off stage:     citation
 ```
 
-No $29–490/mo dashboard shows you this.
+For live web search, use a Tavily key (`TAVILY_API_KEY`, free at [tavily.com](https://tavily.com)) and drop `--demo`; add `--smart` for an LLM planner + LLM-judge reranker. No $29–490/mo dashboard shows you this.
 
 ## Shareable dashboard (no SaaS)
 
@@ -210,6 +210,8 @@ export OPENAI_API_KEY="sk-..."          # https://platform.openai.com/api-keys
 export ANTHROPIC_API_KEY="sk-ant-..."   # https://console.anthropic.com/settings/keys
 promptbeacon providers                   # check what's configured
 ```
+
+Keys can live in your environment **or a `.env` file** in the project (auto-loaded). `TAVILY_API_KEY` powers `promptbeacon funnel`'s live web search.
 
 ```python
 from promptbeacon import Beacon, Provider

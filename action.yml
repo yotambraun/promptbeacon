@@ -44,6 +44,10 @@ inputs:
     description: "Run keyless demo mode (no API keys) — for smoke tests"
     required: false
     default: "false"
+  grounded:
+    description: "Measure web-grounded answers (provider web search) instead of base-model memory"
+    required: false
+    default: "false"
   version:
     description: "PromptBeacon version spec to install"
     required: false
@@ -54,7 +58,11 @@ runs:
   steps:
     - name: Install PromptBeacon
       shell: bash
-      run: pipx install "${{ inputs.version }}"
+      run: |
+        pipx install "${{ inputs.version }}"
+        if [ "${{ inputs.grounded }}" = "true" ]; then
+          pipx inject promptbeacon anthropic openai google-genai
+        fi
 
     - name: Run GEO visibility check
       shell: bash
@@ -65,6 +73,7 @@ runs:
         for t in ${{ inputs.categories }}; do args+=(--category "$t"); done
         args+=(--prompts "${{ inputs.prompts }}")
         if [ "${{ inputs.demo }}" = "true" ]; then args+=(--demo); fi
+        if [ "${{ inputs.grounded }}" = "true" ]; then args+=(--grounded); fi
         if [ "${{ inputs.stability }}" -gt 0 ]; then
           args+=(--stability "${{ inputs.stability }}")
           args+=(--assert-min-stability "${{ inputs.min-stability }}")

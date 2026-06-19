@@ -444,6 +444,7 @@ promptbeacon funnel BRAND [OPTIONS]
 | `--competitor` | `-c` | TEXT | None | Competitor brands |
 | `--demo` | | FLAG | false | Keyless mock search backend |
 | `--sub-queries` | | INT | 8 | Fan-out width (sub-queries per prompt) |
+| `--smart` | | FLAG | false | Use an LLM planner + LLM-judge reranker (needs an LLM key; not in demo) |
 | `--format` | `-f` | TEXT | text | Output format: text, json |
 
 ### Examples
@@ -466,7 +467,7 @@ Retrieval → citation:         29%
 Dominant drop-off stage:      citation
 ```
 
-Live search uses Tavily over httpx (no extra SDK); set `TAVILY_API_KEY`.
+Live search uses Tavily over httpx (no extra SDK): get a key at [tavily.com](https://tavily.com) and set `TAVILY_API_KEY` (an environment variable or a `.env` file). Add `--smart` to use an LLM planner + LLM-judge reranker (uses one of your LLM provider keys, with graceful fallback).
 
 ---
 

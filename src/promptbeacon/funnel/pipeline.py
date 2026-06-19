@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 
 from promptbeacon.funnel.backends import SearchBackend
-from promptbeacon.funnel.planner import generate_sub_queries
-from promptbeacon.funnel.reranker import lexical_rerank
+from promptbeacon.funnel.planner import generate_sub_queries, llm_generate_sub_queries
+from promptbeacon.funnel.reranker import lexical_rerank, llm_rerank
 from promptbeacon.funnel.schemas import FunnelReport, RetrievedSource, SubQueryResult
 
 
@@ -62,6 +63,7 @@ async def run_funnel(
     retrieve_k: int = 8,
     top_k: int = 5,
     cite_k: int = 3,
+    complete: Callable[[str], Awaitable[str]] | None = None,
 ) -> FunnelReport:
     """Run the funnel for one prompt and report where the brand survives or dies.
 
@@ -79,13 +81,19 @@ async def run_funnel(
         retrieve_k: Results retrieved per sub-query.
         top_k: Sources kept after reranking.
         cite_k: Sources that survive to citation.
+        complete: Optional async ``prompt -> text`` LLM callable. When provided,
+            the funnel uses an LLM planner (fan-out) and an LLM-judge reranker
+            instead of the deterministic defaults; both fall back gracefully.
 
     Returns:
         A FunnelReport.
     """
     competitors = competitors or []
     brand_terms = [brand]
-    sub_queries = generate_sub_queries(prompt, n_sub_queries)
+    if complete is not None:
+        sub_queries = await llm_generate_sub_queries(prompt, n_sub_queries, complete)
+    else:
+        sub_queries = generate_sub_queries(prompt, n_sub_queries)
 
     async def run_one(sub_query: str) -> SubQueryResult:
         raw = await backend.search(sub_query, max_results=retrieve_k)
@@ -104,7 +112,10 @@ async def run_funnel(
             for item in raw
         ]
         target_retrieved = any(s.mentions_target for s in retrieved)
-        ranked = lexical_rerank(sub_query, retrieved, top_k=top_k)
+        if complete is not None:
+            ranked = await llm_rerank(sub_query, retrieved, top_k, complete)
+        else:
+            ranked = lexical_rerank(sub_query, retrieved, top_k=top_k)
         target_after_rerank = any(s.mentions_target for s in ranked)
         cited = ranked[:cite_k]
         target_cited = any(s.mentions_target for s in cited)
