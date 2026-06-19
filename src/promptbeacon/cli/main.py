@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
+import os
 import webbrowser
 from enum import Enum
 from pathlib import Path
@@ -527,6 +529,101 @@ def sources(
 
 
 @app.command()
+def funnel(
+    brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    prompt: Annotated[
+        str | None,
+        typer.Option("--prompt", "-q", help="Buyer-intent prompt to fan out"),
+    ] = None,
+    category: Annotated[
+        str | None,
+        typer.Option(
+            "--category", "-t", help="Category (builds a prompt if --prompt omitted)"
+        ),
+    ] = None,
+    competitors: Annotated[
+        list[str] | None,
+        typer.Option("--competitor", "-c", help="Competitor brands"),
+    ] = None,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Keyless demo mode (mock search backend)"),
+    ] = False,
+    sub_queries: Annotated[
+        int,
+        typer.Option("--sub-queries", help="Fan-out width (sub-queries per prompt)"),
+    ] = 8,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format"),
+    ] = OutputFormat.text,
+) -> None:
+    """Glass-box: see where your brand drops out of the agentic-search funnel.
+
+    Most tools only see the final citation. This fans a prompt into sub-queries,
+    runs its own observable retrieve -> rerank -> cite pipeline, and reports
+    where the brand survives or dies (coverage, rerank survival, citation).
+
+    It is a local *model* of agentic search, not the consumer product. Use
+    --demo for a keyless run, or set TAVILY_API_KEY for live web search.
+
+    Example:
+        promptbeacon funnel "Nike" --category "running shoes" --demo
+    """
+    from promptbeacon.funnel import (
+        MockSearchBackend,
+        SearchBackend,
+        TavilyBackend,
+        run_funnel,
+    )
+
+    if prompt:
+        query = prompt
+    elif category:
+        query = f"What are the best {category}?"
+    else:
+        query = f"What are the best alternatives to {brand}?"
+
+    backend: SearchBackend
+    if demo:
+        backend = MockSearchBackend(brand, competitors or [])
+    else:
+        api_key = os.environ.get("TAVILY_API_KEY")
+        if not api_key:
+            console.print(
+                "[red]Error:[/red] funnel needs --demo, or set TAVILY_API_KEY "
+                "for live web search (Tavily)."
+            )
+            raise typer.Exit(1)
+        backend = TavilyBackend(api_key)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        progress.add_task(description=f"Tracing the funnel for {brand}...", total=None)
+        try:
+            report = asyncio.run(
+                run_funnel(
+                    brand,
+                    query,
+                    backend=backend,
+                    competitors=competitors or [],
+                    n_sub_queries=sub_queries,
+                )
+            )
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    if output_format == OutputFormat.json:
+        console.print(report.model_dump_json(indent=2))
+    else:
+        _print_funnel_report(report)
+
+
+@app.command()
 def history(
     brand: Annotated[str, typer.Argument(help="The brand name")],
     days: Annotated[
@@ -806,6 +903,54 @@ def _print_comparison_report(report) -> None:
             )
 
         console.print(table)
+
+
+def _print_funnel_report(report) -> None:
+    """Print the agentic-search funnel report to the console."""
+    console.print(
+        f"[cyan]measurement: {report.measurement_tier}[/cyan] — "
+        "a local model of agentic search, not the consumer product"
+    )
+    console.print(
+        Panel(
+            f"[dim]prompt:[/dim] {report.prompt}",
+            title=f"Agentic Funnel: {report.brand}",
+            subtitle=f"{report.sub_query_count} sub-queries",
+        )
+    )
+
+    def pct(value: float) -> str:
+        return f"{value:.0%}"
+
+    console.print(
+        f"Coverage (brand retrieved):   [cyan]{pct(report.sub_query_coverage)}[/cyan]"
+    )
+    console.print(f"Rerank survival:              {pct(report.rerank_survival_rate)}")
+    console.print(
+        f"Retrieval → citation:         {pct(report.retrieval_to_citation_ratio)}"
+    )
+    fail_color = "green" if report.stage_failure == "none" else "yellow"
+    console.print(
+        f"Dominant drop-off stage:      [{fail_color}]{report.stage_failure}[/{fail_color}]"
+    )
+
+    table = Table(title="Per sub-query funnel")
+    table.add_column("Sub-query", style="cyan")
+    table.add_column("Retrieved")
+    table.add_column("Reranked")
+    table.add_column("Cited")
+
+    def mark(flag: bool) -> str:
+        return "[green]✓[/green]" if flag else "[dim]·[/dim]"
+
+    for sq in report.sub_query_results:
+        table.add_row(
+            sq.sub_query,
+            mark(sq.target_retrieved),
+            mark(sq.target_after_rerank),
+            mark(sq.target_cited),
+        )
+    console.print(table)
 
 
 def _print_history_report(history_report) -> None:

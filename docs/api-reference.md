@@ -11,6 +11,7 @@ Complete API documentation for PromptBeacon v1.0. This reference covers all clas
 - [Data Schemas](#data-schemas)
 - [Share of Voice](#share-of-voice)
 - [Source Attribution](#source-attribution)
+- [Agentic Funnel](#agentic-funnel)
 - [Stability](#stability)
 - [Export Functions](#export-functions)
 - [Integrations](#integrations)
@@ -1203,6 +1204,48 @@ for entry in sa.entries[:10]:
 print(sa.by_type)               # {'reddit': 4, 'news': 2, ...}
 print(sa.target_cited_domains)  # ['reddit.com', ...]
 ```
+
+---
+
+## Agentic Funnel
+
+Glass-box funnel measurement — where a brand survives or drops out of agentic search. In `promptbeacon.funnel`.
+
+### `run_funnel(brand, prompt, *, backend, competitors=None, n_sub_queries=8, retrieve_k=8, top_k=5, cite_k=3) -> FunnelReport`
+
+Async. Fans `prompt` into sub-queries, retrieves per sub-query via `backend`, reranks to `top_k`, "cites" the top `cite_k`, and reports where the brand drops out.
+
+```python
+import asyncio
+from promptbeacon.funnel import MockSearchBackend, run_funnel
+
+report = asyncio.run(
+    run_funnel(
+        "Nike",
+        "What are the best running shoes?",
+        backend=MockSearchBackend("Nike", competitors=["Adidas"]),
+        competitors=["Adidas"],
+    )
+)
+```
+
+**Backends** (in `promptbeacon.funnel`): `MockSearchBackend(brand, competitors)` (keyless, deterministic) and `TavilyBackend(api_key)` (live web search via httpx). Both implement the `SearchBackend` interface.
+
+### FunnelReport
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `brand` | str | Target brand |
+| `prompt` | str | The prompt that was fanned out |
+| `sub_queries` | list[str] | Generated sub-queries |
+| `sub_query_results` | list[SubQueryResult] | Per-sub-query funnel detail (retrieved/reranked/cited flags) |
+| `sub_query_coverage` | float | Fraction of sub-queries whose retrieval includes the brand |
+| `rerank_survival_rate` | float | Of those retrieved, fraction surviving reranking |
+| `retrieval_to_citation_ratio` | float | Of those retrieved, fraction surviving to citation |
+| `stage_failure` | str | Dominant drop-off: `retrieval` / `rerank` / `citation` / `none` |
+| `measurement_tier` | str | Always `funnel_model` (a local model of agentic search) |
 
 ---
 

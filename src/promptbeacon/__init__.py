@@ -61,6 +61,7 @@ from promptbeacon.core.schemas import (
     VisibilityMetrics,
     VolatilityMetrics,
 )
+from promptbeacon.funnel import FunnelReport, run_funnel
 from promptbeacon.guard import BeaconGuard, GuardResult
 from promptbeacon.reporting.formats import (
     to_csv,
@@ -79,6 +80,9 @@ __all__ = [
     # Guard
     "BeaconGuard",
     "GuardResult",
+    # Funnel (glass-box agentic-search measurement)
+    "FunnelReport",
+    "run_funnel",
     # Config
     "BeaconConfig",
     "Provider",

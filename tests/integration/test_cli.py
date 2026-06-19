@@ -114,6 +114,14 @@ class TestCLI:
         result = runner.invoke(app, ["scan"])
         assert result.exit_code == 1
 
+    def test_funnel_command_demo(self):
+        result = runner.invoke(
+            app, ["funnel", "Nike", "--category", "running shoes", "--demo"]
+        )
+        assert result.exit_code == 0
+        assert "Agentic Funnel" in result.output
+        assert "funnel_model" in result.output
+
     def test_no_args_shows_help(self):
         result = runner.invoke(app, [])
         # Typer returns exit code 0 or 2 when showing help with no_args_is_help

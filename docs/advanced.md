@@ -15,6 +15,7 @@ Advanced patterns and techniques for power users of PromptBeacon.
 - [Stability & Confidence](#stability-confidence)
 - [Smart Mode (LLM Extraction & Recommendations)](#smart-mode-llm-extraction-recommendations)
 - [Source Attribution & Measurement Tiers](#source-attribution-measurement-tiers)
+- [Glass-Box Agentic Funnel](#glass-box-agentic-funnel)
 - [CI/CD: Gate Deploys on AI Visibility](#cicd-gate-deploys-on-ai-visibility)
 - [Real-Time Brand Safety](#real-time-brand-safety)
 
@@ -934,6 +935,36 @@ jobs:
 | `demo` | no | Use demo mode (`"true"`/`"false"`) |
 
 The action exits with code `1` if any threshold is not met, failing the workflow.
+
+---
+
+## Glass-Box Agentic Funnel
+
+Modern AI search is agentic: it fans a query into 8–12 sub-queries, retrieves for each, reranks, reflects, then cites. Citation trackers see only the *survivors*. The funnel runs a **local, observable model** of that pipeline so you can see *where* your brand drops out.
+
+```python
+import asyncio
+from promptbeacon.funnel import MockSearchBackend, run_funnel  # TavilyBackend for live
+
+report = asyncio.run(
+    run_funnel(
+        "Nike",
+        "What are the best running shoes?",
+        backend=MockSearchBackend("Nike", competitors=["Adidas"]),  # keyless
+        competitors=["Adidas"],
+        n_sub_queries=8,
+    )
+)
+
+print(report.sub_query_coverage)           # brand retrieved for X% of sub-queries
+print(report.rerank_survival_rate)         # of those, X% survive reranking
+print(report.retrieval_to_citation_ratio)  # of those, X% survive to citation
+print(report.stage_failure)                # retrieval | rerank | citation | none
+```
+
+For live web search, set `TAVILY_API_KEY` and use `TavilyBackend(api_key)` (called over httpx — no extra SDK). CLI: `promptbeacon funnel "Nike" --category "running shoes" --demo`.
+
+It is a **model** of agentic search (tier `funnel_model`), not a clone of any consumer product. The default planner (deterministic fan-out) and reranker (lexical) keep it dependency-free; an LLM planner/reranker can be layered on for higher fidelity.
 
 ---
 

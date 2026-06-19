@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Glass-box agentic funnel** (`promptbeacon funnel` / `funnel.run_funnel`): models
+  the agentic-search funnel locally and instruments every stage — fan a prompt into
+  sub-queries, run an observable retrieve → rerank → cite pipeline, and report
+  **where the brand drops out** (`sub_query_coverage`, `rerank_survival_rate`,
+  `retrieval_to_citation_ratio`, `stage_failure`). Unlike citation trackers, it sees
+  the funnel, not just the survivors. Keyless `--demo`; live web search via Tavily
+  (`TAVILY_API_KEY`, called over httpx — no extra SDK). New `promptbeacon.funnel`
+  package (`FunnelReport`, `run_funnel`, `SearchBackend`).
 - **Web-grounded scanning** (`Beacon.with_grounding()` / `promptbeacon scan --grounded`
   / `sources --grounded`): query a provider's **native web-search tool** through its
   official SDK so results reflect what AI *search* returns — with the **real sources

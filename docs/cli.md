@@ -24,6 +24,7 @@ All commands support these options:
 - [`scan`](#scan) - Run a full brand visibility scan
 - [`compare`](#compare) - Compare brand against competitors
 - [`sources`](#sources) - Show which source domains AI engines cite for your brand
+- [`funnel`](#funnel) - Glass-box: where your brand drops out of the agentic-search funnel
 - [`history`](#history) - View historical visibility data
 - [`dashboard`](#dashboard) - Generate HTML dashboard
 - [`providers`](#providers) - List available providers and status
@@ -421,6 +422,51 @@ Domains that cite Nike: www.consumerreports.org, www.cnbc.com, www.reddit.com
 ```
 
 > `--grounded` measures web-grounded answers with the **real provider citations**. Covered: OpenAI, Anthropic, Gemini, and Perplexity (Mistral/Cohere fall back to base completion). Install with `pip install 'promptbeacon[grounded]'`.
+
+---
+
+## `funnel`
+
+Glass-box: fan a prompt into sub-queries, run an observable retrieve → rerank → cite pipeline, and see **where your brand drops out** — not just whether it was cited. A local *model* of agentic search (tier `funnel_model`), not the consumer product.
+
+### Usage
+
+```bash
+promptbeacon funnel BRAND [OPTIONS]
+```
+
+### Options
+
+| Option | Short | Type | Default | Description |
+|--------|-------|------|---------|-------------|
+| `--prompt` | `-q` | TEXT | None | Buyer-intent prompt to fan out |
+| `--category` | `-t` | TEXT | None | Category (builds a prompt if `--prompt` is omitted) |
+| `--competitor` | `-c` | TEXT | None | Competitor brands |
+| `--demo` | | FLAG | false | Keyless mock search backend |
+| `--sub-queries` | | INT | 8 | Fan-out width (sub-queries per prompt) |
+| `--format` | `-f` | TEXT | text | Output format: text, json |
+
+### Examples
+
+```bash
+# Keyless demo
+promptbeacon funnel "Nike" --category "running shoes" --demo
+
+# Live web search (needs TAVILY_API_KEY)
+promptbeacon funnel "Nike" --prompt "What are the best running shoes?"
+```
+
+### Output
+
+```
+measurement: funnel_model — a local model of agentic search, not the consumer product
+Coverage (brand retrieved):   88%
+Rerank survival:              86%
+Retrieval → citation:         29%
+Dominant drop-off stage:      citation
+```
+
+Live search uses Tavily over httpx (no extra SDK); set `TAVILY_API_KEY`.
 
 ---
 
