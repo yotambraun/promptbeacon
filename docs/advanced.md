@@ -610,6 +610,46 @@ asyncio.run(main())
 
 A high `flip_flop_count` means the brand appears in some runs but not others for the same prompt — often a sign of marginal awareness that is sensitive to LLM temperature and prompt phrasing.
 
+### Distribution-grade metrics
+
+Answer-engine output is stochastic, so a single confidence interval can mislead. A stability scan also reports:
+
+- **`score_bootstrap_interval`** — a percentile-bootstrap 95% CI (distribution-free), alongside the normal-approximation `score_confidence_interval`.
+- **`source_stability`** — per-domain citation consistency: which sources the engines cite on every run vs. flip-flop.
+
+```python
+report = Beacon("Nike").with_competitors("Adidas").with_stability(5).scan_stability()
+s = report.stability
+print("bootstrap 95% CI:", s.score_bootstrap_interval)
+for src in s.source_stability[:5]:
+    state = "flip-flop" if src.flip_flopped else "stable"
+    print(f"{src.domain}: {src.presence_rate:.0%} of runs ({state})")
+```
+
+### Buyer-intent prompt sets
+
+The recommended GEO protocol measures across 50–200 buyer-intent prompts. Generate a stable set instead of hand-writing them:
+
+```python
+from promptbeacon.prompts.templates import generate_buyer_intent_prompts
+
+prompts = generate_buyer_intent_prompts("running shoes", n=50)
+report = Beacon("Nike").with_prompts(prompts).scan()
+```
+
+### Reproducible protocols
+
+"Don't measure once" also means *measure the same way every time*. Pin the whole scan in a JSON file so trends stay comparable:
+
+```python
+from promptbeacon.protocol import build_beacon, load_protocol
+
+beacon = build_beacon(load_protocol("nike-protocol.json"))
+report = beacon.scan()  # or .scan_stability() when the protocol sets "runs"
+```
+
+CLI equivalent: `promptbeacon scan --protocol nike-protocol.json`.
+
 ---
 
 ## Smart Mode (LLM Extraction & Recommendations)

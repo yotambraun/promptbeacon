@@ -133,6 +133,7 @@ promptbeacon scan BRAND [OPTIONS]
 | `--assert-min-score` | | FLOAT | None | Fail (exit 1) if score below threshold |
 | `--assert-min-sov` | | FLOAT | None | Fail (exit 1) if Share of Voice below threshold |
 | `--assert-min-stability` | | FLOAT | None | Fail (exit 1) if stability score below threshold (requires `--stability`) |
+| `--protocol` | | PATH | None | Pinned scan protocol JSON for reproducible runs (overrides the config flags; `BRAND` optional) |
 
 ### Examples
 
@@ -252,6 +253,27 @@ promptbeacon scan "Nike" \
 promptbeacon scan "Nike" \
   --stability 5 \
   --assert-min-stability 70
+```
+
+#### Reproducible Protocol (pinned, for CI trends)
+
+Pin the brand, prompts, providers, and run count in a JSON file so every run is
+identical and trends stay comparable ("don't measure once"):
+
+```json
+// nike-protocol.json
+{
+  "brand": "Nike",
+  "competitors": ["Adidas", "Puma"],
+  "providers": ["openai", "anthropic"],
+  "prompts": ["What are the best running shoes?", "Which running shoe brand is most recommended?"],
+  "runs": 5,
+  "grounded": true
+}
+```
+
+```bash
+promptbeacon scan --protocol nike-protocol.json
 ```
 
 #### Custom Categories

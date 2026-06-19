@@ -28,6 +28,7 @@ class _Bucket(TypedDict):
     brands: set[str]
     cites_target: bool
 
+
 _NEWS = {
     "nytimes.com",
     "bbc.com",

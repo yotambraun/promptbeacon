@@ -35,6 +35,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Richer citations**: `Citation` now carries `source_rank`, `source_type`,
   `query` (the prompt that surfaced it), and `retrieved_but_uncited` (all
   additive and back-compatible).
+- **Distribution-grade stability** ("don't measure once"): stability scans now
+  add a **percentile-bootstrap** confidence interval
+  (`StabilityReport.score_bootstrap_interval`, distribution-free, alongside the
+  normal-approximation CI) and **per-source stability**
+  (`StabilityReport.source_stability` / new `SourceStability`) — which domains
+  the engines cite on every run vs. flip-flop. `bootstrap_ci()` added to
+  `analysis.statistics`.
+- **Buyer-intent prompt sets**: `generate_buyer_intent_prompts(category, n=50)`
+  produces a stable set of buyer-intent prompts for the recommended 50–200
+  prompt measurement protocol.
+- **Reproducible protocols**: pin a scan in a JSON file and re-run it
+  identically with `promptbeacon scan --protocol protocol.json` (new
+  `promptbeacon.protocol` module: `ScanProtocol`, `load_protocol`,
+  `build_beacon`), so CI trends stay comparable over time.
 
 ### Changed
 

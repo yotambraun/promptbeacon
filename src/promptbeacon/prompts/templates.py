@@ -95,6 +95,84 @@ INDUSTRY_TEMPLATES: dict[str, list[str]] = {
 
 AVAILABLE_INDUSTRIES = sorted(INDUSTRY_TEMPLATES.keys())
 
+# Buyer-intent prompt patterns — the kinds of questions real buyers ask AI when
+# choosing in a category. The recommended GEO measurement protocol uses 50-200
+# such prompts so visibility is characterised as a distribution, not a point.
+_BUYER_INTENT_TEMPLATES: list[str] = [
+    "What is the best {category}?",
+    "What is the best {category} for beginners?",
+    "Which {category} should I buy?",
+    "Can you recommend a {category}?",
+    "What are the top {category} brands?",
+    "Which {category} offers the best value for money?",
+    "What is the most popular {category}?",
+    "Compare the leading {category} options.",
+    "What {category} do experts recommend?",
+    "Which {category} is best for professionals?",
+    "What is the best budget {category}?",
+    "What is the best premium {category}?",
+    "Which {category} has the best reviews?",
+    "What are good alternatives to popular {category}?",
+    "Which {category} brand is most reliable?",
+    "What {category} is best for small businesses?",
+    "Which {category} has the best customer support?",
+    "What is the best {category} for the money?",
+    "Which {category} is easiest to use?",
+    "What are the highest-rated {category} options?",
+    "Which {category} brand is most trusted?",
+    "What is the best {category} for families?",
+    "Which {category} is best for enterprises?",
+    "What {category} should I avoid?",
+    "What is the best all-around {category}?",
+]
+
+# Appended to broaden coverage when more prompts than base templates are needed.
+_BUYER_INTENT_QUALIFIERS: list[str] = [
+    "",
+    " in 2026",
+    " right now",
+    " for most people",
+    " this year",
+    " overall",
+]
+
+
+def generate_buyer_intent_prompts(category: str, n: int = 50) -> list[str]:
+    """Generate ``n`` distinct buyer-intent prompts for a category.
+
+    Buyer-intent prompts mirror how real buyers ask AI to choose within a
+    category. The recommended GEO protocol uses 50-200 such prompts, re-run
+    with a stable set over time, so visibility is measured as a distribution.
+
+    Args:
+        category: The product/service category (substituted into each prompt).
+        n: Number of distinct prompts to return (default 50).
+
+    Returns:
+        Up to ``n`` distinct, ready-to-send prompts.
+
+    Raises:
+        ValueError: If ``n`` is less than 1.
+    """
+    if n < 1:
+        raise ValueError("n must be >= 1")
+
+    prompts: list[str] = []
+    seen: set[str] = set()
+    for qualifier in _BUYER_INTENT_QUALIFIERS:
+        for template in _BUYER_INTENT_TEMPLATES:
+            base = template.format(category=category)
+            if qualifier and base and base[-1] in "?.":
+                prompt = base[:-1] + qualifier + base[-1]
+            else:
+                prompt = base + qualifier
+            if prompt not in seen:
+                seen.add(prompt)
+                prompts.append(prompt)
+                if len(prompts) >= n:
+                    return prompts
+    return prompts
+
 
 def get_industry_prompts(industry: str) -> list[str]:
     """Get prompt templates for a specific industry.

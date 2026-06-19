@@ -57,7 +57,10 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
 
 @app.command()
 def scan(
-    brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    brand: Annotated[
+        str | None,
+        typer.Argument(help="The brand name to analyze (optional with --protocol)"),
+    ] = None,
     competitors: Annotated[
         list[str] | None,
         typer.Option("--competitor", "-c", help="Competitor brands to compare"),
@@ -124,6 +127,14 @@ def scan(
             help="Fail if stability score (0-100) is below this (needs --stability)",
         ),
     ] = None,
+    protocol: Annotated[
+        Path | None,
+        typer.Option(
+            "--protocol",
+            help="Path to a pinned scan protocol JSON for reproducible runs "
+            "(overrides the other config flags; see docs)",
+        ),
+    ] = None,
     output_format: Annotated[
         OutputFormat,
         typer.Option("--format", "-f", help="Output format"),
@@ -137,38 +148,60 @@ def scan(
         promptbeacon scan "Nike" --demo            # no API keys needed
 
         promptbeacon scan "Nike" --assert-min-score 50   # CI gate (exit 1 on fail)
+
+        promptbeacon scan --protocol nike.json     # pinned, reproducible run
     """
-    # Build beacon configuration
-    beacon = Beacon(brand)
+    # Build beacon configuration — from a pinned protocol, or from CLI flags.
+    if protocol is not None:
+        from promptbeacon.protocol import build_beacon, load_protocol
 
-    if competitors:
-        beacon = beacon.with_competitors(*competitors)
+        try:
+            proto = load_protocol(protocol)
+        except Exception as e:
+            console.print(f"[red]Error loading protocol:[/red] {e}")
+            raise typer.Exit(1) from None
+        beacon = build_beacon(proto)
+        if demo:
+            beacon = beacon.demo()
+        brand = proto.brand
+        run_stability = proto.runs > 0
+    else:
+        if not brand:
+            console.print("[red]Error:[/red] Provide a BRAND or use --protocol.")
+            raise typer.Exit(1)
 
-    if providers:
-        provider_enums = provider_callback(providers)
-        if provider_enums:
-            beacon = beacon.with_providers(*provider_enums)
+        beacon = Beacon(brand)
 
-    if categories:
-        beacon = beacon.with_categories(*categories)
+        if competitors:
+            beacon = beacon.with_competitors(*competitors)
 
-    if prompt_count != 10:
-        beacon = beacon.with_prompt_count(prompt_count)
+        if providers:
+            provider_enums = provider_callback(providers)
+            if provider_enums:
+                beacon = beacon.with_providers(*provider_enums)
 
-    if storage:
-        beacon = beacon.with_storage(storage)
+        if categories:
+            beacon = beacon.with_categories(*categories)
 
-    if demo:
-        beacon = beacon.demo()
+        if prompt_count != 10:
+            beacon = beacon.with_prompt_count(prompt_count)
 
-    if smart:
-        beacon = beacon.with_smart_extraction().with_smart_recommendations()
+        if storage:
+            beacon = beacon.with_storage(storage)
 
-    if grounded:
-        beacon = beacon.with_grounding()
+        if demo:
+            beacon = beacon.demo()
 
-    if stability > 0:
-        beacon = beacon.with_stability(stability)
+        if smart:
+            beacon = beacon.with_smart_extraction().with_smart_recommendations()
+
+        if grounded:
+            beacon = beacon.with_grounding()
+
+        if stability > 0:
+            beacon = beacon.with_stability(stability)
+
+        run_stability = stability > 0
 
     # Run scan with progress indicator
     with Progress(
@@ -178,7 +211,7 @@ def scan(
     ) as progress:
         progress.add_task(description=f"Scanning visibility for {brand}...", total=None)
         try:
-            report = beacon.scan_stability() if stability > 0 else beacon.scan()
+            report = beacon.scan_stability() if run_stability else beacon.scan()
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
@@ -690,6 +723,14 @@ def _print_text_report(report) -> None:
             f"95% CI [{lo:.0f}, {hi:.0f}]  "
             f"{stability.flip_flop_count} flip-flopping prompt(s)"
         )
+        blo, bhi = stability.score_bootstrap_interval
+        console.print(f"  Bootstrap 95% CI [{blo:.0f}, {bhi:.0f}] (distribution-free)")
+        if stability.source_stability:
+            flips = sum(1 for s in stability.source_stability if s.flip_flopped)
+            console.print(
+                f"  Source stability: {len(stability.source_stability)} domains cited, "
+                f"{flips} flip-flopping across runs"
+            )
 
     # Score breakdown
     bd = getattr(report.metrics, "score_breakdown", None) if report.metrics else None

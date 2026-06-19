@@ -1,0 +1,13 @@
+{
+  "brand": "Nike",
+  "competitors": ["Adidas", "Puma"],
+  "providers": ["openai", "anthropic"],
+  "prompts": [
+    "What are the best running shoes?",
+    "Which running shoe brand is most recommended?",
+    "What running shoes do experts recommend?",
+    "Which running shoe brand has the best reviews?"
+  ],
+  "runs": 5,
+  "grounded": true
+}

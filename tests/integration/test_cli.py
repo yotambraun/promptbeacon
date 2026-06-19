@@ -6,6 +6,7 @@ structure, using mocked LLM responses to avoid real API calls.
 
 from __future__ import annotations
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -98,6 +99,20 @@ class TestCLI:
         assert "measurement: demo" in result.output
         # Either a populated source table or the explicit empty-state message.
         assert "Source Domains" in result.output or "No citations" in result.output
+
+    def test_scan_with_protocol_demo(self, tmp_path):
+        proto = tmp_path / "protocol.json"
+        proto.write_text(
+            json.dumps({"brand": "Nike", "competitors": ["Adidas"], "prompt_count": 4}),
+            encoding="utf-8",
+        )
+        result = runner.invoke(app, ["scan", "--protocol", str(proto), "--demo"])
+        assert result.exit_code == 0
+        assert "Nike" in result.output
+
+    def test_scan_without_brand_or_protocol_errors(self):
+        result = runner.invoke(app, ["scan"])
+        assert result.exit_code == 1
 
     def test_no_args_shows_help(self):
         result = runner.invoke(app, [])

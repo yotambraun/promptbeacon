@@ -1219,12 +1219,14 @@ Available as `report.stability` after a stability scan.
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `stability_score` | float | Overall stability (0-100; 100 = perfectly consistent) |
-| `score_confidence_interval` | tuple[float, float] | 95% CI across runs |
+| `score_confidence_interval` | tuple[float, float] | 95% CI across runs (normal approximation) |
+| `score_bootstrap_interval` | tuple[float, float] | 95% percentile-bootstrap CI (distribution-free) |
 | `score_per_run` | list[float] | Visibility score for each run |
 | `volatility` | VolatilityMetrics | Volatility breakdown |
 | `overall_presence_consistency` | float | Fraction of runs where brand appeared (0-1) |
 | `flip_flop_count` | int | Number of times brand appeared in one run but not the next |
 | `prompt_stability` | list[PromptStability] | Per-prompt stability breakdown |
+| `source_stability` | list[SourceStability] | Per-source-domain citation consistency across runs |
 
 **Example:**
 ```python
@@ -1264,6 +1266,64 @@ Per-prompt stability breakdown.
 | `prompt` | str | The prompt text |
 | `presence_rate` | float | Fraction of runs where brand appeared (0-1) |
 | `score_variance` | float | Variance of visibility score across runs |
+
+---
+
+### SourceStability
+
+Per-source-domain citation consistency across stability runs.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `domain` | str | Source domain (or attribution name) |
+| `runs` | int | Number of repeated runs |
+| `appearances` | int | Runs in which this source was cited |
+| `presence_rate` | float | appearances / runs (0-1) |
+| `flip_flopped` | bool | Cited in some runs but not others |
+
+---
+
+## Protocols & Prompt Sets
+
+### `generate_buyer_intent_prompts(category: str, n: int = 50) -> list[str]`
+
+Generate `n` distinct buyer-intent prompts for a category — the kinds of questions real buyers ask AI when choosing. Use for the recommended 50–200 prompt measurement protocol.
+
+```python
+from promptbeacon.prompts.templates import generate_buyer_intent_prompts
+
+prompts = generate_buyer_intent_prompts("running shoes", n=50)
+report = Beacon("Nike").with_prompts(prompts).scan()
+```
+
+### ScanProtocol
+
+A pinned, reproducible scan configuration (in `promptbeacon.protocol`). Load from JSON with `load_protocol(path)` and build a configured `Beacon` with `build_beacon(protocol)`, so a scan re-runs identically over time.
+
+**Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `brand` | str | required | Brand to scan |
+| `competitors` | list[str] | [] | Competitor brands |
+| `providers` | list[str] | [] | Provider names (e.g. `"openai"`) |
+| `categories` | list[str] | [] | Categories/topics |
+| `prompts` | list[str] | [] | Explicit, pinned prompt set |
+| `prompt_count` | int \| None | None | Prompts per category |
+| `runs` | int | 0 | Stability runs (0 = single scan) |
+| `grounded` | bool | False | Web-grounded scanning |
+| `smart` | bool | False | LLM extraction + recommendations |
+
+```python
+from promptbeacon.protocol import build_beacon, load_protocol
+
+beacon = build_beacon(load_protocol("nike-protocol.json"))
+report = beacon.scan()  # or .scan_stability() when the protocol sets "runs"
+```
+
+CLI: `promptbeacon scan --protocol nike-protocol.json`
 
 ---
 

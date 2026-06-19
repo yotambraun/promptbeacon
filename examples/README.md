@@ -25,6 +25,7 @@ This directory contains example scripts demonstrating how to use PromptBeacon fo
 | [`demo_quickstart.py`](demo_quickstart.py) | ✅ | Keyless demo + Share of Voice — start here |
 | [`stability_scan.py`](stability_scan.py) | ✅ | Repeat-N stability score & flip-flop detection |
 | [`source_attribution.py`](source_attribution.py) | ✅ | Which source domains AI cites for your brand |
+| [`protocol.example.json`](protocol.example.json) | | Pinned protocol for reproducible runs: `promptbeacon scan --protocol protocol.example.json` |
 | [`ci_visibility_check.py`](ci_visibility_check.py) | ✅ | Gate a deploy on AI visibility (inline / pytest / Action) |
 | [`basic_scan.py`](basic_scan.py) | | Simple brand visibility analysis (needs a key) |
 | [`competitor_analysis.py`](competitor_analysis.py) | | Compare against competitors |

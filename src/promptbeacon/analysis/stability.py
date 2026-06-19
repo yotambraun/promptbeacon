@@ -14,12 +14,14 @@ from promptbeacon.analysis.scorer import (
     calculate_visibility_score,
 )
 from promptbeacon.analysis.statistics import (
+    bootstrap_ci,
     calculate_confidence_interval,
     calculate_volatility,
 )
 from promptbeacon.core.schemas import (
     PromptStability,
     ProviderResult,
+    SourceStability,
     StabilityReport,
 )
 
@@ -53,6 +55,7 @@ def aggregate_stability(
     ]
     mean_score = sum(score_per_run) / len(score_per_run)
     confidence_interval = calculate_confidence_interval(score_per_run)
+    bootstrap_interval = bootstrap_ci(score_per_run)
     volatility = calculate_volatility(score_per_run)
 
     # Per-prompt presence across runs. A prompt "appears" in a run if the brand
@@ -95,6 +98,38 @@ def aggregate_stability(
         else 0.0
     )
 
+    # Per-source citation consistency: which domains the engines cite every run
+    # vs. flip-flop. A source "appears" in a run if any provider cited it.
+    cited_per_run: list[set[str]] = []
+    source_order: list[str] = []
+    source_seen: set[str] = set()
+    for run in runs:
+        domains = {
+            citation.source_name
+            for result in run
+            if result.success
+            for citation in result.citations
+        }
+        cited_per_run.append(domains)
+        for domain in domains:
+            if domain not in source_seen:
+                source_seen.add(domain)
+                source_order.append(domain)
+
+    source_stability: list[SourceStability] = []
+    for domain in source_order:
+        appearances = sum(1 for cited in cited_per_run if domain in cited)
+        source_stability.append(
+            SourceStability(
+                domain=domain,
+                runs=n_runs,
+                appearances=appearances,
+                presence_rate=round(appearances / n_runs, 4),
+                flip_flopped=0 < appearances < n_runs,
+            )
+        )
+    source_stability.sort(key=lambda s: (-s.appearances, s.domain))
+
     # Blend presence consistency with normalised (inverted) volatility.
     normalised_volatility = min(volatility.volatility_score / _VOLATILITY_CEILING, 1.0)
     stability_score = 100 * (
@@ -107,8 +142,10 @@ def aggregate_stability(
         score_per_run=[round(s, 1) for s in score_per_run],
         mean_score=round(mean_score, 1),
         score_confidence_interval=confidence_interval,
+        score_bootstrap_interval=bootstrap_interval,
         volatility=volatility,
         stability_score=round(stability_score, 1),
         overall_presence_consistency=round(overall_presence_consistency, 4),
         prompt_stability=prompt_stability,
+        source_stability=source_stability,
     )

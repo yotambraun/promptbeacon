@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import random
 from typing import Literal
 
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ __all__ = [
     "VolatilityMetrics",
     "SignificanceTest",
     "calculate_confidence_interval",
+    "bootstrap_ci",
     "calculate_statistical_summary",
     "calculate_volatility",
     "check_significance",
@@ -81,6 +83,54 @@ def calculate_confidence_interval(
     lower = max(0, mean - margin)
     upper = min(100, mean + margin)
 
+    return (round(lower, 2), round(upper, 2))
+
+
+def bootstrap_ci(
+    scores: list[float],
+    confidence_level: float = 0.95,
+    n_resamples: int = 1000,
+    seed: int = 12345,
+) -> tuple[float, float]:
+    """Percentile-bootstrap confidence interval for the mean visibility score.
+
+    Resamples ``scores`` with replacement ``n_resamples`` times and takes the
+    empirical percentiles of the resample means. Unlike the normal-approximation
+    interval in :func:`calculate_confidence_interval`, this makes no assumption
+    about the score distribution — appropriate for the small, often-skewed
+    samples typical of repeated GEO measurements (the "don't measure once"
+    principle). Deterministic given ``seed`` so CI runs are reproducible.
+
+    Args:
+        scores: Visibility scores from repeated runs.
+        confidence_level: Two-sided confidence level (default 95%).
+        n_resamples: Number of bootstrap resamples.
+        seed: RNG seed for reproducibility.
+
+    Returns:
+        Tuple of (lower_bound, upper_bound), clamped to [0, 100].
+    """
+    if not scores:
+        return (0.0, 0.0)
+
+    n = len(scores)
+    if n == 1:
+        return (round(scores[0], 2), round(scores[0], 2))
+
+    rng = random.Random(seed)
+    means: list[float] = []
+    for _ in range(n_resamples):
+        total = 0.0
+        for _ in range(n):
+            total += scores[rng.randrange(n)]
+        means.append(total / n)
+    means.sort()
+
+    alpha = 1.0 - confidence_level
+    lo_idx = int((alpha / 2) * n_resamples)
+    hi_idx = min(n_resamples - 1, int((1 - alpha / 2) * n_resamples))
+    lower = max(0.0, means[lo_idx])
+    upper = min(100.0, means[hi_idx])
     return (round(lower, 2), round(upper, 2))
 
 

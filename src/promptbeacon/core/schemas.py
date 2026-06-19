@@ -355,6 +355,23 @@ class PromptStability(BaseModel):
     )
 
 
+class SourceStability(BaseModel):
+    """How consistently a source domain is cited across repeated runs."""
+
+    domain: str = Field(..., description="Source domain (or attribution name)")
+    runs: int = Field(..., ge=1, description="Number of repeated runs")
+    appearances: int = Field(
+        default=0, ge=0, description="Runs in which this source was cited"
+    )
+    presence_rate: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="appearances / runs"
+    )
+    flip_flopped: bool = Field(
+        default=False,
+        description="True if the source was cited in some runs but not others",
+    )
+
+
 class StabilityReport(BaseModel):
     """Trustworthiness of a single scan, measured by repeating it N times.
 
@@ -373,7 +390,12 @@ class StabilityReport(BaseModel):
         default=0.0, ge=0.0, le=100.0, description="Mean visibility score across runs"
     )
     score_confidence_interval: tuple[float, float] = Field(
-        default=(0.0, 0.0), description="95% confidence interval for the score"
+        default=(0.0, 0.0),
+        description="95% confidence interval for the score (normal approximation)",
+    )
+    score_bootstrap_interval: tuple[float, float] = Field(
+        default=(0.0, 0.0),
+        description="95% percentile-bootstrap CI for the score (distribution-free)",
     )
     volatility: VolatilityMetrics = Field(
         ..., description="Run-to-run volatility of the visibility score"
@@ -392,6 +414,10 @@ class StabilityReport(BaseModel):
     )
     prompt_stability: list[PromptStability] = Field(
         default_factory=list, description="Per-prompt stability detail"
+    )
+    source_stability: list[SourceStability] = Field(
+        default_factory=list,
+        description="Per-source-domain citation consistency across runs",
     )
 
     @computed_field  # type: ignore[prop-decorator]
