@@ -76,6 +76,8 @@ script, schedule, embed in a product, or gate a deploy with.
 | Reproducibility          | One number                 | **Confidence intervals + stability**   |
 | CI / regression testing  | ✗                          | **pytest plugin + GitHub Action**      |
 | Providers in one run     | Tier-gated                 | **6, simultaneously**                  |
+| Measures live AI search  | Opaque / varies            | **Web-grounded, with real citations**  |
+| Funnel-level visibility  | ✗ (final citations only)   | **Glass-box: where you drop out**      |
 
 ### Who it's for
 
@@ -139,6 +141,53 @@ def test_brand_is_visible():
   env:
     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
+
+## Measure what users actually see — not just model memory
+
+A plain LLM call reflects the model's *training memory*. Real users get **web-grounded**
+answers — the engine searches the live web and cites sources. PromptBeacon measures that,
+and is honest about which is which.
+
+```bash
+# Real web-grounded scan: provider web search + the real cited sources
+promptbeacon scan "Nike" -c "Adidas" --grounded -p openai -p anthropic
+```
+
+`--grounded` uses each provider's **native web search** via its official SDK —
+**OpenAI, Anthropic, Gemini, and Perplexity** — and captures the real citations
+(Mistral/Cohere fall back to base completion). Every report carries an honest
+`measurement_tier` (`demo` / `base_model` / `api_grounded`) so training-memory is never
+mistaken for live AI search. Install with `pip install 'promptbeacon[grounded]'`.
+
+### Source attribution — which sites feed your visibility
+
+Grounded answers cite their sources. PromptBeacon ranks the **domains** the engines trust
+for your category and flags which cite *you* — the actionable GEO lever ("get cited on
+these sites").
+
+```bash
+promptbeacon sources "Nike" --competitor "Adidas" --demo
+```
+
+### Glass-box funnel — see *where* you drop out
+
+Modern AI search is agentic: it fans your query into 8–12 sub-queries, retrieves, reranks,
+then cites. Citation trackers see only the survivors. PromptBeacon runs an observable model
+of that funnel and shows **where your brand drops out**:
+
+```bash
+promptbeacon funnel "Nike" --category "running shoes" --demo
+```
+
+```text
+measurement: funnel_model
+Coverage (brand retrieved):  88%
+Rerank survival:             86%
+Retrieval → citation:        29%     ← retrieved often, cited rarely
+Dominant drop-off stage:     citation
+```
+
+No $29–490/mo dashboard shows you this.
 
 ## Shareable dashboard (no SaaS)
 
@@ -214,8 +263,12 @@ See [Advanced Usage](docs/advanced.md#real-time-brand-safety).
 ```bash
 promptbeacon demo "Nike"                                  # keyless, instant
 promptbeacon scan "Nike" -c "Adidas" -p openai -p anthropic
+promptbeacon scan "Nike" -c "Adidas" --grounded           # real web-grounded scan
 promptbeacon scan "Nike" --stability 5                    # repeat for a stability score
 promptbeacon scan "Nike" --assert-min-score 50           # CI gate (exit 1 on fail)
+promptbeacon scan --protocol nike.json                    # pinned, reproducible run
+promptbeacon sources "Nike" --demo                        # which domains AI cites
+promptbeacon funnel "Nike" -t "running shoes" --demo      # where you drop out (glass-box)
 promptbeacon dashboard "Nike" --demo                      # shareable HTML
 promptbeacon compare "Nike" --against "Adidas"
 promptbeacon history "Nike" --days 30
@@ -227,6 +280,11 @@ promptbeacon providers
 | Feature | Description |
 |---------|-------------|
 | **Keyless demo mode** | `pip install` → realistic scan with zero API keys |
+| **Web-grounded scanning** | `--grounded`: real provider web search + the actual cited sources (OpenAI, Anthropic, Gemini, Perplexity) |
+| **Source attribution** | Rank the domains AI cites for your category — and which cite you (`promptbeacon sources`) |
+| **Glass-box funnel** | See *where* your brand drops out of the agentic search funnel — retrieve → rerank → cite (`promptbeacon funnel`) |
+| **Measurement tiers** | Honest `demo` / `base_model` / `api_grounded` label on every scan |
+| **Reproducible protocols** | Pin a scan in JSON for comparable CI runs (`scan --protocol`) |
 | **Smart mode (LLM)** | `--smart` swaps regex for LLM extraction + evidence-linked, actionable recommendations |
 | **Share of Voice** | Presence-based SoV vs competitors, per-provider + aggregate + rank |
 | **Stability scoring** | Repeat-N-times trust score, confidence interval, flip-flop detection |

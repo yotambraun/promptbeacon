@@ -1635,7 +1635,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "1.0.0"
+print(__version__)  # e.g., "1.1.0"
 ```
 
 ---

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-19
+
+The web-grounded, glass-box release — PromptBeacon now measures **real AI-search
+visibility** (not just model memory), with distribution-grade rigor and a
+funnel view no citation tracker offers.
+
 ### Added
 
 - **Glass-box agentic funnel** (`promptbeacon funnel` / `funnel.run_funnel`): models
