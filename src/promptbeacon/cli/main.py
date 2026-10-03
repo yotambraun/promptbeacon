@@ -149,16 +149,12 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
     """Convert provider strings to Provider enums."""
     if value is None:
         return None
-    providers = []
-    for v in value:
-        try:
-            providers.append(Provider(v.lower()))
-        except ValueError:
-            valid = ", ".join(p.value for p in Provider)
-            raise typer.BadParameter(
-                f"Invalid provider: {v}. Choose from: {valid}"
-            ) from None
-    return providers
+    from promptbeacon.builder import parse_providers
+
+    try:
+        return parse_providers(value)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from None
 
 
 @app.command()
@@ -1286,47 +1282,44 @@ def _beacon_from_options(
     grounded: bool = False,
     infer_category: bool = False,
 ) -> Beacon:
-    """Build a Beacon from the common scan options (one source of truth).
+    """CLI wrapper around :func:`promptbeacon.builder.configure_beacon`.
 
-    With ``project`` the brand, category and competitors start from the
-    project's public metadata; explicit options always win.
+    Adds a spinner while project metadata is read, explains the project guesses,
+    and turns configuration errors into clean exits.
     """
-    if project:
-        from promptbeacon.projects import ProjectMetadataError
+    from promptbeacon.builder import configure_beacon
+    from promptbeacon.projects import ProjectMetadataError
 
-        try:
+    try:
+        if project:
             with _progress() as progress:
                 progress.add_task(description=f"Reading {project}...", total=None)
-                beacon = Beacon.from_project(
-                    project, infer=infer_category and not categories and not demo
+                beacon = configure_beacon(
+                    brand,
+                    project=project,
+                    competitors=competitors,
+                    providers=providers,
+                    categories=categories,
+                    prompt_count=prompt_count,
+                    demo=demo,
+                    grounded=grounded,
+                    infer_category=infer_category,
                 )
-        except ProjectMetadataError as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
-        if brand:
-            beacon = beacon.with_aliases(beacon.brand, *beacon.config.brand_aliases)
-            beacon._config = beacon.config.model_copy(update={"brand": brand})
-        _project_notice(beacon, categories, competitors, infer_category, demo)
-    else:
-        assert brand is not None
-        beacon = Beacon(brand)
-        if infer_category:
-            beacon = beacon.with_category_inference()
-    if competitors:
-        beacon = beacon.with_competitors(*competitors)
-    if providers:
-        provider_enums = provider_callback(providers)
-        if provider_enums:
-            beacon = beacon.with_providers(*provider_enums)
-    if categories:
-        beacon = beacon.with_categories(*categories)
-    if prompt_count is not None:
-        beacon = beacon.with_prompt_count(prompt_count)
-    if demo:
-        beacon = beacon.demo()
-    if grounded:
-        beacon = beacon.with_grounding()
-    return beacon
+            _project_notice(beacon, categories, competitors, infer_category, demo)
+            return beacon
+        return configure_beacon(
+            brand,
+            competitors=competitors,
+            providers=providers,
+            categories=categories,
+            prompt_count=prompt_count,
+            demo=demo,
+            grounded=grounded,
+            infer_category=infer_category,
+        )
+    except (ProjectMetadataError, ValueError) as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
 
 
 def _project_notice(
@@ -1719,6 +1712,30 @@ def ci(
         raise typer.Exit(1)
     if thresholds:
         err_console.print("[green]✓ Visibility check passed.[/green]")
+
+
+@app.command("mcp")
+def mcp_server() -> None:
+    """Run the MCP server over stdio (for Claude Code, Cursor and other clients).
+
+    Needs the extra: pip install 'promptbeacon[mcp]'. Tools: providers, scan,
+    project_scan, sources, share_assets. Without provider keys, scans use the
+    keyless demo and say so.
+
+    Example:
+        claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]' promptbeacon mcp
+    """
+    try:
+        from promptbeacon.mcp_server import create_server
+    except ImportError as e:  # pragma: no cover
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+    try:
+        server = create_server()
+    except ImportError as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+    server.run("stdio")
 
 
 @app.callback()

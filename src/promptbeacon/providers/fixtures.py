@@ -48,16 +48,24 @@ _NEGATIVE = [
     "A few reviewers suggest looking beyond {brand} for better alternatives.",
 ]
 
-# Realistic, varied sources so demo source-attribution mirrors the real GEO
-# landscape (Reddit/Wikipedia/news/review dominate AI citations). These are
-# illustrative URLs on real domains — no real page is fetched in demo mode.
+# General-purpose sources that suit any category (Reddit, Wikipedia and video
+# and community sites dominate AI citations). URLs are built from the user's
+# topic; no page is fetched in demo mode.
 _SOURCES = [
-    ("Reddit", "https://www.reddit.com/r/BuyItForLife"),
-    ("Wikipedia", "https://en.wikipedia.org/wiki/Comparison_of_brands"),
-    ("Consumer Reports", "https://www.consumerreports.org/best"),
-    ("NYTimes", "https://www.nytimes.com/wirecutter/reviews"),
-    ("CNBC Select", "https://www.cnbc.com/select/best"),
+    ("Reddit", "https://www.reddit.com/search/?q={q}"),
+    ("Wikipedia", "https://en.wikipedia.org/w/index.php?search={q}"),
+    ("YouTube", "https://www.youtube.com/results?search_query={q}"),
+    ("Medium", "https://medium.com/search?q={q}"),
+    ("Quora", "https://www.quora.com/search?q={q}"),
 ]
+
+
+def _source(index: int, topic: str) -> tuple[str, str]:
+    """A (name, url) pair for the topic, chosen deterministically."""
+    from urllib.parse import quote_plus
+
+    name, template = _SOURCES[index % len(_SOURCES)]
+    return name, template.format(q=quote_plus(topic))
 
 
 def _seed(prompt: str, variation: int, salt: str) -> int:
@@ -151,7 +159,7 @@ def build_demo_response(
 
     cite_roll = _seed(prompt, variation, "cite") % 100
     if cite_roll < 55:
-        name, url = _SOURCES[_seed(prompt, variation, "src") % len(_SOURCES)]
+        name, url = _source(_seed(prompt, variation, "src"), topic)
         if brand_mentioned and cite_roll < 28:
             # Citation that names the brand -> source gets attributed to it.
             lines.append(
@@ -164,7 +172,7 @@ def build_demo_response(
             )
         # ~35% of cited answers reference a second, distinct source.
         if _seed(prompt, variation, "cite2") % 100 < 35:
-            name2, url2 = _SOURCES[_seed(prompt, variation, "src2") % len(_SOURCES)]
+            name2, url2 = _source(_seed(prompt, variation, "src2"), topic)
             if url2 != url:
                 lines.append(f"{name2} reaches a similar conclusion ({url2}).")
 
