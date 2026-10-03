@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import sys
 import webbrowser
 from collections.abc import Awaitable, Callable
 from enum import Enum
@@ -19,7 +20,13 @@ from rich.table import Table
 from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import Provider, get_tavily_api_key, has_tavily_api_key
 from promptbeacon.core.exceptions import VisibilityAssertionError
-from promptbeacon.reporting.formats import to_dashboard_html, to_json, to_markdown
+from promptbeacon.reporting.formats import (
+    to_csv,
+    to_dashboard_html,
+    to_html,
+    to_json,
+    to_markdown,
+)
 
 app = typer.Typer(
     name="promptbeacon",
@@ -30,7 +37,10 @@ app = typer.Typer(
     ),
     no_args_is_help=True,
 )
+# Human-readable reports go to stdout; progress, banners, notices and errors go
+# to stderr so that machine formats (json/csv/markdown/html) stay pipeable.
 console = Console()
+err_console = Console(stderr=True)
 
 
 class OutputFormat(str, Enum):
@@ -39,6 +49,46 @@ class OutputFormat(str, Enum):
     text = "text"
     json = "json"
     markdown = "markdown"
+    csv = "csv"
+    html = "html"
+
+
+def _emit(text: str) -> None:
+    """Write a machine-readable document to stdout, verbatim (never wrapped)."""
+    sys.stdout.write(text if text.endswith("\n") else text + "\n")
+    sys.stdout.flush()
+
+
+def _progress() -> Progress:
+    """A transient spinner on stderr (never pollutes stdout)."""
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=err_console,
+        transient=True,
+    )
+
+
+def _output_report(report, output_format: OutputFormat, text_printer) -> None:
+    """Render a full scan report in the requested format."""
+    if output_format == OutputFormat.json:
+        _emit(to_json(report))
+    elif output_format == OutputFormat.markdown:
+        _emit(to_markdown(report))
+    elif output_format == OutputFormat.csv:
+        _emit(to_csv(report))
+    elif output_format == OutputFormat.html:
+        _emit(to_html(report))
+    else:
+        text_printer(report)
+
+
+def _text_only_notice(output_format: OutputFormat, command: str) -> None:
+    """Tell the user a format is not available for a command (falls back to text)."""
+    if output_format not in (OutputFormat.text, OutputFormat.json):
+        err_console.print(
+            f"[yellow]{command} supports --format text or json; showing text.[/yellow]"
+        )
 
 
 def provider_callback(value: list[str] | None) -> list[Provider] | None:
@@ -160,7 +210,7 @@ def scan(
         try:
             proto = load_protocol(protocol)
         except Exception as e:
-            console.print(f"[red]Error loading protocol:[/red] {e}")
+            err_console.print(f"[red]Error loading protocol:[/red] {e}")
             raise typer.Exit(1) from None
         beacon = build_beacon(proto)
         if demo:
@@ -169,7 +219,7 @@ def scan(
         run_stability = proto.runs > 0
     else:
         if not brand:
-            console.print("[red]Error:[/red] Provide a BRAND or use --protocol.")
+            err_console.print("[red]Error:[/red] Provide a BRAND or use --protocol.")
             raise typer.Exit(1)
 
         beacon = Beacon(brand)
@@ -206,25 +256,16 @@ def scan(
         run_stability = stability > 0
 
     # Run scan with progress indicator
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(description=f"Scanning visibility for {brand}...", total=None)
         try:
             report = beacon.scan_stability() if run_stability else beacon.scan()
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
     # Output results
-    if output_format == OutputFormat.json:
-        console.print(to_json(report))
-    elif output_format == OutputFormat.markdown:
-        console.print(to_markdown(report))
-    else:
-        _print_text_report(report)
+    _output_report(report, output_format, _print_text_report)
 
     # CI assertions (exit non-zero on failure)
     if any(
@@ -236,9 +277,9 @@ def scan(
                 min_share_of_voice=assert_min_sov,
                 min_stability_score=assert_min_stability,
             )
-            console.print("[green]✓ Visibility assertions passed.[/green]")
+            err_console.print("[green]✓ Visibility assertions passed.[/green]")
         except VisibilityAssertionError as e:
-            console.print(f"[red]✗ Visibility assertion failed:[/red] {e}")
+            err_console.print(f"[red]✗ Visibility assertion failed:[/red] {e}")
             raise typer.Exit(1) from None
 
 
@@ -265,24 +306,15 @@ def quick(
     if demo:
         beacon = beacon.demo()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(description=f"Quick scan for {brand}...", total=None)
         try:
             report = beacon.scan()
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
-    if output_format == OutputFormat.json:
-        console.print(to_json(report))
-    elif output_format == OutputFormat.markdown:
-        console.print(to_markdown(report))
-    else:
-        _print_text_report(report)
+    _output_report(report, output_format, _print_text_report)
 
 
 @app.command()
@@ -311,15 +343,10 @@ def demo(
     else:
         beacon = beacon.with_competitors("Adidas", "Puma")
 
-    console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
+    err_console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
     report = beacon.scan()
 
-    if output_format == OutputFormat.json:
-        console.print(to_json(report))
-    elif output_format == OutputFormat.markdown:
-        console.print(to_markdown(report))
-    else:
-        _print_comparison_report(report)
+    _output_report(report, output_format, _print_comparison_report)
 
 
 @app.command()
@@ -359,20 +386,16 @@ def dashboard(
     if demo:
         beacon = beacon.demo()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(description=f"Building dashboard for {brand}...", total=None)
         try:
             report = beacon.scan()
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
     output.write_text(to_dashboard_html(report), encoding="utf-8")
-    console.print(f"[green]Dashboard written to[/green] {output}")
+    err_console.print(f"[green]Dashboard written to[/green] {output}")
     if open_browser:
         with contextlib.suppress(Exception):
             webbrowser.open(output.resolve().as_uri())
@@ -406,26 +429,17 @@ def compare(
         if provider_enums:
             beacon = beacon.with_providers(*provider_enums)
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(
             description=f"Comparing {brand} with competitors...", total=None
         )
         try:
             report = beacon.scan()
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
-    if output_format == OutputFormat.json:
-        console.print(to_json(report))
-    elif output_format == OutputFormat.markdown:
-        console.print(to_markdown(report))
-    else:
-        _print_comparison_report(report)
+    _output_report(report, output_format, _print_comparison_report)
 
 
 @app.command()
@@ -491,22 +505,19 @@ def sources(
     if grounded:
         beacon = beacon.with_grounding()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(description=f"Finding sources for {brand}...", total=None)
         try:
             report = beacon.scan()
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
     sa = report.source_attribution
     if output_format == OutputFormat.json:
-        console.print(sa.model_dump_json(indent=2) if sa else "{}")
+        _emit(sa.model_dump_json(indent=2) if sa else "{}")
         return
+    _text_only_notice(output_format, "sources")
 
     _print_tier_banner(report)
     if not sa or not sa.entries:
@@ -598,7 +609,7 @@ def funnel(
     else:
         api_key = get_tavily_api_key()
         if not api_key:
-            console.print(
+            err_console.print(
                 "[red]Error:[/red] funnel needs --demo, or a Tavily API key for "
                 "live web search.\n"
                 "Get a free key at https://tavily.com, then set [bold]TAVILY_API_KEY[/bold] "
@@ -616,7 +627,7 @@ def funnel(
 
         available = get_available_providers()
         if not available:
-            console.print(
+            err_console.print(
                 "[red]Error:[/red] --smart needs an LLM provider key "
                 "(e.g. OPENAI_API_KEY). Run 'promptbeacon providers' to check."
             )
@@ -627,11 +638,7 @@ def funnel(
             resp = await _llm.complete(text, temperature=0.2, max_tokens=400)
             return resp.content
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with _progress() as progress:
         progress.add_task(description=f"Tracing the funnel for {brand}...", total=None)
         try:
             report = asyncio.run(
@@ -645,12 +652,13 @@ def funnel(
                 )
             )
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
-        console.print(report.model_dump_json(indent=2))
+        _emit(report.model_dump_json(indent=2))
     else:
+        _text_only_notice(output_format, "funnel")
         _print_funnel_report(report)
 
 
@@ -683,12 +691,13 @@ def history(
     try:
         history_report = beacon.get_history(days)
     except Exception as e:
-        console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
-        console.print(history_report.model_dump_json(indent=2))
+        _emit(history_report.model_dump_json(indent=2))
     else:
+        _text_only_notice(output_format, "history")
         _print_history_report(history_report)
 
 
