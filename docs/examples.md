@@ -1,182 +1,198 @@
-# Real-World Examples
+# CI & Examples
 
-Practical, production-ready examples for common PromptBeacon use cases.
+Gating and tracking AI visibility in CI, then practical end-to-end scripts.
 
-## Table of Contents
+## Contents
 
-- [Keyless Demo](#keyless-demo)
-- [Share of Voice Comparison](#share-of-voice-comparison)
-- [Stability Scan](#stability-scan)
-- [CI Visibility Check](#ci-visibility-check)
-- [HTML Dashboard](#html-dashboard)
-- [Brand Monitoring Dashboard](#brand-monitoring-dashboard)
-- [Competitive Intelligence System](#competitive-intelligence-system)
-- [PR Campaign Impact Tracking](#pr-campaign-impact-tracking)
-- [Multi-Brand Portfolio Management](#multi-brand-portfolio-management)
-- [Automated Alerting System](#automated-alerting-system)
-- [Weekly Report Generation](#weekly-report-generation)
-- [BeaconGuard: Brand Safety](#beaconguard-brand-safety)
-
----
-
-## Keyless Demo
-
-Try PromptBeacon with zero API keys. Returns realistic canned data.
-
-### CLI
-
-```bash
-pip install promptbeacon
-promptbeacon demo "Nike"
-```
-
-### Python
-
-```python
-from promptbeacon import Beacon
-
-# Demo mode — no keys, no network calls
-report = Beacon("Nike").demo().scan()
-
-print(f"Visibility Score: {report.visibility_score}/100")
-print(f"Share of Voice:   {report.share_of_voice.target_share:.0%}")
-print(f"Presence Rate:    {report.share_of_voice.target_presence_rate:.0%}")
-print(f"Rank:             #{report.share_of_voice.target_rank}")
-print(f"Mentions:         {report.mention_count}")
-print(f"Positive Sent.:   {report.sentiment_breakdown.positive:.0%}")
-
-# Competitor SoV breakdown
-for brand, entry in report.share_of_voice.aggregate.items():
-    print(f"  {brand}: {entry.share_of_voice:.0%}")
-
-# CI assertion in demo mode
-report.assert_visibility(min_score=30, min_share_of_voice=0.1)
-print("Visibility thresholds met.")
-```
-
-Demo mode also works with the `--demo` flag on all relevant CLI commands:
-
-```bash
-promptbeacon scan "Nike" --demo
-promptbeacon quick "Nike" --demo
-promptbeacon dashboard "Nike" --demo -o demo_report.html
-```
+- [GitHub Action](#github-action)
+- [Other CI systems: `promptbeacon ci`](#other-ci-systems-promptbeacon-ci)
+- [pytest plugin](#pytest-plugin)
+- [Python assertion API](#python-assertion-api)
+- [Keyless demo](#keyless-demo)
+- [Share of voice comparison](#share-of-voice-comparison)
+- [Stability scan](#stability-scan)
+- [HTML dashboard](#html-dashboard)
+- [Brand monitoring dashboard](#brand-monitoring-dashboard)
+- [Competitive intelligence system](#competitive-intelligence-system)
+- [PR campaign impact tracking](#pr-campaign-impact-tracking)
+- [Multi-brand portfolio management](#multi-brand-portfolio-management)
+- [Automated alerting system](#automated-alerting-system)
+- [Weekly report generation](#weekly-report-generation)
+- [BeaconGuard: brand safety](#beaconguard-brand-safety)
 
 ---
 
-## Share of Voice Comparison
+## GitHub Action
 
-Measure your brand's fraction of AI mindshare vs. competitors.
+`yotambraun/promptbeacon@v1` installs PromptBeacon, runs a scan, writes a job summary,
+exposes the numbers as step outputs, can write a badge and card, can keep one sticky PR
+comment up to date, and applies your thresholds last.
+
+```yaml
+- name: Measure AI visibility
+  id: beacon
+  uses: yotambraun/promptbeacon@v1
+  with:
+    brand: "Nike"
+    category: "running shoes"
+    competitors: |
+      Adidas
+      New Balance
+    providers: "openai anthropic"
+    min-score: "40"
+    min-share-of-voice: "0.15"
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+- run: echo "Score ${{ steps.beacon.outputs.score }}, SoV ${{ steps.beacon.outputs.share-of-voice }}"
+```
+
+### Inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `brand` | (required) | Brand to measure |
+| `category` | | Category the prompts ask about; spaces allowed (`running shoes`) |
+| `categories` | | Several categories, one per line |
+| `competitors` | | Competitors, one per line |
+| `providers` | `openai` | Space-separated providers |
+| `prompts` | `10` | Prompts per category |
+| `min-score` | `0` | Fail below this visibility score (0 = no gate) |
+| `min-share-of-voice` | `0` | Fail below this share of voice, 0-1 (0 = no gate) |
+| `stability` | `0` | Repeat the scan N times and report stability |
+| `min-stability` | `0` | Fail below this stability score (needs `stability`) |
+| `demo` | `false` | Keyless demo mode, for smoke tests |
+| `grounded` | `false` | Web-grounded scan (provider web search) |
+| `badge-path` | | Write an SVG badge here, e.g. `.promptbeacon/badge.svg` |
+| `badge-endpoint-path` | | Write a shields.io endpoint JSON here |
+| `card-path` | | Write a 1200x630 SVG card here |
+| `comment-on-pr` | `false` | Keep one sticky comment on the pull request |
+| `github-token` | `${{ github.token }}` | Token for the PR comment |
+| `version` | `promptbeacon` | Package spec to install, e.g. `promptbeacon==1.3.0` |
+
+For backward compatibility, a single-line `categories` or `competitors` value is split
+on spaces; use one item per line for multi-word names.
+
+### Outputs
+
+| Output | Description |
+| --- | --- |
+| `score` | Visibility score (0-100) |
+| `share-of-voice` | Share of voice (0-1) |
+| `rank` | Share-of-voice rank (1 = leader) |
+| `presence` | Fraction of answers that mention the brand |
+| `stability` | Stability score, when `stability` > 0 |
+| `tier` | `demo`, `base_model` or `api_grounded` |
+| `passed` | `true` if every threshold passed |
+| `report-path` | Path to the full JSON report |
+
+### Job summary
+
+Every run appends a short Markdown report to the job summary: score, share of voice and
+rank, a brand table, the thresholds and whether they passed, and how the scan was
+measured (tier, models, prompts, estimated cost).
+
+### Sticky PR comment
+
+With `comment-on-pr: "true"` the Action posts the same summary as a pull-request
+comment, then edits that comment in place on later pushes (it is found by a hidden
+marker). It only runs on `pull_request` events, needs `pull-requests: write`, and never
+fails the job: on forks without write permission it logs a warning instead.
+
+```yaml
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: yotambraun/promptbeacon@v1
+        with:
+          brand: "Your Product"
+          category: "your category"
+          min-share-of-voice: "0.2"
+          comment-on-pr: "true"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+### Templates
+
+- [ai-visibility-weekly.yml](https://github.com/yotambraun/promptbeacon/blob/main/examples/workflows/ai-visibility-weekly.yml)
+  — weekly scan that commits a refreshed badge, badge JSON and card
+  (`permissions: contents: write`). See [Badges & share cards](share.md).
+- [ai-visibility-pr.yml](https://github.com/yotambraun/promptbeacon/blob/main/examples/workflows/ai-visibility-pr.yml)
+  — pull-request check with a sticky comment.
+
+Each real run is billed to the key in your secrets. `demo: "true"` gives a free dry run.
+
+---
+
+## Other CI systems: `promptbeacon ci`
+
+The Action is a thin wrapper around two CLI calls that work anywhere:
+
+```bash
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -f json --no-save > report.json
+promptbeacon ci --report report.json --min-score 40 --min-sov 0.15
+```
+
+`ci` prints the Markdown summary (or writes it to `$GITHUB_STEP_SUMMARY` and outputs to
+`$GITHUB_OUTPUT` on GitHub), writes a PR-comment body with `--comment-file`, and exits 1
+if a threshold is missed, after writing everything. In one step, `scan` also accepts
+`--assert-min-score`, `--assert-min-sov` and `--assert-min-stability`.
+
+---
+
+## pytest plugin
+
+The plugin registers automatically (no conftest needed):
 
 ```python
-from promptbeacon import Beacon, Provider
+# tests/test_brand_visibility.py
+import pytest
 
-report = (
-    Beacon("Nike")
-    .with_competitors("Adidas", "Puma", "New Balance", "Under Armour")
-    .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE)
-    .with_industry("ecommerce")
-    .with_prompt_count(15)
-    .scan()
+
+@pytest.mark.visibility(
+    brand="Nike",
+    categories=["running shoes"],
+    competitors=["Adidas", "Puma"],
+    min_score=40,
+    min_share_of_voice=0.15,
 )
-
-sov = report.share_of_voice
-
-print(f"\n=== Share of Voice Report ===")
-print(f"Target: {sov.target_share:.0%}  |  Presence: {sov.target_presence_rate:.0%}  |  Rank: #{sov.target_rank}")
-
-print("\nAll brands:")
-for brand, entry in sorted(
-    sov.aggregate.items(),
-    key=lambda x: x[1].share_of_voice,
-    reverse=True,
-):
-    bar = "#" * int(entry.share_of_voice * 40)
-    print(f"  {brand:<20} {entry.share_of_voice:.0%}  {bar}")
-
-# Per-provider breakdown
-print("\nSoV by provider:")
-for provider_name, provider_sov in sov.by_provider.items():
-    print(f"  {provider_name}: {provider_sov.target_share:.0%}")
+def test_nike_visibility_thresholds():
+    pass
 ```
-
-### CLI comparison
 
 ```bash
-promptbeacon compare "Nike" \
-  --against "Adidas" \
-  --against "Puma" \
-  --provider openai \
-  --provider anthropic \
-  --format json > comparison.json
+PROMPTBEACON_DEMO=1 pytest tests/test_brand_visibility.py -v   # keyless
+pytest tests/test_brand_visibility.py -v                        # real keys
 ```
+
+Without keys and without `PROMPTBEACON_DEMO=1` (or `demo=True` on the marker), marked
+tests are skipped. A missed threshold is reported as a normal test failure. The marker
+also accepts `providers`, `prompt_count`, `stability`, `min_presence_rate`,
+`min_stability_score` and `max_rank`; the `beacon` fixture builds a configured Beacon.
 
 ---
 
-## Stability Scan
-
-Measure how consistently AI mentions your brand across repeated scan runs.
+## Python assertion API
 
 ```python
-from promptbeacon import Beacon, Provider
-
-report = (
-    Beacon("Nike")
-    .with_competitors("Adidas", "Puma")
-    .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-    .with_stability(5)          # 5 independent runs
-    .with_temperature(0.7)      # Non-zero temperature for meaningful variance
-    .scan_stability()
-)
-
-s = report.stability
-print(f"Stability Score:   {s.stability_score:.1f}/100")
-print(f"Rating:            {s.volatility.stability_rating}")  # stable/moderate/volatile
-ci = s.score_confidence_interval
-print(f"95% CI:            [{ci[0]:.1f}, {ci[1]:.1f}]")
-print(f"Per-run scores:    {[f'{x:.1f}' for x in s.score_per_run]}")
-print(f"Presence consist.: {s.overall_presence_consistency:.0%}")
-print(f"Flip-flop count:   {s.flip_flop_count}")
-
-print("\nPer-prompt stability (most volatile first):")
-for ps in sorted(report.stability.prompt_stability, key=lambda x: x.score_variance, reverse=True)[:5]:
-    print(f"  [{ps.presence_rate:.0%} present] {ps.prompt[:60]}...")
-```
-
-CLI:
-
-```bash
-# 5 stability runs
-promptbeacon scan "Nike" --stability 5
-
-# Short form
-promptbeacon scan "Nike" -r 5
-```
-
-**Cost warning:** `--stability 5` multiplies API calls by 5. Start with `--demo` to explore the output structure:
-
-```bash
-promptbeacon scan "Nike" --stability 3 --demo
-```
-
----
-
-## CI Visibility Check
-
-Gate deployments or scheduled jobs on brand health metrics.
-
-### Python Assertion API
-
-```python
-#!/usr/bin/env python3
-"""CI visibility gate — fails with exit code 1 if thresholds not met."""
-
 import sys
+
 from promptbeacon import Beacon, Provider
 from promptbeacon.core.exceptions import VisibilityAssertionError
 
 report = (
     Beacon("Nike")
+    .with_category("running shoes")
     .with_competitors("Adidas", "Puma")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
     .scan()
@@ -184,111 +200,121 @@ report = (
 
 try:
     report.assert_visibility(
-        min_score=40,
-        min_share_of_voice=0.15,
-        min_presence_rate=0.5,
-        max_rank=3,
+        min_score=40, min_share_of_voice=0.15, min_presence_rate=0.5, max_rank=3
     )
-    print(f"Visibility check PASSED (score={report.visibility_score:.1f})")
+    print(f"Visibility check passed (score={report.visibility_score:.1f})")
 except VisibilityAssertionError as e:
-    print("Visibility check FAILED:")
     for failure in e.failures:
         print(f"  - {failure}")
     sys.exit(1)
 ```
 
-### pytest Plugin
+---
 
-The plugin auto-registers via the `promptbeacon` entry point — no import needed:
-
-```python
-# tests/test_brand_visibility.py
-import pytest
-
-@pytest.mark.visibility(
-    brand="Nike",
-    competitors=["Adidas", "Puma"],
-    min_score=40,
-    min_share_of_voice=0.15,
-    demo=True,    # No API keys required
-)
-def test_nike_visibility_thresholds():
-    pass
-
-@pytest.mark.visibility(
-    brand="Nike",
-    min_score=50,
-    demo=True,
-)
-def test_nike_minimum_score():
-    pass
-```
-
-Run with:
+## Keyless demo
 
 ```bash
-# Demo mode (no API keys)
-PROMPTBEACON_DEMO=1 pytest tests/test_brand_visibility.py -v
-
-# With real keys
-pytest tests/test_brand_visibility.py -v
+promptbeacon demo "Nike" -t "running shoes" -c "Adidas" -c "Puma"
 ```
 
-Tests skip cleanly when no API keys are present and `demo=True` is not set.
+```python
+from promptbeacon import Beacon
 
-### GitHub Action
+report = (
+    Beacon("Nike")
+    .demo()
+    .with_category("running shoes")
+    .with_competitors("Adidas", "Puma")
+    .scan()
+)
 
-```yaml
-# .github/workflows/brand-visibility.yml
-name: AI Visibility Gate
+sov = report.share_of_voice
+print(f"Visibility score: {report.visibility_score}/100")
+print(f"Share of voice:   {sov.target_share:.0%} (rank #{sov.target_rank})")
+print(f"Presence rate:    {sov.target_presence_rate:.0%}")
+for brand, entry in sov.aggregate.items():
+    print(f"  {brand}: {entry.share_of_voice:.0%}")
 
-on:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '0 9 * * 1'   # Weekly Mondays at 9 AM
-
-jobs:
-  visibility-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check AI visibility
-        uses: yotambraun/promptbeacon@v1
-        with:
-          brand: "Nike"
-          competitors: "Adidas Puma New Balance"
-          providers: "openai anthropic"
-          min-score: "40"
-          min-share-of-voice: "0.15"
-          stability: "3"
-          min-stability: "60"
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-```
-
-The action exits with code `1` if any threshold fails, blocking the workflow. For demo mode in CI without keys:
-
-```yaml
-        with:
-          brand: "Nike"
-          demo: "true"
-          min-score: "40"
+report.assert_visibility(min_score=30, min_share_of_voice=0.1)
 ```
 
 ---
 
-## HTML Dashboard
+## Share of voice comparison
 
-Generate a self-contained HTML report with charts (SoV bar, sentiment donut, score breakdown, stability band, history sparkline).
+```python
+from promptbeacon import Beacon, Provider
+
+report = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_competitors("Adidas", "Puma", "New Balance", "Under Armour")
+    .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE)
+    .with_prompt_count(15)
+    .scan()
+)
+
+sov = report.share_of_voice
+print(f"Target: {sov.target_share:.0%} | Presence: {sov.target_presence_rate:.0%}")
+
+for brand, entry in sorted(
+    sov.aggregate.items(), key=lambda x: x[1].share_of_voice, reverse=True
+):
+    bar = "#" * int(entry.share_of_voice * 40)
+    print(f"  {brand:<20} {entry.share_of_voice:.0%}  {bar}")
+
+# Per-provider: provider -> brand -> entry
+for provider_name, entries in sov.by_provider.items():
+    mine = entries.get(report.brand)
+    if mine:
+        print(f"  {provider_name}: {mine.share_of_voice:.0%}")
+```
+
+```bash
+promptbeacon compare "Nike" -t "running shoes" -a "Adidas" -a "Puma" \
+  -p openai -p anthropic -f json > comparison.json
+```
+
+---
+
+## Stability scan
+
+```python
+from promptbeacon import Beacon, Provider
+
+report = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_competitors("Adidas", "Puma")
+    .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
+    .with_stability(5)  # 5 independent runs
+    .with_temperature(0.7)  # non-zero, or the runs will not vary
+    .scan_stability()
+)
+
+s = report.stability
+print(f"Stability score: {s.stability_score:.1f}/100 ({s.volatility.stability_rating})")
+lo, hi = s.score_confidence_interval
+print(f"95% CI: [{lo:.1f}, {hi:.1f}]  flip-flops: {s.flip_flop_count}")
+```
+
+```bash
+promptbeacon scan "Nike" -t "running shoes" --stability 5
+promptbeacon scan "Nike" -t "running shoes" --stability 3 --demo   # explore for free
+```
+
+`--stability 5` multiplies API calls (and cost) by 5.
+
+---
+
+## HTML dashboard
 
 ```python
 from promptbeacon import Beacon, Provider, to_dashboard_html
 
 beacon = (
     Beacon("Nike")
+    .with_category("running shoes")
     .with_competitors("Adidas", "Puma")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
     .with_storage("~/.promptbeacon/nike.db")
@@ -297,34 +323,18 @@ beacon = (
 report = beacon.scan()
 history = beacon.get_history(days=30)
 
-# Generate dashboard with history sparkline
-html = to_dashboard_html(report, history=history)
-
-with open("nike_dashboard.html", "w") as f:
-    f.write(html)
-
-print("Dashboard saved to nike_dashboard.html")
+with open("nike_dashboard.html", "w", encoding="utf-8") as f:
+    f.write(to_dashboard_html(report, history=history))  # includes a trend sparkline
 ```
 
-CLI (auto-opens in browser):
-
 ```bash
-# Demo (no keys)
-promptbeacon dashboard "Nike" --demo -o report.html
-
-# Real scan
-promptbeacon dashboard "Nike" \
-  --competitor "Adidas" \
-  --provider openai \
-  -o nike_dashboard.html
-
-# Skip auto-open
-promptbeacon dashboard "Nike" --demo -o report.html --no-open
+promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --demo -o report.html
+promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" -p openai --no-open
 ```
 
 ---
 
-## Brand Monitoring Dashboard
+## Brand monitoring dashboard
 
 A complete brand monitoring solution with daily scans, historical tracking, and alerts.
 
@@ -344,20 +354,23 @@ from rich.table import Table
 
 console = Console()
 
+
 class BrandMonitor:
     """Automated brand monitoring system."""
 
-    def __init__(self, brand: str, competitors: list[str], storage_path: str):
+    def __init__(
+        self, brand: str, category: str, competitors: list[str], storage_path: str
+    ):
         self.brand = brand
         self.competitors = competitors
         self.storage_path = storage_path
 
         self.beacon = (
             Beacon(brand)
+            .with_category(category)
             .with_aliases(f"{brand} Inc", f"{brand} Corporation")
             .with_competitors(*competitors)
             .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-            .with_industry("ecommerce")
             .with_cache()
             .with_storage(storage_path)
         )
@@ -399,12 +412,18 @@ class BrandMonitor:
 
         if comparison:
             if comparison.score_change < -5:
-                console.print(f"[red]ALERT: Visibility dropped {comparison.score_change:.1f} points[/red]")
+                console.print(
+                    f"[red]ALERT: Visibility dropped {comparison.score_change:.1f} points[/red]"
+                )
             elif comparison.score_change > 5:
-                console.print(f"[green]Visibility increased {comparison.score_change:+.1f} points[/green]")
+                console.print(
+                    f"[green]Visibility increased {comparison.score_change:+.1f} points[/green]"
+                )
 
         if report.sentiment_breakdown.negative > 0.2:
-            console.print(f"[yellow]ALERT: Negative sentiment at {report.sentiment_breakdown.negative:.0%}[/yellow]")
+            console.print(
+                f"[yellow]ALERT: Negative sentiment at {report.sentiment_breakdown.negative:.0%}[/yellow]"
+            )
 
     def _display_summary(self, report):
         """Display scan summary."""
@@ -414,10 +433,14 @@ class BrandMonitor:
 
         sov = report.share_of_voice
         table.add_row("Visibility Score", f"{report.visibility_score:.1f}/100")
-        table.add_row("Share of Voice", f"{sov.target_share:.0%} (rank #{sov.target_rank})")
+        table.add_row(
+            "Share of Voice", f"{sov.target_share:.0%} (rank #{sov.target_rank})"
+        )
         table.add_row("Presence Rate", f"{sov.target_presence_rate:.0%}")
         table.add_row("Mentions", str(report.mention_count))
-        table.add_row("Positive Sentiment", f"{report.sentiment_breakdown.positive:.0%}")
+        table.add_row(
+            "Positive Sentiment", f"{report.sentiment_breakdown.positive:.0%}"
+        )
         table.add_row("Providers", ", ".join(report.providers_used))
         table.add_row("Duration", f"{report.scan_duration_seconds:.1f}s")
 
@@ -443,7 +466,12 @@ class BrandMonitor:
             for name, score in report.competitor_comparison.items():
                 comp_entry = sov.aggregate.get(name)
                 sov_str = f"{comp_entry.share_of_voice:.0%}" if comp_entry else "-"
-                comp_table.add_row(name, f"{score.visibility_score:.1f}", sov_str, str(score.mention_count))
+                comp_table.add_row(
+                    name,
+                    f"{score.visibility_score:.1f}",
+                    sov_str,
+                    str(score.mention_count),
+                )
 
             console.print("\n", comp_table)
 
@@ -464,6 +492,7 @@ class BrandMonitor:
 async def main():
     monitor = BrandMonitor(
         brand="Nike",
+        category="running shoes",
         competitors=["Adidas", "Puma", "New Balance"],
         storage_path="~/.promptbeacon/nike.db",
     )
@@ -485,7 +514,7 @@ if __name__ == "__main__":
 
 ---
 
-## Competitive Intelligence System
+## Competitive intelligence system
 
 Track multiple competitors with detailed analysis and reporting.
 
@@ -499,8 +528,8 @@ from promptbeacon import Beacon, Provider
 import pandas as pd
 from pathlib import Path
 
-class CompetitiveIntelligence:
 
+class CompetitiveIntelligence:
     def __init__(self, brands: list[str], categories: list[str]):
         self.brands = brands
         self.categories = categories
@@ -524,17 +553,19 @@ class CompetitiveIntelligence:
             report = await beacon.scan_async()
             sov = report.share_of_voice
 
-            results.append({
-                "brand": brand,
-                "score": report.visibility_score,
-                "sov": sov.target_share,
-                "presence_rate": sov.target_presence_rate,
-                "rank": sov.target_rank,
-                "mentions": report.mention_count,
-                "positive": report.sentiment_breakdown.positive,
-                "negative": report.sentiment_breakdown.negative,
-                "timestamp": report.timestamp,
-            })
+            results.append(
+                {
+                    "brand": brand,
+                    "score": report.visibility_score,
+                    "sov": sov.target_share,
+                    "presence_rate": sov.target_presence_rate,
+                    "rank": sov.target_rank,
+                    "mentions": report.mention_count,
+                    "positive": report.sentiment_breakdown.positive,
+                    "negative": report.sentiment_breakdown.negative,
+                    "timestamp": report.timestamp,
+                }
+            )
 
         return pd.DataFrame(results)
 
@@ -553,8 +584,8 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 - **Brands Analyzed**: {len(df)}
 - **Categories**: {", ".join(self.categories)}
-- **Market Leader (Score)**: {df.loc[df['score'].idxmax(), 'brand']} ({df['score'].max():.1f})
-- **Market Leader (SoV)**: {df.loc[df['sov'].idxmax(), 'brand']} ({df['sov'].max():.0%})
+- **Market Leader (Score)**: {df.loc[df["score"].idxmax(), "brand"]} ({df["score"].max():.1f})
+- **Market Leader (SoV)**: {df.loc[df["sov"].idxmax(), "brand"]} ({df["sov"].max():.0%})
 
 ## Brand Rankings
 
@@ -589,7 +620,7 @@ if __name__ == "__main__":
 
 ---
 
-## PR Campaign Impact Tracking
+## PR campaign impact tracking
 
 Track brand visibility before, during, and after PR campaigns.
 
@@ -600,12 +631,16 @@ Track brand visibility before, during, and after PR campaigns.
 from promptbeacon import Beacon
 from datetime import datetime
 
-class CampaignTracker:
 
-    def __init__(self, brand: str, campaign_start: datetime):
+class CampaignTracker:
+    def __init__(self, brand: str, category: str, campaign_start: datetime):
         self.brand = brand
         self.campaign_start = campaign_start
-        self.beacon = Beacon(brand).with_storage("~/.promptbeacon/campaigns.db")
+        self.beacon = (
+            Beacon(brand)
+            .with_category(category)
+            .with_storage("~/.promptbeacon/campaigns.db")
+        )
 
     def track_campaign(self, days_before: int = 7, days_after: int = 14):
         history = self.beacon.get_history(days=days_before + days_after)
@@ -614,11 +649,23 @@ class CampaignTracker:
             print("Insufficient historical data")
             return
 
-        pre_campaign = [dp for dp in history.data_points if dp.timestamp < self.campaign_start]
-        post_campaign = [dp for dp in history.data_points if dp.timestamp >= self.campaign_start]
+        pre_campaign = [
+            dp for dp in history.data_points if dp.timestamp < self.campaign_start
+        ]
+        post_campaign = [
+            dp for dp in history.data_points if dp.timestamp >= self.campaign_start
+        ]
 
-        pre_avg = sum(dp.visibility_score for dp in pre_campaign) / len(pre_campaign) if pre_campaign else 0
-        post_avg = sum(dp.visibility_score for dp in post_campaign) / len(post_campaign) if post_campaign else 0
+        pre_avg = (
+            sum(dp.visibility_score for dp in pre_campaign) / len(pre_campaign)
+            if pre_campaign
+            else 0
+        )
+        post_avg = (
+            sum(dp.visibility_score for dp in post_campaign) / len(post_campaign)
+            if post_campaign
+            else 0
+        )
         impact = post_avg - pre_avg
 
         print(f"\n{self.brand} Campaign Impact Analysis")
@@ -641,6 +688,7 @@ class CampaignTracker:
 if __name__ == "__main__":
     tracker = CampaignTracker(
         brand="Nike",
+        category="running shoes",
         campaign_start=datetime(2026, 1, 10),
     )
 
@@ -649,7 +697,7 @@ if __name__ == "__main__":
 
 ---
 
-## Multi-Brand Portfolio Management
+## Multi-brand portfolio management
 
 ```python
 #!/usr/bin/env python3
@@ -662,20 +710,21 @@ from rich.table import Table
 
 console = Console()
 
-class PortfolioManager:
 
-    def __init__(self, brands: dict[str, list[str]]):
+class PortfolioManager:
+    def __init__(self, brands: dict[str, tuple[str, list[str]]]):
         self.brands = brands
         self.storage_path = "~/.promptbeacon/portfolio.db"
 
     async def scan_portfolio(self):
         results = {}
 
-        for brand, competitors in self.brands.items():
+        for brand, (category, competitors) in self.brands.items():
             console.print(f"\n[cyan]Scanning {brand}...[/cyan]")
 
             beacon = (
                 Beacon(brand)
+                .with_category(category)
                 .with_competitors(*competitors)
                 .with_providers(Provider.OPENAI)
                 .with_storage(self.storage_path)
@@ -720,8 +769,8 @@ class PortfolioManager:
 
 async def main():
     portfolio = {
-        "Brand A": ["Competitor A1", "Competitor A2"],
-        "Brand B": ["Competitor B1", "Competitor B2"],
+        "Brand A": ("project management software", ["Competitor A1", "Competitor A2"]),
+        "Brand B": ("crm software", ["Competitor B1", "Competitor B2"]),
     }
 
     manager = PortfolioManager(portfolio)
@@ -736,7 +785,7 @@ if __name__ == "__main__":
 
 ---
 
-## Automated Alerting System
+## Automated alerting system
 
 ```python
 #!/usr/bin/env python3
@@ -745,12 +794,16 @@ if __name__ == "__main__":
 from promptbeacon import Beacon
 import requests
 
-class AlertSystem:
 
-    def __init__(self, brand: str, slack_webhook: str = None):
+class AlertSystem:
+    def __init__(self, brand: str, category: str, slack_webhook: str | None = None):
         self.brand = brand
         self.slack_webhook = slack_webhook
-        self.beacon = Beacon(brand).with_storage("~/.promptbeacon/alerts.db")
+        self.beacon = (
+            Beacon(brand)
+            .with_category(category)
+            .with_storage("~/.promptbeacon/alerts.db")
+        )
 
     def monitor_and_alert(self, thresholds: dict = None):
         if thresholds is None:
@@ -777,38 +830,48 @@ class AlertSystem:
         comparison = self.beacon.compare_with_previous()
         if comparison:
             if comparison.score_change <= thresholds["score_drop"]:
-                alerts.append({
-                    "severity": "high",
-                    "type": "score_drop",
-                    "message": f"Visibility dropped by {abs(comparison.score_change):.1f} points",
-                })
+                alerts.append(
+                    {
+                        "severity": "high",
+                        "type": "score_drop",
+                        "message": f"Visibility dropped by {abs(comparison.score_change):.1f} points",
+                    }
+                )
             elif comparison.score_change >= thresholds["score_increase"]:
-                alerts.append({
-                    "severity": "info",
-                    "type": "score_increase",
-                    "message": f"Visibility increased by {comparison.score_change:.1f} points",
-                })
+                alerts.append(
+                    {
+                        "severity": "info",
+                        "type": "score_increase",
+                        "message": f"Visibility increased by {comparison.score_change:.1f} points",
+                    }
+                )
 
         if report.sentiment_breakdown.negative >= thresholds["negative_sentiment"]:
-            alerts.append({
-                "severity": "medium",
-                "type": "negative_sentiment",
-                "message": f"Negative sentiment at {report.sentiment_breakdown.negative:.0%}",
-            })
+            alerts.append(
+                {
+                    "severity": "medium",
+                    "type": "negative_sentiment",
+                    "message": f"Negative sentiment at {report.sentiment_breakdown.negative:.0%}",
+                }
+            )
 
         if report.visibility_score <= thresholds["low_score"]:
-            alerts.append({
-                "severity": "high",
-                "type": "low_score",
-                "message": f"Visibility score below threshold: {report.visibility_score:.1f}",
-            })
+            alerts.append(
+                {
+                    "severity": "high",
+                    "type": "low_score",
+                    "message": f"Visibility score below threshold: {report.visibility_score:.1f}",
+                }
+            )
 
         if sov.target_share <= thresholds.get("low_sov", 0):
-            alerts.append({
-                "severity": "medium",
-                "type": "low_sov",
-                "message": f"Share of Voice below threshold: {sov.target_share:.0%}",
-            })
+            alerts.append(
+                {
+                    "severity": "medium",
+                    "type": "low_sov",
+                    "message": f"Share of Voice below threshold: {sov.target_share:.0%}",
+                }
+            )
 
         return alerts
 
@@ -826,6 +889,7 @@ class AlertSystem:
 if __name__ == "__main__":
     alert_system = AlertSystem(
         brand="Nike",
+        category="running shoes",
         slack_webhook="https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
     )
 
@@ -838,7 +902,7 @@ if __name__ == "__main__":
 
 ---
 
-## Weekly Report Generation
+## Weekly report generation
 
 ```python
 #!/usr/bin/env python3
@@ -848,13 +912,14 @@ from promptbeacon import Beacon, to_markdown, to_dashboard_html
 from datetime import datetime
 from pathlib import Path
 
-class WeeklyReporter:
 
-    def __init__(self, brand: str, competitors: list[str]):
+class WeeklyReporter:
+    def __init__(self, brand: str, category: str, competitors: list[str]):
         self.brand = brand
         self.competitors = competitors
         self.beacon = (
             Beacon(brand)
+            .with_category(category)
             .with_competitors(*competitors)
             .with_storage("~/.promptbeacon/weekly.db")
         )
@@ -893,7 +958,7 @@ class WeeklyReporter:
         for name, score in sorted(
             current_report.competitor_comparison.items(),
             key=lambda x: x[1].visibility_score,
-            reverse=True
+            reverse=True,
         ):
             comp_entry = sov.aggregate.get(name)
             sov_str = f"{comp_entry.share_of_voice:.0%}" if comp_entry else "-"
@@ -926,6 +991,7 @@ class WeeklyReporter:
 if __name__ == "__main__":
     reporter = WeeklyReporter(
         brand="Nike",
+        category="running shoes",
         competitors=["Adidas", "Puma", "New Balance"],
     )
 
@@ -935,7 +1001,7 @@ if __name__ == "__main__":
 
 ---
 
-## BeaconGuard: Brand Safety
+## BeaconGuard: brand safety
 
 Real-time brand safety analysis for LLM outputs — no API calls needed.
 
@@ -965,15 +1031,14 @@ from promptbeacon.integrations.middleware import BeaconGuardMiddleware
 
 guard = BeaconGuard("Acme", competitors=["CompetitorX"])
 middleware = BeaconGuardMiddleware(
-    guard,
-    on_high_risk=lambda r: print(f"ALERT: {r.flags}")
+    guard, on_high_risk=lambda r: print(f"ALERT: {r.flags}")
 )
 
 result = middleware("I'd suggest CompetitorX over Acme for this use case.")
 print(f"Risk: {result.risk_level}")
 ```
 
-See the [examples directory](../examples/) for runnable scripts: `guard_example.py` and `langchain_guard.py`.
+See the [examples directory](https://github.com/yotambraun/promptbeacon/tree/main/examples) for runnable scripts: `guard_example.py` and `langchain_guard.py`.
 
 ---
 

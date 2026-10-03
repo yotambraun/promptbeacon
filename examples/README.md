@@ -26,6 +26,9 @@ This directory contains example scripts demonstrating how to use PromptBeacon fo
 | [`stability_scan.py`](stability_scan.py) | ✅ | Repeat-N stability score & flip-flop detection |
 | [`source_attribution.py`](source_attribution.py) | ✅ | Which source domains AI cites for your brand |
 | [`funnel_demo.py`](funnel_demo.py) | ✅ | Glass-box funnel: where your brand drops out (retrieve→rerank→cite) |
+| [`project_scan.py`](project_scan.py) | ✅ | Does AI recommend an open-source package? (`pypi:`, `github:`, `npm:`) |
+| [`share_assets.py`](share_assets.py) | ✅ | README badge, shields.io JSON and light/dark share cards from one scan |
+| [`workflows/`](workflows/) | | GitHub workflow templates: weekly badge refresh, PR check with sticky comment |
 | [`protocol.example.json`](protocol.example.json) | | Pinned protocol for reproducible runs: `promptbeacon scan --protocol protocol.example.json` |
 | [`ci_visibility_check.py`](ci_visibility_check.py) | ✅ | Gate a deploy on AI visibility (inline / pytest / Action) |
 | [`basic_scan.py`](basic_scan.py) | | Simple brand visibility analysis (needs a key) |
@@ -150,9 +153,9 @@ from promptbeacon import Beacon, Provider
 
 beacon = (
     Beacon("YourBrand")
+    .with_category("your category, e.g. crm software")
     .with_competitors("Competitor1", "Competitor2")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
-    .with_categories("your industry", "your products")
     .with_prompt_count(20)
 )
 

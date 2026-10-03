@@ -1,5 +1,5 @@
 site_name: PromptBeacon
-site_description: The open-source GEO engine to measure, track, and CI-test how AI recommends your brand.
+site_description: Measure whether AI assistants recommend your product or open-source project, compare share of voice, and track it in CI.
 site_url: https://yotambraun.github.io/promptbeacon/
 repo_url: https://github.com/yotambraun/promptbeacon
 repo_name: yotambraun/promptbeacon
@@ -35,12 +35,18 @@ theme:
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
-  - Providers: providers.md
   - CLI: cli.md
-  - Storage & History: storage.md
+  - Open-source projects: projects.md
+  - Badges & share cards: share.md
+  - CI & examples: examples.md
+  - Claude Code & MCP: mcp.md
+  - Providers: providers.md
+  - Storage & history: storage.md
   - Advanced: advanced.md
-  - Examples: examples.md
   - API Reference: api-reference.md
+
+not_in_nav: |
+  ROADMAP-next.md
 
 markdown_extensions:
   - admonition

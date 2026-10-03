@@ -37,7 +37,7 @@ def main():
     beacon = (
         Beacon("Nike")
         .with_providers(Provider.OPENAI)
-        .with_categories("sports")
+        .with_categories("running shoes")
         .with_prompt_count(2)
     )
 

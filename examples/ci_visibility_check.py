@@ -4,14 +4,20 @@
 1) Inline assertion (raises VisibilityAssertionError -> non-zero exit):
 
     from promptbeacon import Beacon
-    Beacon("Nike").scan().assert_visibility(min_score=50, min_share_of_voice=0.3)
+    Beacon("Nike").with_category("running shoes").scan().assert_visibility(
+        min_score=50, min_share_of_voice=0.3
+    )
 
-2) pytest plugin (auto-registers; skips cleanly without API keys). Run this file
-   with: `PROMPTBEACON_DEMO=1 pytest examples/ci_visibility_check.py`
+2) pytest plugin (auto-registers; skips cleanly without API keys). Put a test
+   like this in your test suite and run `PROMPTBEACON_DEMO=1 pytest` to try it
+   keyless:
 
        import pytest
 
-       @pytest.mark.visibility(brand="Nike", competitors=["Adidas"], min_score=40)
+       @pytest.mark.visibility(
+           brand="Nike", categories=["running shoes"], competitors=["Adidas"],
+           min_score=40,
+       )
        def test_brand_is_visible():
            ...
 
@@ -20,7 +26,10 @@
        - uses: yotambraun/promptbeacon@v1
          with:
            brand: "Nike"
-           competitors: "Adidas Puma"
+           category: "running shoes"
+           competitors: |
+             Adidas
+             Puma
            min-share-of-voice: "0.3"
          env:
            OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
