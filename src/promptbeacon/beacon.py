@@ -764,34 +764,37 @@ class Beacon:
                 "No prompts generated. Check categories configuration."
             )
 
-        results: list[ProviderResult] = []
-        total_cost = 0.0
-
-        for provider in providers_to_use:
+        async def run_provider(
+            provider: Provider,
+        ) -> list[ProviderResult | BaseException]:
             client = self._make_client(provider, variation=variation)
-
-            # Run prompts concurrently with semaphore for rate limiting
+            # Each provider gets its own concurrency limit, so providers run in
+            # parallel without exceeding any single provider's rate limit.
             semaphore = asyncio.Semaphore(self._config.concurrent_requests)
 
-            async def query_with_semaphore(
-                prompt: str,
-                sem: asyncio.Semaphore = semaphore,
-                cli: BaseLLMClient = client,
-            ) -> ProviderResult:
-                async with sem:
-                    return await self._query_provider(cli, prompt, use_cache=use_cache)
+            async def query(prompt: str) -> ProviderResult:
+                async with semaphore:
+                    return await self._query_provider(
+                        client, prompt, use_cache=use_cache
+                    )
 
-            provider_results = await asyncio.gather(
-                *[query_with_semaphore(p) for p in prompts],
-                return_exceptions=True,
+            return await asyncio.gather(
+                *[query(p) for p in prompts], return_exceptions=True
             )
 
+        per_provider = await asyncio.gather(
+            *[run_provider(p) for p in providers_to_use]
+        )
+
+        results: list[ProviderResult] = []
+        total_cost = 0.0
+        for provider_results in per_provider:  # provider order is preserved
             for result in provider_results:
                 if isinstance(result, ProviderResult):
                     results.append(result)
                     if result.cost_usd:
                         total_cost += result.cost_usd
-                elif isinstance(result, Exception):
+                elif isinstance(result, BaseException):
                     logger.warning("Provider query failed: %s", result)
 
         return results, total_cost

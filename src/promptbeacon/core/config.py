@@ -156,7 +156,9 @@ def get_api_key(provider: Provider) -> str | None:
     }
     env_var = env_vars.get(provider)
     if env_var:
-        return os.environ.get(env_var)
+        # Empty values (e.g. "${VAR:-}" in MCP/CI config) mean "not configured".
+        value = os.environ.get(env_var, "").strip()
+        return value or None
     return None
 
 
@@ -171,7 +173,8 @@ TAVILY_ENV_VAR = "TAVILY_API_KEY"
 
 def get_tavily_api_key() -> str | None:
     """Get the Tavily API key (used by the funnel's live web search), if set."""
-    return os.environ.get(TAVILY_ENV_VAR)
+    value = os.environ.get(TAVILY_ENV_VAR, "").strip()
+    return value or None
 
 
 def has_tavily_api_key() -> bool:
