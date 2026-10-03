@@ -5,7 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - Unreleased
+
+A release about the first result being right, and about results you can share.
+
+### Fixed
+- **Prompts now ask about your category.** Without a category, every prompt read
+  "What are the best general brands?", which made the score meaningless. Set one with
+  `--category` / `.with_category()`; without one, PromptBeacon asks "alternatives to
+  &lt;competitor&gt;" questions when you give competitors, and otherwise warns clearly.
+  Reports record `categories` and `prompt_strategy`.
+- **The demo no longer adds Adidas and Puma to every brand.** It uses your competitors,
+  or clearly labelled placeholders ("Competitor A", "Competitor B"), and your category.
+  Each competitor's presence now varies, sources are general sites linked to your topic,
+  and cited sources are listed once instead of twice.
+- **`--format json` is valid JSON.** A banner was printed on stdout and long lines were
+  wrapped at the terminal width. Machine formats now go to stdout untouched; progress,
+  notices and errors go to stderr.
+- **`scan` then `history` shows your scan.** Real CLI scans are saved to
+  `~/.promptbeacon/data.db` by default (`--no-save` to skip, `--storage` to choose a
+  file, `PROMPTBEACON_HOME` to move the directory). Demo scans are not saved unless you
+  pass `--storage`.
+- **`--prompts n` / `with_prompt_count(n)` above 10 works.** Counts were silently capped
+  at 10, and pinned protocol prompt sets were cut to their first 10. Larger counts are
+  extended deterministically; impossible counts raise a clear error.
+- **Grounded scans report a cost estimate** from token usage and known per-search fees,
+  instead of no cost. Reports gain `cost_status` (complete / partial / unknown / none),
+  and outputs say "at least $X" when a fee could not be priced.
+- **Empty API keys count as not configured** (for example `OPENAI_API_KEY=` in CI).
+- **GitHub Action:** multi-word categories and competitors are no longer split on
+  spaces, and inputs are passed to the shell through environment variables.
+
+### Added
+- **Badges and share cards.** `promptbeacon badge` writes an SVG badge and a shields.io
+  endpoint JSON; `promptbeacon card` writes a 1200×630 card in light and dark, with an
+  optional PNG (`pip install 'promptbeacon[share]'`). Both can render from a saved
+  `scan -f json` report. Demo output is always labelled as demo.
+- **Open-source projects.** `scan --repo owner/name`, `--pypi pkg`, `--npm pkg` (and
+  `--project kind:ref`) read public metadata, guess the category and competitor
+  candidates, show where each guess came from, and run a developer-oriented scan. Also
+  available as `Beacon.from_project()`. New sources are one small class
+  (`promptbeacon.projects.MetadataSource`).
+- **Category inference (opt-in):** `--infer-category` / `.with_category_inference()`
+  names the category, and suggests competitors when none are given, with one model call.
+- **GitHub Action outputs, job summary and PR comment.** Outputs `score`,
+  `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `passed`, `report-path`; a
+  Markdown job summary; an optional sticky PR comment; and `badge-path`,
+  `badge-endpoint-path` and `card-path` inputs. Thresholds are applied last.
+- **`promptbeacon ci --report report.json`** writes the same outputs, summary and gate for
+  any CI system.
+- **MCP server and Claude Code plugin.** `promptbeacon mcp` (`pip install
+  'promptbeacon[mcp]'`) exposes `scan`, `project_scan`, `sources`, `share_assets` and
+  `providers`. The repository is also a plugin marketplace with three skills.
+- `--category` on `demo`, `quick`, `compare` and `dashboard`; `--demo` on `compare`;
+  `csv` and `html` CLI formats; `configure_beacon()` for building a scan from plain
+  options; workflow templates for a weekly badge and a PR check.
+
+### Changed
+- Providers are queried concurrently (each with its own rate limit), so multi-provider
+  scans take about as long as the slowest provider.
+- Scans without a category but with competitors use "alternatives to &lt;competitor&gt;"
+  prompts instead of the generic set.
 
 ## [1.2.0] - 2026-06-20
 
@@ -174,7 +234,10 @@ real monitoring pipeline needs.
 - `ScoringWeights` class now has a detailed docstring explaining the rationale for each default weight
 - Neutral sentiment scoring documented: counts as 50% positive because being mentioned neutrally is still better than not being mentioned
 
-## [0.1.1] - 2025-01-20
+## [0.1.1] - unreleased
+
+Never published to PyPI. These changes were made after 0.1.0 and first shipped in
+**0.2.0** (2026-02-06); the entry is kept for history.
 
 ### Fixed
 
@@ -188,7 +251,7 @@ real monitoring pipeline needs.
 - Sentiment analysis now detects negation (e.g., "not great" correctly classifies as negative)
 - Added GEO-specific keywords for more relevant prompt generation
 
-## [0.1.0] - 2024-01-16
+## [0.1.0] - 2026-01-16
 
 ### Added
 

@@ -69,6 +69,19 @@
 - [x] Refresh default models (claude-haiku-4-5); Production/Stable status
 - [x] Hosted docs site (mkdocs-material)
 
+## Completed in v1.3.0
+
+- [x] Category-aware prompts (`with_category`, opt-in inference, competitor fallback)
+- [x] Clean machine-readable CLI output; csv/html formats
+- [x] CLI history saved by default
+- [x] Prompt counts above 10; pinned prompt sets never truncated
+- [x] Grounded cost estimates with `cost_status`
+- [x] Concurrent providers
+- [x] README badge (SVG + shields endpoint) and share cards (SVG/PNG, light/dark)
+- [x] GitHub Action outputs, job summary, sticky PR comment; `promptbeacon ci`
+- [x] Open-source project scans (`--repo`, `--pypi`, `--npm`)
+- [x] MCP server and Claude Code plugin
+
 ---
 
 ## High Priority (next)
@@ -91,7 +104,8 @@
 ### Provider Improvements
 - [ ] Provider-specific rate limiting
 - [ ] Automatic retry with exponential backoff
-- [ ] Cost tracking and budgeting
+- [x] Cost tracking (grounded and base scans)
+- [ ] Cost budgeting (stop a scan at a spend limit)
 
 ---
 
@@ -148,7 +162,7 @@
 
 ## Documentation
 
-- [ ] API documentation site
+- [x] API documentation site
 - [ ] Tutorial videos
 - [ ] Industry-specific guides (e.g., "PromptBeacon for E-commerce")
 - [ ] Best practices guide
@@ -158,6 +172,6 @@
 
 ## Contributing
 
-Want to help? Pick an item from this list and submit a PR! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Want to help? Pick an item from this list and open a PR. See [CONTRIBUTING.md](CONTRIBUTING.md) to get set up.
 
 For questions or suggestions, open an issue on GitHub.
