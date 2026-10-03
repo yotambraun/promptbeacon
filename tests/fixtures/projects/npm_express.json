@@ -1,0 +1,22 @@
+{
+ "name": "express",
+ "description": "Fast, unopinionated, minimalist web framework",
+ "keywords": [
+  "express",
+  "framework",
+  "sinatra",
+  "web",
+  "http",
+  "rest",
+  "restful",
+  "router",
+  "app",
+  "api"
+ ],
+ "homepage": "https://expressjs.com/",
+ "repository": {
+  "url": "git+https://github.com/expressjs/express.git",
+  "type": "git"
+ },
+ "version": "5.2.1"
+}

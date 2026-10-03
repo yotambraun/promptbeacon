@@ -151,3 +151,39 @@ def test_scan_without_category_tells_the_user_how_to_fix_it():
     result = runner.invoke(app, ["scan", "Nike", "--demo"])
     assert result.exit_code == 0, result.output
     assert "--category" in result.stderr
+
+
+def test_parse_profile_json_and_plain():
+    from promptbeacon.analysis.category import parse_profile
+
+    text = 'Sure: {"category": "Python HTTP client", "competitors": ["requests", "httpx", "aiohttp"]}'
+    assert parse_profile(text, brand="httpx") == (
+        "python http client",
+        ["requests", "aiohttp"],
+    )
+    assert parse_profile("running shoes", brand="Nike") == ("running shoes", [])
+    assert parse_profile("{not json", brand="Nike") == (None, [])
+    assert parse_category("外卖平台", brand="美团") == "外卖平台"  # any language
+
+
+def test_inference_also_suggests_competitors_when_none_given():
+    async def fake_complete(_self, prompt, **_kwargs):
+        if "product category" in prompt:
+            return LLMResponse(
+                content='{"category": "running shoes", "competitors": ["Adidas", "Hoka"]}',
+                model="m", provider="openai", latency_ms=1,
+            )  # fmt: skip
+        return LLMResponse(
+            content="Nike, Adidas", model="m", provider="openai", latency_ms=1
+        )
+
+    with (
+        patch(
+            "promptbeacon.beacon.get_available_providers",
+            return_value=[Provider.OPENAI],
+        ),
+        patch("promptbeacon.beacon.LiteLLMClient.complete", new=fake_complete),
+    ):
+        report = Beacon("Nike").with_category_inference().with_prompt_count(2).scan()
+    assert report.categories == ["running shoes"]
+    assert set(report.competitor_comparison) == {"Adidas", "Hoka"}
