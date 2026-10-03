@@ -32,8 +32,8 @@ def test_small_prompt_count_still_takes_the_first_templates():
         Beacon("Nike").with_categories("shoes").with_prompt_count(3)._get_prompts()
     )
     assert generated == [
-        "What are the best shoes brands?",
-        "Can you recommend a good shoes company?",
+        "What are the best shoes?",
+        "Which shoes would you recommend?",
         "What are the top options for shoes?",
     ]
 

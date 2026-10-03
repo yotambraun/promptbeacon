@@ -125,8 +125,8 @@ def _prompt_notice(report) -> None:
     strategy = getattr(report, "prompt_strategy", None)
     if strategy == "generic":
         err_console.print(
-            '[yellow]No --category given, so the prompts were generic ("What are '
-            'the best general brands?") and the score says little.[/yellow]\n'
+            '[yellow]No --category given, so the prompts asked about "general" '
+            "and the score says little.[/yellow]\n"
             f'[yellow]Re-run with --category, e.g. promptbeacon scan "{report.brand}" '
             '--category "running shoes", or add --competitor / --infer-category.'
             "[/yellow]"

@@ -79,9 +79,16 @@ def _presence(name: str) -> int:
     return 45 + int(hashlib.sha256(name.encode()).hexdigest()[:6], 16) % 45
 
 
-def _topic(prompt: str) -> str:
-    """Best-effort topic phrase pulled from a templated prompt."""
+def _topic(prompt: str, topics: list[str] | None = None) -> str:
+    """The topic a prompt asks about.
+
+    Prefers a known topic (the scan's categories) found in the prompt; falls
+    back to a phrase heuristic for prompts built some other way.
+    """
     lowered = prompt.lower()
+    for topic in sorted(topics or [], key=len, reverse=True):
+        if topic and topic.lower() in lowered:
+            return topic
     for marker in (" best ", " top ", "recommend a good ", "leader in "):
         if marker in lowered:
             start = lowered.index(marker) + len(marker)
@@ -99,6 +106,7 @@ def build_demo_response(
     brand: str,
     competitors: list[str] | None = None,
     variation: int = 0,
+    topics: list[str] | None = None,
 ) -> str:
     """Build a deterministic, realistic demo answer for a prompt.
 
@@ -107,12 +115,13 @@ def build_demo_response(
         brand: The target brand to (sometimes) weave in.
         competitors: Competitor brands to weave in.
         variation: Seed that changes the answer across stability runs.
+        topics: Known topics (the scan's categories) to name in the answer.
 
     Returns:
         A plausible answer-engine response as plain text.
     """
     competitors = competitors or []
-    topic = _topic(prompt)
+    topic = _topic(prompt, topics)
 
     # ~72% of the time the brand appears at all (drives presence_rate + flips).
     brand_mentioned = _seed(prompt, variation, "mention") % 100 < 72

@@ -51,7 +51,7 @@ Run a simple visibility scan for a brand:
 python examples/basic_scan.py
 ```
 
-**Sample Output:** [`output/sample_output.txt`](output/sample_output.txt)
+**Sample Output:** [`output/sample_output.txt`](output/sample_output.txt) (recorded with PromptBeacon 1.0; since 1.3.0 the default prompts are worded for any category, e.g. "What are the best running shoes?")
 
 ```
 ============================================================
@@ -92,7 +92,7 @@ Compare your brand against competitors:
 python examples/competitor_analysis.py
 ```
 
-**Sample Output:** [`output/competitor_analysis_output.txt`](output/competitor_analysis_output.txt)
+**Sample Output:** [`output/competitor_analysis_output.txt`](output/competitor_analysis_output.txt) (recorded with PromptBeacon 1.0; since 1.3.0 the default prompts are worded for any category, e.g. "What are the best running shoes?")
 
 ```
 ============================================================
