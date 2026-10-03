@@ -99,6 +99,9 @@ grounded = [
 all = [
     "promptbeacon[cli,pandas,grounded]",
 ]
+share = [
+    "pillow>=10.1.0",
+]
 
 [project.scripts]
 promptbeacon = "promptbeacon.cli.main:app"
