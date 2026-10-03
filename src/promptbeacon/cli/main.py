@@ -1216,6 +1216,266 @@ def _print_history_report(history_report) -> None:
     console.print(table)
 
 
+# --- shareable outputs ---------------------------------------------------------
+
+_SHARE_LINK = "https://github.com/yotambraun/promptbeacon"
+
+
+class BadgeMetricOption(str, Enum):
+    both = "both"
+    score = "score"
+    sov = "sov"
+
+
+class ThemeOption(str, Enum):
+    light = "light"
+    dark = "dark"
+    both = "both"
+
+
+def _beacon_from_options(
+    brand: str,
+    *,
+    competitors: list[str] | None = None,
+    providers: list[str] | None = None,
+    categories: list[str] | None = None,
+    prompt_count: int | None = None,
+    demo: bool = False,
+    grounded: bool = False,
+    infer_category: bool = False,
+) -> Beacon:
+    """Build a Beacon from the common scan options (one source of truth)."""
+    beacon = Beacon(brand)
+    if competitors:
+        beacon = beacon.with_competitors(*competitors)
+    if providers:
+        provider_enums = provider_callback(providers)
+        if provider_enums:
+            beacon = beacon.with_providers(*provider_enums)
+    if categories:
+        beacon = beacon.with_categories(*categories)
+    if infer_category:
+        beacon = beacon.with_category_inference()
+    if prompt_count is not None:
+        beacon = beacon.with_prompt_count(prompt_count)
+    if demo:
+        beacon = beacon.demo()
+    if grounded:
+        beacon = beacon.with_grounding()
+    return beacon
+
+
+def _report_for_share(
+    report_path: Path | None, brand: str | None, description: str, **options
+):
+    """Load a saved JSON report, or run a scan from the given options."""
+    from promptbeacon.core.schemas import Report
+
+    if report_path is not None:
+        try:
+            return Report.model_validate_json(report_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            err_console.print(f"[red]Error reading report {report_path}:[/red] {e}")
+            raise typer.Exit(1) from None
+    if not brand:
+        err_console.print(
+            "[red]Error:[/red] Provide a BRAND to scan, or --report with a saved "
+            "`promptbeacon scan -f json` report."
+        )
+        raise typer.Exit(1)
+    if options.get("demo"):
+        err_console.print("[cyan]DEMO mode — canned data, labelled as demo.[/cyan]")
+    return _run_scan(_beacon_from_options(brand, **options), description)
+
+
+_ShareBrand = Annotated[
+    str | None,
+    typer.Argument(help="Brand to scan (omit when using --report)"),
+]
+_ShareReport = Annotated[
+    Path | None,
+    typer.Option(
+        "--report", help="Render from a saved `scan -f json` report instead of scanning"
+    ),
+]
+_ShareCompetitors = Annotated[
+    list[str] | None, typer.Option("--competitor", "-c", help="Competitor brands")
+]
+_ShareProviders = Annotated[
+    list[str] | None, typer.Option("--provider", "-p", help="LLM providers to use")
+]
+_ShareCategories = Annotated[
+    list[str] | None,
+    typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
+]
+_SharePrompts = Annotated[
+    int | None, typer.Option("--prompts", "-n", help="Number of prompts per category")
+]
+_ShareDemo = Annotated[
+    bool, typer.Option("--demo", help="Keyless demo mode (output is labelled demo)")
+]
+_ShareGrounded = Annotated[
+    bool, typer.Option("--grounded", help="Measure web-grounded answers")
+]
+
+
+@app.command()
+def badge(
+    brand: _ShareBrand = None,
+    report_path: _ShareReport = None,
+    competitors: _ShareCompetitors = None,
+    providers: _ShareProviders = None,
+    categories: _ShareCategories = None,
+    prompt_count: _SharePrompts = None,
+    demo: _ShareDemo = False,
+    grounded: _ShareGrounded = False,
+    output: Annotated[
+        Path, typer.Option("--output", "-o", help="Where to write the SVG badge")
+    ] = Path("promptbeacon-badge.svg"),
+    endpoint: Annotated[
+        Path | None,
+        typer.Option(
+            "--endpoint",
+            help="Also write a shields.io endpoint JSON here (for img.shields.io)",
+        ),
+    ] = None,
+    label: Annotated[
+        str, typer.Option("--label", help="Badge label")
+    ] = "AI visibility",
+    metric: Annotated[
+        BadgeMetricOption,
+        typer.Option("--metric", help="What the badge shows: both, score, or sov"),
+    ] = BadgeMetricOption.both,
+) -> None:
+    """Write a README badge (SVG, and optionally shields.io endpoint JSON).
+
+    Example:
+        promptbeacon badge "Nike" -t "running shoes" -c "Adidas" --demo
+
+        promptbeacon scan "Nike" -t "running shoes" -f json > report.json
+        promptbeacon badge --report report.json --endpoint .promptbeacon/badge.json
+    """
+    from promptbeacon.share import badge_endpoint, render_badge_svg
+
+    report = _report_for_share(
+        report_path,
+        brand,
+        f"Scanning {brand} for a badge...",
+        competitors=competitors,
+        providers=providers,
+        categories=categories,
+        prompt_count=prompt_count,
+        demo=demo,
+        grounded=grounded,
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        render_badge_svg(report, label=label, metric=metric.value), encoding="utf-8"
+    )
+    err_console.print(f"[green]Badge written to[/green] {output}")
+    if endpoint is not None:
+        endpoint.parent.mkdir(parents=True, exist_ok=True)
+        endpoint.write_text(
+            json.dumps(
+                badge_endpoint(report, label=label, metric=metric.value), indent=2
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        err_console.print(
+            f"[green]shields.io endpoint JSON written to[/green] {endpoint}"
+        )
+    err_console.print("[dim]Add it to your README:[/dim]")
+    err_console.print(
+        f"[![{label}]({output.as_posix()})]({_SHARE_LINK})",
+        markup=False,
+        soft_wrap=True,
+    )
+    if report.measurement_tier == "demo":
+        err_console.print(
+            "[yellow]This badge is from demo data and says so. Run without --demo "
+            "for a real measurement.[/yellow]"
+        )
+
+
+@app.command()
+def card(
+    brand: _ShareBrand = None,
+    report_path: _ShareReport = None,
+    competitors: _ShareCompetitors = None,
+    providers: _ShareProviders = None,
+    categories: _ShareCategories = None,
+    prompt_count: _SharePrompts = None,
+    demo: _ShareDemo = False,
+    grounded: _ShareGrounded = False,
+    output: Annotated[
+        Path, typer.Option("--output", "-o", help="Where to write the SVG card")
+    ] = Path("promptbeacon-card.svg"),
+    png: Annotated[
+        Path | None,
+        typer.Option(
+            "--png",
+            help="Also write a PNG (for X, LinkedIn, Slack; needs "
+            "'promptbeacon[share]')",
+        ),
+    ] = None,
+    theme: Annotated[
+        ThemeOption,
+        typer.Option(
+            "--theme",
+            help="light, dark, or both (both writes a '-dark' variant next to "
+            "each file)",
+        ),
+    ] = ThemeOption.light,
+) -> None:
+    """Write a share-ready result card (1200x630 SVG, optional PNG).
+
+    Example:
+        promptbeacon card "Nike" -t "running shoes" -c "Adidas" -c "Hoka" --demo
+
+        promptbeacon card --report report.json --png card.png --theme both
+    """
+    from promptbeacon.share import render_card_png, render_card_svg
+
+    report = _report_for_share(
+        report_path,
+        brand,
+        f"Scanning {brand} for a card...",
+        competitors=competitors,
+        providers=providers,
+        categories=categories,
+        prompt_count=prompt_count,
+        demo=demo,
+        grounded=grounded,
+    )
+    themes = ["light", "dark"] if theme == ThemeOption.both else [theme.value]
+
+    def themed(path: Path, name: str) -> Path:
+        if theme == ThemeOption.both and name == "dark":
+            return path.with_name(f"{path.stem}-dark{path.suffix}")
+        return path
+
+    for name in themes:
+        target = themed(output, name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(render_card_svg(report, name), encoding="utf-8")  # type: ignore[arg-type]
+        err_console.print(f"[green]Card written to[/green] {target}")
+        if png is not None:
+            try:
+                data = render_card_png(report, name)  # type: ignore[arg-type]
+            except ImportError as e:
+                err_console.print(f"[red]Error:[/red] {e}")
+                raise typer.Exit(1) from None
+            png_target = themed(png, name)
+            png_target.parent.mkdir(parents=True, exist_ok=True)
+            png_target.write_bytes(data)
+            err_console.print(f"[green]PNG written to[/green] {png_target}")
+    if report.measurement_tier == "demo":
+        err_console.print(
+            "[yellow]This card is from demo data and is labelled 'Demo data'.[/yellow]"
+        )
+
+
 @app.callback()
 def main() -> None:
     """PromptBeacon - LLM visibility monitoring for brands."""

@@ -66,14 +66,21 @@ def _seed(prompt: str, variation: int, salt: str) -> int:
     return int(hashlib.sha256(raw).hexdigest()[:8], 16)
 
 
+def _presence(name: str) -> int:
+    """Stable per-brand presence percentage (45-89) for demo answers."""
+    return 45 + int(hashlib.sha256(name.encode()).hexdigest()[:6], 16) % 45
+
+
 def _topic(prompt: str) -> str:
     """Best-effort topic phrase pulled from a templated prompt."""
     lowered = prompt.lower()
     for marker in (" best ", " top ", "recommend a good ", "leader in "):
         if marker in lowered:
-            tail = lowered.split(marker, 1)[1]
-            tail = tail.replace("brands", "").replace("brand", "")
-            tail = tail.replace("company", "").replace("?", "").strip()
+            start = lowered.index(marker) + len(marker)
+            tail = prompt[start:]
+            for word in (" brands", " brand", " company", "?"):
+                tail = tail.replace(word, "")
+            tail = tail.strip()
             if tail:
                 return tail
     return "this category"
@@ -107,7 +114,14 @@ def build_demo_response(
     filler = [
         _FILLER_BRANDS[(filler_start + i) % len(_FILLER_BRANDS)] for i in range(2)
     ]
-    field = list(competitors[:3]) + filler
+    # Each competitor gets its own stable "presence" (45-89%), derived from its
+    # name, so any number of competitors shows a realistic, varied ranking.
+    rivals = [
+        name
+        for name in competitors
+        if _seed(prompt, variation, "c:" + name) % 100 < _presence(name)
+    ][:4]
+    field = rivals + filler
     # Deterministic shuffle of the field.
     field.sort(key=lambda name: _seed(prompt, variation, "ord:" + name))
 
