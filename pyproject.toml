@@ -97,7 +97,7 @@ grounded = [
     "google-genai>=1.0.0",
 ]
 all = [
-    "promptbeacon[cli,pandas,grounded]",
+    "promptbeacon[cli,pandas,grounded,share,mcp]",
 ]
 share = [
     "pillow>=10.1.0",
