@@ -1,34 +1,46 @@
-<svg width="760" height="430" viewBox="0 0 760 430" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5">
-  <rect width="760" height="430" rx="12" fill="#0d1117"/>
-  <rect width="760" height="34" rx="12" fill="#161b22"/>
-  <rect y="22" width="760" height="12" fill="#161b22"/>
+<svg width="900" height="466" viewBox="0 0 900 466" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" role="img" aria-label="promptbeacon demo output: Nike visibility 80.8/100, share of voice 29% for running shoes">
+  <rect width="900" height="466" rx="12" fill="#0d1117"/>
+  <rect width="900" height="34" rx="12" fill="#161b22"/>
+  <rect y="22" width="900" height="12" fill="#161b22"/>
   <circle cx="22" cy="17" r="5" fill="#ef4444"/>
   <circle cx="40" cy="17" r="5" fill="#eab308"/>
   <circle cx="58" cy="17" r="5" fill="#22c55e"/>
-  <text x="380" y="21" text-anchor="middle" fill="#8b949e" font-size="12">promptbeacon — zsh</text>
-
-  <g transform="translate(20,60)">
-    <text fill="#c9d1d9"><tspan fill="#7ee787">$</tspan> pip install promptbeacon</text>
-    <text y="24" fill="#8b949e">Successfully installed promptbeacon-1.0.0</text>
-    <text y="56" fill="#c9d1d9"><tspan fill="#7ee787">$</tspan> promptbeacon demo "Nike"</text>
-    <text y="80" fill="#58a6ff">Running in DEMO mode — canned data, no API calls.</text>
-
-    <!-- score panel -->
-    <rect y="94" width="700" height="44" rx="6" fill="none" stroke="#30363d"/>
-    <text x="16" y="122" fill="#c9d1d9">Visibility Score: Nike   <tspan fill="#3fb950" font-weight="bold" font-size="18">82.8</tspan> <tspan fill="#8b949e">/ 100</tspan></text>
-
-    <text y="166" fill="#c9d1d9"><tspan fill="#8b949e">Share of Voice:</tspan> <tspan fill="#58a6ff">47%</tspan>  (rank 2, 90% of prompts)</text>
-
-    <!-- SoV table -->
-    <g transform="translate(0,182)" fill="#c9d1d9">
-      <text y="14" fill="#8b949e">┏━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓</text>
-      <text y="32" fill="#8b949e">┃ <tspan fill="#79c0ff">Brand</tspan>  ┃ <tspan fill="#79c0ff">Appears In</tspan> ┃ <tspan fill="#79c0ff">Presence</tspan> ┃ <tspan fill="#79c0ff">Share of Voice</tspan> ┃</text>
-      <text y="50" fill="#8b949e">┡━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩</text>
-      <text y="68">│ Adidas │ 10/10      │ 100%     │ 53%            │</text>
-      <text y="86">│ <tspan fill="#3fb950">Nike</tspan>   │ 9/10       │ 90%      │ 47%            │</text>
-      <text y="104" fill="#8b949e">└────────┴────────────┴──────────┴────────────────┘</text>
-    </g>
-
-    <text y="306" fill="#8b949e"><tspan fill="#7ee787">$</tspan> <tspan fill="#c9d1d9"># add an API key, drop --demo, and it's a real scan</tspan></text>
+  <text x="450" y="21" text-anchor="middle" fill="#8b949e" font-size="12">promptbeacon — zsh</text>
+  <g transform="translate(20,62)" fill="#c9d1d9" xml:space="preserve" style="white-space:pre">
+        <text y="0"><tspan fill="#7ee787">$ </tspan><tspan fill="#c9d1d9">pip install promptbeacon</tspan></text>
+    <text y="24"><tspan fill="#7ee787">$ </tspan><tspan fill="#c9d1d9">promptbeacon demo "Nike" --category "running shoes" -c Adidas -c "New Balance" -c Hoka</tspan></text>
+    <text y="50"><tspan fill="#58a6ff">Running in DEMO mode — canned data, no API calls.</tspan></text>
+    <rect x="0" y="64" width="860" height="44" rx="6" fill="none" stroke="#30363d"/>
+    <text x="16" y="92"><tspan fill="#c9d1d9">Visibility Score: Nike   </tspan><tspan fill="#3fb950" font-weight="bold">80.8</tspan><tspan fill="#8b949e"> / 100</tspan></text>
+    <text y="134"><tspan fill="#d29922">measurement: demo</tspan><tspan fill="#8b949e"> — canned responses, not a real measurement</tspan></text>
+    <text y="156"><tspan fill="#8b949e">prompts: 10 · category: running shoes</tspan></text>
+    <text y="186"><tspan fill="#8b949e">Share of Voice: </tspan><tspan fill="#58a6ff">29%</tspan><tspan fill="#c9d1d9">  (rank 1, 90% of prompts)</tspan></text>
+    <rect x="0" y="198" width="449" height="108" rx="4" fill="none" stroke="#30363d"/>
+    <text x="12" y="214" fill="#79c0ff">Brand</text>
+    <text x="125" y="214" fill="#79c0ff">Appears In</text>
+    <text x="231" y="214" fill="#79c0ff">Presence</text>
+    <text x="320" y="214" fill="#79c0ff">Share of Voice</text>
+    <line x1="0" x2="449" y1="224" y2="224" stroke="#30363d"/>
+    <text x="12" y="244" fill="#3fb950" font-weight="bold">Nike</text>
+    <text x="125" y="244" fill="#c9d1d9">9/10</text>
+    <text x="231" y="244" fill="#c9d1d9">90%</text>
+    <text x="320" y="244" fill="#c9d1d9">29%</text>
+    <text x="12" y="262" fill="#c9d1d9">Hoka</text>
+    <text x="125" y="262" fill="#c9d1d9">9/10</text>
+    <text x="231" y="262" fill="#c9d1d9">90%</text>
+    <text x="320" y="262" fill="#c9d1d9">29%</text>
+    <text x="12" y="280" fill="#c9d1d9">Adidas</text>
+    <text x="125" y="280" fill="#c9d1d9">8/10</text>
+    <text x="231" y="280" fill="#c9d1d9">80%</text>
+    <text x="320" y="280" fill="#c9d1d9">26%</text>
+    <text x="12" y="298" fill="#c9d1d9">New Balance</text>
+    <text x="125" y="298" fill="#c9d1d9">5/10</text>
+    <text x="231" y="298" fill="#c9d1d9">50%</text>
+    <text x="320" y="298" fill="#c9d1d9">16%</text>
+    <line x1="113" x2="113" y1="198" y2="306" stroke="#30363d"/>
+    <line x1="219" x2="219" y1="198" y2="306" stroke="#30363d"/>
+    <line x1="308" x2="308" y1="198" y2="306" stroke="#30363d"/>
+    <text y="342"><tspan fill="#7ee787">$ </tspan><tspan fill="#c9d1d9">promptbeacon card "Nike" -t "running shoes" -c Adidas --demo --png card.png</tspan></text>
+    <text y="366"><tspan fill="#7ee787">$ </tspan><tspan fill="#8b949e"># add an API key and drop --demo for a real scan</tspan></text>
   </g>
 </svg>
