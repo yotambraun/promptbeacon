@@ -174,6 +174,76 @@ def generate_buyer_intent_prompts(category: str, n: int = 50) -> list[str]:
     return prompts
 
 
+# Phrasing variants used to extend a template set deterministically when more
+# prompts are requested than there are templates. Deliberately year-free so a
+# pinned prompt set does not go stale.
+_VARIANT_SUFFIXES: list[str] = [
+    " right now",
+    " for most people",
+    " overall",
+    " this year",
+    " in your experience",
+]
+
+
+def _with_suffix(template: str, suffix: str) -> str:
+    """Insert a phrasing suffix before a template's closing punctuation."""
+    if template and template[-1] in "?.!":
+        return template[:-1] + suffix + template[-1]
+    return template + suffix
+
+
+def expand_prompt_templates(
+    templates: list[str],
+    n: int,
+    extra_templates: list[str] | None = None,
+) -> list[str]:
+    """Return exactly ``n`` distinct prompt templates, deterministically.
+
+    The first templates are returned unchanged and in order (so small counts
+    behave exactly as before). When ``n`` exceeds the available templates, the
+    set is extended first with ``extra_templates`` and then with phrasing
+    variants of every template (e.g. "... right now?").
+
+    Args:
+        templates: Base templates (``{category}`` placeholders allowed).
+        n: Number of distinct templates wanted (>= 1).
+        extra_templates: Optional additional templates used before variants.
+
+    Returns:
+        ``n`` distinct templates.
+
+    Raises:
+        ValueError: If ``n`` < 1, or if ``n`` distinct templates cannot be built.
+    """
+    if n < 1:
+        raise ValueError("n must be >= 1")
+
+    pool: list[str] = []
+    seen: set[str] = set()
+
+    def add(candidate: str) -> bool:
+        if candidate not in seen:
+            seen.add(candidate)
+            pool.append(candidate)
+        return len(pool) >= n
+
+    bases = list(templates) + list(extra_templates or [])
+    for template in bases:
+        if add(template):
+            return pool
+    for suffix in _VARIANT_SUFFIXES:
+        for template in bases:
+            if add(_with_suffix(template, suffix)):
+                return pool
+
+    raise ValueError(
+        f"Cannot build {n} distinct prompts from {len(bases)} template(s) "
+        f"(at most {len(pool)} distinct prompts are available). Lower the prompt "
+        "count, or supply more templates with with_prompts()."
+    )
+
+
 def get_industry_prompts(industry: str) -> list[str]:
     """Get prompt templates for a specific industry.
 
