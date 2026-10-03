@@ -51,7 +51,11 @@ from promptbeacon.extraction.llm_extraction import (
     parse_llm_extraction,
 )
 from promptbeacon.extraction.mentions import MentionExtractionResult, extract_mentions
-from promptbeacon.prompts.templates import get_industry_prompts
+from promptbeacon.prompts.templates import (
+    _BUYER_INTENT_TEMPLATES,
+    expand_prompt_templates,
+    get_industry_prompts,
+)
 from promptbeacon.providers.base import BaseLLMClient
 from promptbeacon.providers.grounding import (
     GroundedClient,
@@ -111,6 +115,7 @@ class Beacon:
         self._config = BeaconConfig(brand=brand)
         self._database: Database | None = None
         self._custom_prompts: list[str] | None = None
+        self._prompt_count_set: bool = False
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
         self._demo_mode: bool = False
@@ -209,13 +214,21 @@ class Beacon:
     def with_prompt_count(self, count: int) -> Self:
         """Set the number of prompts per category.
 
+        Counts above the number of built-in templates are honoured: the set is
+        extended deterministically with additional buyer-intent templates and
+        phrasing variants. If ``count`` distinct prompts cannot be built, the
+        scan raises :class:`ConfigurationError` instead of silently using fewer.
+
         Args:
             count: Number of prompts (1-1000).
 
         Returns:
             Self for chaining.
         """
-        self._config = self._config.model_copy(update={"prompt_count": count})
+        self._config = BeaconConfig.model_validate(
+            {**self._config.model_dump(), "prompt_count": count}
+        )
+        self._prompt_count_set = True
         return self
 
     def with_storage(self, path: str | Path) -> Self:
@@ -476,13 +489,30 @@ class Beacon:
             )
         return providers_to_use
 
+    def _get_templates(self) -> list[str]:
+        """The prompt templates for one category, honouring the prompt count.
+
+        Custom prompts (``with_prompts``/``with_industry``/protocols) are used in
+        full unless a prompt count was set explicitly. Counts larger than the
+        template set are extended deterministically; impossible counts raise.
+        """
+        custom = self._custom_prompts
+        if custom and not self._prompt_count_set:
+            return list(custom)
+        base = custom or DEFAULT_PROMPTS
+        extra = None if custom else _BUYER_INTENT_TEMPLATES
+        try:
+            return expand_prompt_templates(base, self._config.prompt_count, extra)
+        except ValueError as e:
+            raise ConfigurationError(str(e)) from None
+
     def _get_prompts(self) -> list[str]:
         """Generate the list of prompts to use."""
-        base_prompts = self._custom_prompts or DEFAULT_PROMPTS
+        templates = self._get_templates()
         prompts = []
 
         for category in self._config.categories:
-            for prompt_template in base_prompts[: self._config.prompt_count]:
+            for prompt_template in templates:
                 prompts.append(prompt_template.format(category=category))
 
         return prompts
