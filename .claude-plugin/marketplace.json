@@ -1,0 +1,17 @@
+{
+  "name": "promptbeacon",
+  "description": "PromptBeacon: measure whether AI assistants recommend your product or open-source project.",
+  "owner": {
+    "name": "Yotam Braun",
+    "url": "https://github.com/yotambraun"
+  },
+  "plugins": [
+    {
+      "name": "promptbeacon",
+      "source": "./plugins/promptbeacon",
+      "description": "Does AI recommend your product? Scan brands and GitHub/PyPI/npm projects, compare share of voice, and create README badges and share cards.",
+      "category": "productivity",
+      "tags": ["ai-visibility", "geo", "seo", "mcp", "open-source"]
+    }
+  ]
+}

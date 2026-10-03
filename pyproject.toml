@@ -102,6 +102,9 @@ all = [
 share = [
     "pillow>=10.1.0",
 ]
+mcp = [
+    "mcp>=2.3.0",
+]
 
 [project.scripts]
 promptbeacon = "promptbeacon.cli.main:app"

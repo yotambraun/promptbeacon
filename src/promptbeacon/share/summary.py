@@ -139,3 +139,57 @@ def summary_markdown(
     lines.append("<sub>" + " · ".join(meta) + " · measured with "
                  "[PromptBeacon](https://github.com/yotambraun/promptbeacon)</sub>")  # fmt: skip
     return "\n".join(lines) + "\n"
+
+
+def report_summary(report: Report, *, max_brands: int = 10) -> dict:
+    """A compact, JSON-serialisable view of a report (for tools and agents).
+
+    Omits raw model responses; includes the numbers people act on.
+    """
+    sov = report.share_of_voice
+    brands = []
+    if sov and sov.aggregate:
+        for e in sorted(
+            sov.aggregate.values(),
+            key=lambda e: (-e.appearances, e.brand_name != report.brand),
+        )[:max_brands]:
+            brands.append(
+                {
+                    "brand": e.brand_name,
+                    "is_target": e.brand_name == report.brand,
+                    "answers_mentioning": e.appearances,
+                    "answers_total": e.total_prompts,
+                    "share_of_voice": round(e.share_of_voice, 4),
+                }
+            )
+    sources = []
+    if report.source_attribution:
+        sources = [
+            {
+                "domain": s.domain,
+                "type": s.source_type,
+                "citations": s.citations,
+                "cites_target": s.cites_target,
+            }
+            for s in report.source_attribution.entries[:10]
+        ]
+    return {
+        "brand": report.brand,
+        "categories": report.categories,
+        "prompt_strategy": report.prompt_strategy,
+        "measurement_tier": report.measurement_tier,
+        "visibility_score": round(report.visibility_score, 1),
+        "share_of_voice": round(sov.target_share, 4) if sov else None,
+        "rank": sov.target_rank if sov else None,
+        "presence_rate": round(sov.target_presence_rate, 4) if sov else None,
+        "stability_score": round(report.stability.stability_score, 1)
+        if report.stability
+        else None,
+        "brands": brands,
+        "top_sources": sources,
+        "models": sorted({f"{r.provider}/{r.model}" for r in report.provider_results}),
+        "prompts": len({r.prompt for r in report.provider_results}),
+        "cost": describe_cost(report),
+        "recommendations": [r.action for r in report.recommendations[:3]],
+        "timestamp": report.timestamp.isoformat(),
+    }

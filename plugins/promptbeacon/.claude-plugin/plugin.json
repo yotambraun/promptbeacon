@@ -1,0 +1,14 @@
+{
+  "name": "promptbeacon",
+  "displayName": "PromptBeacon",
+  "version": "1.3.0",
+  "description": "Measure whether AI assistants recommend your product or open-source project, compare share of voice with competitors, and create README badges and share cards.",
+  "author": {
+    "name": "Yotam Braun",
+    "url": "https://github.com/yotambraun"
+  },
+  "homepage": "https://yotambraun.github.io/promptbeacon/",
+  "repository": "https://github.com/yotambraun/promptbeacon",
+  "license": "Apache-2.0",
+  "keywords": ["ai-visibility", "geo", "aeo", "share-of-voice", "llm", "mcp"]
+}
