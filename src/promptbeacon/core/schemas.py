@@ -431,6 +431,27 @@ class Report(BaseModel):
     """Complete visibility report for a brand scan."""
 
     brand: str = Field(..., description="The brand being analyzed")
+    categories: list[str] = Field(
+        default_factory=list,
+        description="Categories the prompts asked about (empty when the prompts "
+        "were not category-based)",
+    )
+    prompt_strategy: (
+        Literal[
+            "category",
+            "inferred_category",
+            "competitor_alternatives",
+            "custom",
+            "generic",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description="How the prompts were chosen: 'category' (explicit), "
+        "'inferred_category' (one LLM call, opt-in), 'competitor_alternatives' "
+        "(no category; 'alternatives to <competitor>' prompts), 'custom' "
+        "(your own prompts), or 'generic' (no category — low signal).",
+    )
     visibility_score: float = Field(
         ..., ge=0.0, le=100.0, description="Overall visibility score"
     )
