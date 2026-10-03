@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import sys
 import warnings
 import webbrowser
@@ -19,7 +20,12 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from promptbeacon.beacon import Beacon
-from promptbeacon.core.config import Provider, get_tavily_api_key, has_tavily_api_key
+from promptbeacon.core.config import (
+    Provider,
+    get_default_storage_path,
+    get_tavily_api_key,
+    has_tavily_api_key,
+)
 from promptbeacon.core.exceptions import VisibilityAssertionError
 from promptbeacon.reporting.formats import (
     to_csv,
@@ -192,8 +198,21 @@ def scan(
     ] = None,
     storage: Annotated[
         Path | None,
-        typer.Option("--storage", "-s", help="Path to DuckDB storage file"),
+        typer.Option(
+            "--storage",
+            "-s",
+            help="DuckDB history file (default: ~/.promptbeacon/data.db, or "
+            "$PROMPTBEACON_HOME/data.db)",
+        ),
     ] = None,
+    save: Annotated[
+        bool,
+        typer.Option(
+            "--save/--no-save",
+            help="Save real scans to the history file so `promptbeacon history` "
+            "can show trends (demo scans are only saved with an explicit --storage)",
+        ),
+    ] = True,
     demo: Annotated[
         bool,
         typer.Option("--demo", help="Keyless demo mode (no API keys, canned data)"),
@@ -274,6 +293,8 @@ def scan(
         beacon = build_beacon(proto)
         if demo:
             beacon = beacon.demo()
+        if storage:
+            beacon = beacon.with_storage(storage)
         brand = proto.brand
         run_stability = proto.runs > 0
     else:
@@ -317,9 +338,25 @@ def scan(
 
         run_stability = stability > 0
 
+    # Real scans are saved to the default history file unless --no-save, so
+    # `promptbeacon history` works out of the box. Demo data is never mixed in
+    # unless --storage is given explicitly.
+    history_path = storage
+    if storage is None and save and not demo:
+        history_path = get_default_storage_path()
+        beacon = beacon.with_storage(history_path)
+    if not save and storage is None:
+        history_path = None
+
     report = _run_scan(
         beacon, f"Scanning visibility for {brand}...", stability=run_stability
     )
+    beacon.close()
+    if history_path is not None:
+        err_console.print(
+            f"[dim]Saved to history ({history_path}). "
+            f'View trends: promptbeacon history "{brand}"[/dim]'
+        )
 
     # Output results
     _output_report(report, output_format, _print_text_report)
@@ -750,10 +787,26 @@ def history(
     """View historical visibility data for a brand.
 
     Example:
-        promptbeacon history "Nike" --days 30 --storage ~/.promptbeacon/data.db
+        promptbeacon history "Nike" --days 30
     """
     if not storage:
-        storage = Path.home() / ".promptbeacon" / "data.db"
+        storage = get_default_storage_path()
+
+    if not Path(storage).expanduser().exists():
+        if output_format == OutputFormat.json:
+            _emit(
+                json.dumps(
+                    {"brand": brand, "data_points": [], "storage": str(storage)},
+                    indent=2,
+                )
+            )
+            return
+        console.print(
+            f"No history yet for {brand} ({storage}).\n"
+            "Real scans are saved automatically, e.g.:\n"
+            f'  promptbeacon scan "{brand}" --category "<your category>"'
+        )
+        return
 
     beacon = Beacon(brand).with_storage(storage)
 
@@ -1116,7 +1169,11 @@ def _print_history_report(history_report) -> None:
     )
 
     if not history_report.data_points:
-        console.print("[yellow]No historical data found.[/yellow]")
+        console.print(
+            "[yellow]No historical data found.[/yellow] Real scans are saved "
+            f'automatically: promptbeacon scan "{history_report.brand}" '
+            '--category "<your category>"'
+        )
         return
 
     # Summary stats

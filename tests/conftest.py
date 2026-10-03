@@ -15,6 +15,14 @@ from promptbeacon.core.schemas import (
 from promptbeacon.storage.database import Database
 
 
+@pytest.fixture(autouse=True)
+def _isolated_promptbeacon_home(tmp_path_factory, monkeypatch):
+    """Keep CLI history writes out of the real ~/.promptbeacon during tests."""
+    monkeypatch.setenv(
+        "PROMPTBEACON_HOME", str(tmp_path_factory.mktemp("promptbeacon-home"))
+    )
+
+
 @pytest.fixture
 def sample_mention():
     """Create a sample brand mention."""

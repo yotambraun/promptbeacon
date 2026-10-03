@@ -124,10 +124,22 @@ class BeaconConfig(BaseModel):
         return get_default_storage_path()
 
 
+HOME_ENV_VAR = "PROMPTBEACON_HOME"
+
+
+def get_promptbeacon_home() -> Path:
+    """Directory for PromptBeacon data: ``$PROMPTBEACON_HOME`` or ``~/.promptbeacon``."""
+    override = os.environ.get(HOME_ENV_VAR, "").strip()
+    return Path(override).expanduser() if override else Path.home() / ".promptbeacon"
+
+
 def get_default_storage_path() -> Path:
-    """Get the default storage path for PromptBeacon data."""
-    home = Path.home()
-    data_dir = home / ".promptbeacon"
+    """Get the default storage path for PromptBeacon data.
+
+    ``$PROMPTBEACON_HOME/data.db`` when the variable is set, otherwise
+    ``~/.promptbeacon/data.db``. The CLI saves real scans here by default.
+    """
+    data_dir = get_promptbeacon_home()
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir / "data.db"
 
