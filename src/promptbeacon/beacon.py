@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -17,6 +18,11 @@ else:
     except ImportError:
         from typing_extensions import Self
 
+from promptbeacon.analysis.category import (
+    build_category_prompt,
+    competitor_alternative_prompts,
+    parse_category,
+)
 from promptbeacon.analysis.explainer import (
     generate_explanations,
     generate_recommendations,
@@ -69,6 +75,17 @@ from promptbeacon.storage.database import Database
 
 logger = logging.getLogger(__name__)
 
+PromptStrategy = Literal[
+    "category", "inferred_category", "competitor_alternatives", "custom", "generic"
+]
+
+_NO_CATEGORY_MESSAGE = (
+    "No category set for '{brand}', so prompts are generic (\"What are the best "
+    'general brands?") and the score says little. Set one with '
+    ".with_category('running shoes') (CLI: --category), add competitors, or "
+    "opt in to .with_category_inference()."
+)
+
 # Default prompts for brand visibility analysis
 DEFAULT_PROMPTS = [
     "What are the best {category} brands?",
@@ -116,6 +133,11 @@ class Beacon:
         self._database: Database | None = None
         self._custom_prompts: list[str] | None = None
         self._prompt_count_set: bool = False
+        self._categories_set: bool = False
+        self._infer_category: bool = False
+        self._category_hints: list[str] = []
+        self._category_inferred: bool = False
+        self._extra_cost: float = 0.0
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
         self._demo_mode: bool = False
@@ -209,6 +231,45 @@ class Beacon:
             else:
                 flat_categories.append(c)
         self._config = self._config.model_copy(update={"categories": flat_categories})
+        self._categories_set = bool(flat_categories)
+        return self
+
+    def with_category(self, category: str) -> Self:
+        """Set the category the prompts ask about (e.g. ``"running shoes"``).
+
+        The category is what makes a scan meaningful: prompts become real buyer
+        questions such as "What are the best running shoes?". Equivalent to
+        ``with_categories(category)``.
+
+        Args:
+            category: The product/service category, phrased the way a buyer
+                would (e.g. ``"crm software"``, ``"python http client"``).
+
+        Returns:
+            Self for chaining.
+        """
+        return self.with_categories(category)
+
+    def with_category_inference(
+        self, enabled: bool = True, hints: list[str] | None = None
+    ) -> Self:
+        """Infer the category with one cheap LLM call when none is set (opt-in).
+
+        Only used when no category was given. Makes exactly one extra LLM call
+        before the scan (logged, and its cost is included in the report), and
+        records ``report.prompt_strategy == "inferred_category"``. Never runs in
+        demo mode. For trend tracking, pin the inferred category with
+        :meth:`with_category` so every run asks the same questions.
+
+        Args:
+            enabled: Whether to infer the category.
+            hints: Optional context (e.g. a project description) for the model.
+
+        Returns:
+            Self for chaining.
+        """
+        self._infer_category = enabled
+        self._category_hints = list(hints or [])
         return self
 
     def with_prompt_count(self, count: int) -> Self:
@@ -506,16 +567,100 @@ class Beacon:
         except ValueError as e:
             raise ConfigurationError(str(e)) from None
 
+    def _prompt_plan(self) -> tuple[list[str], PromptStrategy]:
+        """Resolve the prompts to send and how they were chosen.
+
+        Order: an explicit (or inferred) category; custom prompts that need no
+        category; competitor-anchored "alternatives to X" prompts when only
+        competitors are known; otherwise the legacy generic set (with a warning
+        emitted by the scan).
+        """
+        templates = self._get_templates()
+        uses_category = any("{category}" in t for t in templates)
+
+        if self._categories_set or not uses_category:
+            prompts = [
+                t.format(category=category)
+                for category in self._config.categories
+                for t in templates
+            ]
+            strategy: PromptStrategy
+            if not uses_category:
+                strategy = "custom"
+            elif self._category_inferred:
+                strategy = "inferred_category"
+            else:
+                strategy = "category"
+            return prompts, strategy
+
+        if self._custom_prompts is None and self._config.competitors:
+            try:
+                prompts = competitor_alternative_prompts(
+                    self._config.competitors, self._config.prompt_count
+                )
+            except ValueError as e:
+                raise ConfigurationError(str(e)) from None
+            return prompts, "competitor_alternatives"
+
+        prompts = [
+            t.format(category=category)
+            for category in self._config.categories
+            for t in templates
+        ]
+        return prompts, "generic"
+
     def _get_prompts(self) -> list[str]:
         """Generate the list of prompts to use."""
-        templates = self._get_templates()
-        prompts = []
+        return self._prompt_plan()[0]
 
-        for category in self._config.categories:
-            for prompt_template in templates:
-                prompts.append(prompt_template.format(category=category))
+    async def _prepare_categories(self) -> None:
+        """Resolve the category before a scan (opt-in inference) and warn if absent."""
+        if (
+            self._infer_category
+            and not self._categories_set
+            and not self._demo_mode
+            and self._custom_prompts is None
+        ):
+            category = await self._infer_category_llm()
+            if category:
+                self.with_categories(category)
+                self._category_inferred = True
 
-        return prompts
+        if self._prompt_plan()[1] == "generic":
+            message = _NO_CATEGORY_MESSAGE.format(brand=self._config.brand)
+            logger.warning(message)
+            warnings.warn(message, UserWarning, stacklevel=3)
+
+    async def _infer_category_llm(self) -> str | None:
+        """Ask one model for the brand's category (one extra call; logged)."""
+        try:
+            provider = self._resolve_providers()[0]
+            client = self._make_client(provider)
+            prompt = build_category_prompt(
+                self._config.brand,
+                competitors=self._config.competitors,
+                hints=self._category_hints,
+            )
+            resp = await client.complete(prompt=prompt, temperature=0.0, max_tokens=20)
+            if resp.cost_usd:
+                self._extra_cost += resp.cost_usd
+            category = parse_category(resp.content, self._config.brand)
+        except Exception as e:  # noqa: BLE001 — inference is best-effort
+            logger.warning("Category inference failed: %s", e)
+            return None
+        if category:
+            logger.info(
+                "Inferred category %r for %s with one %s call; pin it with "
+                "with_category() for reproducible trends.",
+                category,
+                self._config.brand,
+                provider.value,
+            )
+        else:
+            logger.warning(
+                "Category inference returned no usable category: %r", resp.content
+            )
+        return category
 
     def _get_database(self) -> Database | None:
         """Get or create the database connection."""
@@ -538,7 +683,9 @@ class Beacon:
             Report with visibility analysis.
         """
         start_time = time.time()
+        await self._prepare_categories()
         results, total_cost = await self._collect_results()
+        total_cost += self._extra_cost
         if not results:
             raise ScanError("All provider queries failed. Check API keys and network.")
         report = self._build_report(results, total_cost, start_time)
@@ -573,8 +720,9 @@ class Beacon:
         runs = self._stability_runs or 5
         start_time = time.time()
 
+        await self._prepare_categories()
         all_runs: list[list[ProviderResult]] = []
-        total_cost = 0.0
+        total_cost = self._extra_cost
         for i in range(runs):
             results, cost = await self._collect_results(variation=i, use_cache=False)
             if results:
@@ -610,7 +758,7 @@ class Beacon:
         """
         providers_to_use = self._resolve_providers()
 
-        prompts = self._get_prompts()
+        prompts, _ = self._prompt_plan()
         if not prompts:
             raise ConfigurationError(
                 "No prompts generated. Check categories configuration."
@@ -715,9 +863,17 @@ class Beacon:
             results, self._config.brand, self._config.competitors
         )
 
+        prompt_strategy = self._prompt_plan()[1]
+        categories = (
+            list(self._config.categories)
+            if prompt_strategy in ("category", "inferred_category")
+            else []
+        )
         scan_duration = time.time() - start_time
         return Report(
             brand=self._config.brand,
+            categories=categories,
+            prompt_strategy=prompt_strategy,
             visibility_score=visibility_score,
             mention_count=metrics.mention_count,
             sentiment_breakdown=metrics.sentiment,

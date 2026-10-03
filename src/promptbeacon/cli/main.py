@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import sys
+import warnings
 import webbrowser
 from collections.abc import Awaitable, Callable
 from enum import Enum
@@ -91,6 +92,52 @@ def _text_only_notice(output_format: OutputFormat, command: str) -> None:
         )
 
 
+# Shown when the user gave no competitors to the keyless demo. Clearly fictional
+# so the demo never implies anything about a real company.
+DEMO_PLACEHOLDER_COMPETITORS = ("Competitor A", "Competitor B")
+
+
+def _run_scan(beacon: Beacon, description: str, *, stability: bool = False):
+    """Run a scan with a stderr spinner, clean errors, and prompt-quality notices."""
+    with _progress() as progress:
+        progress.add_task(description=description, total=None)
+        try:
+            with warnings.catch_warnings():
+                # The CLI explains missing categories itself (below).
+                warnings.simplefilter("ignore", UserWarning)
+                report = beacon.scan_stability() if stability else beacon.scan()
+        except Exception as e:
+            err_console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+    _prompt_notice(report)
+    return report
+
+
+def _prompt_notice(report) -> None:
+    """Explain on stderr how the prompts were chosen when it affects the result."""
+    strategy = getattr(report, "prompt_strategy", None)
+    if strategy == "generic":
+        err_console.print(
+            '[yellow]No --category given, so the prompts were generic ("What are '
+            'the best general brands?") and the score says little.[/yellow]\n'
+            f'[yellow]Re-run with --category, e.g. promptbeacon scan "{report.brand}" '
+            '--category "running shoes", or add --competitor / --infer-category.'
+            "[/yellow]"
+        )
+    elif strategy == "competitor_alternatives":
+        err_console.print(
+            '[dim]No --category given: asked "alternatives to <competitor>" '
+            "questions. Add --category for buyer-intent prompts about your "
+            "category.[/dim]"
+        )
+    elif strategy == "inferred_category" and report.categories:
+        cat = report.categories[0]
+        err_console.print(
+            f"[cyan]Inferred category:[/cyan] {cat!r} (one extra LLM call). "
+            f"Pin it with --category {cat!r} so future runs are comparable."
+        )
+
+
 def provider_callback(value: list[str] | None) -> list[Provider] | None:
     """Convert provider strings to Provider enums."""
     if value is None:
@@ -125,12 +172,24 @@ def scan(
     ] = None,
     categories: Annotated[
         list[str] | None,
-        typer.Option("--category", "-t", help="Categories/topics to analyze"),
+        typer.Option(
+            "--category",
+            "-t",
+            help='Category the prompts ask about, e.g. "running shoes" (repeatable)',
+        ),
     ] = None,
+    infer_category: Annotated[
+        bool,
+        typer.Option(
+            "--infer-category",
+            help="No category? Ask one model to name it (one extra LLM call; "
+            "ignored in demo mode)",
+        ),
+    ] = False,
     prompt_count: Annotated[
-        int,
+        int | None,
         typer.Option("--prompts", "-n", help="Number of prompts per category"),
-    ] = 10,
+    ] = None,
     storage: Annotated[
         Path | None,
         typer.Option("--storage", "-s", help="Path to DuckDB storage file"),
@@ -195,9 +254,9 @@ def scan(
     """Scan LLM visibility for a brand.
 
     Example:
-        promptbeacon scan "Nike" --competitor "Adidas" --provider openai
+        promptbeacon scan "Nike" --category "running shoes" -c "Adidas" -p openai
 
-        promptbeacon scan "Nike" --demo            # no API keys needed
+        promptbeacon scan "Nike" -t "running shoes" --demo   # no API keys needed
 
         promptbeacon scan "Nike" --assert-min-score 50   # CI gate (exit 1 on fail)
 
@@ -235,7 +294,10 @@ def scan(
         if categories:
             beacon = beacon.with_categories(*categories)
 
-        if prompt_count != 10:
+        if infer_category:
+            beacon = beacon.with_category_inference()
+
+        if prompt_count is not None:
             beacon = beacon.with_prompt_count(prompt_count)
 
         if storage:
@@ -255,14 +317,9 @@ def scan(
 
         run_stability = stability > 0
 
-    # Run scan with progress indicator
-    with _progress() as progress:
-        progress.add_task(description=f"Scanning visibility for {brand}...", total=None)
-        try:
-            report = beacon.scan_stability() if run_stability else beacon.scan()
-        except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
+    report = _run_scan(
+        beacon, f"Scanning visibility for {brand}...", stability=run_stability
+    )
 
     # Output results
     _output_report(report, output_format, _print_text_report)
@@ -286,6 +343,10 @@ def scan(
 @app.command()
 def quick(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
+    category: Annotated[
+        str | None,
+        typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
+    ] = None,
     demo: Annotated[
         bool,
         typer.Option("--demo", help="Keyless demo mode (no API keys needed)"),
@@ -300,19 +361,15 @@ def quick(
     Great for a quick check before running a full scan.
 
     Example:
-        promptbeacon quick "Nike"
+        promptbeacon quick "Nike" --category "running shoes"
     """
     beacon = Beacon(brand).with_prompt_count(3)
+    if category:
+        beacon = beacon.with_category(category)
     if demo:
         beacon = beacon.demo()
 
-    with _progress() as progress:
-        progress.add_task(description=f"Quick scan for {brand}...", total=None)
-        try:
-            report = beacon.scan()
-        except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
+    report = _run_scan(beacon, f"Quick scan for {brand}...")
 
     _output_report(report, output_format, _print_text_report)
 
@@ -323,6 +380,12 @@ def demo(
     competitors: Annotated[
         list[str] | None,
         typer.Option("--competitor", "-c", help="Competitor brands to compare"),
+    ] = None,
+    categories: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--category", "-t", help='Category the prompts ask about, e.g. "crm"'
+        ),
     ] = None,
     output_format: Annotated[
         OutputFormat,
@@ -335,16 +398,24 @@ def demo(
     works the moment you `pip install promptbeacon`.
 
     Example:
-        promptbeacon demo "Nike" --competitor "Adidas"
+        promptbeacon demo "Nike" --category "running shoes" --competitor "Adidas"
     """
     beacon = Beacon(brand).demo()
+    if categories:
+        beacon = beacon.with_categories(*categories)
+
+    err_console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
     if competitors:
         beacon = beacon.with_competitors(*competitors)
     else:
-        beacon = beacon.with_competitors("Adidas", "Puma")
+        beacon = beacon.with_competitors(*DEMO_PLACEHOLDER_COMPETITORS)
+        err_console.print(
+            "[dim]No --competitor given: comparing against placeholder "
+            "competitors ('Competitor A', 'Competitor B'). Add -c to compare "
+            "with your real rivals.[/dim]"
+        )
 
-    err_console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
-    report = beacon.scan()
+    report = _run_scan(beacon, f"Demo scan for {brand}...")
 
     _output_report(report, output_format, _print_comparison_report)
 
@@ -360,6 +431,10 @@ def dashboard(
         list[str] | None,
         typer.Option("--provider", "-p", help="LLM providers to use"),
     ] = None,
+    categories: Annotated[
+        list[str] | None,
+        typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
+    ] = None,
     output: Annotated[
         Path,
         typer.Option("--output", "-o", help="Where to write the HTML dashboard"),
@@ -374,9 +449,11 @@ def dashboard(
     """Generate a shareable HTML dashboard for a brand.
 
     Example:
-        promptbeacon dashboard "Nike" --competitor "Adidas" --demo
+        promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --demo
     """
     beacon = Beacon(brand)
+    if categories:
+        beacon = beacon.with_categories(*categories)
     if competitors:
         beacon = beacon.with_competitors(*competitors)
     if providers:
@@ -386,13 +463,7 @@ def dashboard(
     if demo:
         beacon = beacon.demo()
 
-    with _progress() as progress:
-        progress.add_task(description=f"Building dashboard for {brand}...", total=None)
-        try:
-            report = beacon.scan()
-        except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
+    report = _run_scan(beacon, f"Building dashboard for {brand}...")
 
     output.write_text(to_dashboard_html(report), encoding="utf-8")
     err_console.print(f"[green]Dashboard written to[/green] {output}")
@@ -412,6 +483,14 @@ def compare(
         list[str] | None,
         typer.Option("--provider", "-p", help="LLM providers to use"),
     ] = None,
+    categories: Annotated[
+        list[str] | None,
+        typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
+    ] = None,
+    demo: Annotated[
+        bool,
+        typer.Option("--demo", help="Keyless demo mode (no API keys needed)"),
+    ] = False,
     output_format: Annotated[
         OutputFormat,
         typer.Option("--format", "-f", help="Output format"),
@@ -420,24 +499,20 @@ def compare(
     """Compare brand visibility against competitors.
 
     Example:
-        promptbeacon compare "Nike" --against "Adidas" --against "Puma"
+        promptbeacon compare "Nike" -t "running shoes" --against "Adidas" -a "Puma"
     """
     beacon = Beacon(brand).with_competitors(*against)
+    if categories:
+        beacon = beacon.with_categories(*categories)
+    if demo:
+        beacon = beacon.demo()
 
     if providers:
         provider_enums = provider_callback(providers)
         if provider_enums:
             beacon = beacon.with_providers(*provider_enums)
 
-    with _progress() as progress:
-        progress.add_task(
-            description=f"Comparing {brand} with competitors...", total=None
-        )
-        try:
-            report = beacon.scan()
-        except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
+    report = _run_scan(beacon, f"Comparing {brand} with competitors...")
 
     _output_report(report, output_format, _print_comparison_report)
 
@@ -458,9 +533,9 @@ def sources(
         typer.Option("--category", "-t", help="Categories/topics to analyze"),
     ] = None,
     prompt_count: Annotated[
-        int,
+        int | None,
         typer.Option("--prompts", "-n", help="Number of prompts per category"),
-    ] = 10,
+    ] = None,
     demo: Annotated[
         bool,
         typer.Option("--demo", help="Keyless demo mode (no API keys needed)"),
@@ -485,9 +560,9 @@ def sources(
     --demo to preview the output.
 
     Example:
-        promptbeacon sources "Nike" --competitor "Adidas" --grounded
+        promptbeacon sources "Nike" -t "running shoes" -c "Adidas" --grounded
 
-        promptbeacon sources "Nike" --demo
+        promptbeacon sources "Nike" -t "running shoes" --demo
     """
     beacon = Beacon(brand)
     if competitors:
@@ -498,20 +573,14 @@ def sources(
             beacon = beacon.with_providers(*provider_enums)
     if categories:
         beacon = beacon.with_categories(*categories)
-    if prompt_count != 10:
+    if prompt_count is not None:
         beacon = beacon.with_prompt_count(prompt_count)
     if demo:
         beacon = beacon.demo()
     if grounded:
         beacon = beacon.with_grounding()
 
-    with _progress() as progress:
-        progress.add_task(description=f"Finding sources for {brand}...", total=None)
-        try:
-            report = beacon.scan()
-        except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
-            raise typer.Exit(1) from None
+    report = _run_scan(beacon, f"Finding sources for {brand}...")
 
     sa = report.source_attribution
     if output_format == OutputFormat.json:
@@ -768,6 +837,28 @@ def _print_tier_banner(report) -> None:
     color, note = _TIER_NOTES.get(tier, ("white", ""))
     if note:
         console.print(f"[{color}]measurement: {tier}[/{color}] — {note}")
+    _print_prompt_line(report)
+
+
+_STRATEGY_LABELS = {
+    "category": "category",
+    "inferred_category": "inferred category",
+    "competitor_alternatives": "alternatives-to-competitor questions (no category)",
+    "custom": "your custom prompts",
+    "generic": "generic prompts (no category set)",
+}
+
+
+def _print_prompt_line(report) -> None:
+    """One line saying what the prompts asked about."""
+    strategy = getattr(report, "prompt_strategy", None)
+    if not strategy:
+        return
+    count = len({r.prompt for r in report.provider_results})
+    label = _STRATEGY_LABELS.get(strategy, strategy)
+    cats = getattr(report, "categories", None) or []
+    detail = f"{label}: {', '.join(cats)}" if cats else label
+    console.print(f"[dim]prompts: {count} · {detail}[/dim]")
 
 
 def _print_source_attribution(report) -> None:
@@ -916,16 +1007,23 @@ def _print_text_report(report) -> None:
                 f"  [{priority_color}][{rec.priority.upper()}][/{priority_color}] {rec.action}"
             )
 
-    # Sources Cited
-    if report.citation_summary and report.citation_summary.total_citations > 0:
+    sa = getattr(report, "source_attribution", None)
+    if sa and sa.entries:
+        # Source-domain attribution (which sites the engines cite).
+        _print_source_attribution(report)
+    elif report.citation_summary and report.citation_summary.total_citations > 0:
+        # No domain table (e.g. name-only citations): list unique sources once.
         console.print("\n[bold]Sources Cited:[/bold]")
-        for cit in report.citation_summary.citations[:10]:
+        seen: set[str] = set()
+        for cit in report.citation_summary.citations:
             source = cit.url or cit.source_name
+            if source in seen:
+                continue
+            seen.add(source)
             brand_tag = f" [{cit.brand_associated}]" if cit.brand_associated else ""
             console.print(f"  [cyan]•[/cyan] {source}{brand_tag}")
-
-    # Source-domain attribution (which sites the engines cite)
-    _print_source_attribution(report)
+            if len(seen) >= 10:
+                break
 
 
 def _print_comparison_report(report) -> None:
