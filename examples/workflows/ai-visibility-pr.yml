@@ -1,0 +1,30 @@
+# AI-visibility check on pull requests, with one sticky PR comment.
+#
+# Useful when a PR changes docs, landing pages or llms.txt. The comment is
+# created once and then edited in place on every push. On forks without write
+# permission the comment step only warns; the check itself still runs.
+
+name: AI visibility check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # needed for the sticky comment
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: yotambraun/promptbeacon@v1
+        with:
+          brand: "Your Product"
+          category: "your category"
+          competitors: |
+            Competitor One
+            Competitor Two
+          min-share-of-voice: "0.2"
+          comment-on-pr: "true"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

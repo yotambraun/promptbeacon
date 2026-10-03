@@ -1,0 +1,57 @@
+# Weekly AI-visibility scan that refreshes a README badge and share card.
+#
+# Copy to .github/workflows/ai-visibility.yml, set your brand/category/
+# competitors, and add an OPENAI_API_KEY repository secret. The badge JSON is
+# committed to your repo, so shields.io can render it:
+#
+#   [![AI visibility](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOWNER%2FREPO%2Fmain%2F.promptbeacon%2Fbadge.json)](https://github.com/yotambraun/promptbeacon)
+#
+# or reference the committed SVG directly: ![AI visibility](.promptbeacon/badge.svg)
+
+name: AI visibility
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the refreshed badge and card
+
+concurrency:
+  group: ai-visibility
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Measure AI visibility
+        id: beacon
+        uses: yotambraun/promptbeacon@v1
+        with:
+          brand: "Your Product"
+          category: "your category, e.g. python http client"
+          competitors: |
+            Competitor One
+            Competitor Two
+          providers: "openai"
+          badge-path: .promptbeacon/badge.svg
+          badge-endpoint-path: .promptbeacon/badge.json
+          card-path: .promptbeacon/card.svg
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Commit badge and card
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .promptbeacon
+          if git diff --cached --quiet; then
+            echo "No change."
+          else
+            git commit -m "chore: refresh AI visibility badge (score ${{ steps.beacon.outputs.score }})"
+            git push
+          fi

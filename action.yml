@@ -8,18 +8,22 @@ inputs:
   brand:
     description: "Brand to measure"
     required: true
+  category:
+    description: "Category the prompts ask about, e.g. 'running shoes' (spaces allowed)"
+    required: false
+    default: ""
+  categories:
+    description: "Several categories, one per line (or space-separated single words)"
+    required: false
+    default: ""
   competitors:
-    description: "Space-separated competitor brands"
+    description: "Competitor brands, one per line (or space-separated single words)"
     required: false
     default: ""
   providers:
-    description: "Space-separated LLM providers (openai anthropic google ...)"
+    description: "Space-separated LLM providers (openai anthropic google mistral cohere perplexity)"
     required: false
     default: "openai"
-  categories:
-    description: "Space-separated categories/topics to probe"
-    required: false
-    default: ""
   prompts:
     description: "Number of prompts per category"
     required: false
@@ -48,36 +52,167 @@ inputs:
     description: "Measure web-grounded answers (provider web search) instead of base-model memory"
     required: false
     default: "false"
+  badge-path:
+    description: "Write an SVG badge here (e.g. .promptbeacon/badge.svg)"
+    required: false
+    default: ""
+  badge-endpoint-path:
+    description: "Write a shields.io endpoint JSON here (e.g. .promptbeacon/badge.json)"
+    required: false
+    default: ""
+  card-path:
+    description: "Write a 1200x630 SVG result card here (e.g. .promptbeacon/card.svg)"
+    required: false
+    default: ""
+  comment-on-pr:
+    description: "On pull_request events, post or update one sticky PR comment (needs pull-requests: write)"
+    required: false
+    default: "false"
+  github-token:
+    description: "Token used for the PR comment"
+    required: false
+    default: ${{ github.token }}
   version:
-    description: "PromptBeacon version spec to install"
+    description: "PromptBeacon version spec to install (e.g. 'promptbeacon==1.3.0')"
     required: false
     default: "promptbeacon"
+
+outputs:
+  score:
+    description: "Visibility score (0-100)"
+    value: ${{ steps.check.outputs.score }}
+  share-of-voice:
+    description: "Share of voice (0-1)"
+    value: ${{ steps.check.outputs.share-of-voice }}
+  rank:
+    description: "Share-of-voice rank (1 = leader)"
+    value: ${{ steps.check.outputs.rank }}
+  presence:
+    description: "Fraction of answers that mention the brand (0-1)"
+    value: ${{ steps.check.outputs.presence }}
+  stability:
+    description: "Stability score (0-100), when stability > 0"
+    value: ${{ steps.check.outputs.stability }}
+  tier:
+    description: "Measurement tier: demo, base_model or api_grounded"
+    value: ${{ steps.check.outputs.tier }}
+  passed:
+    description: "'true' if every threshold passed"
+    value: ${{ steps.check.outputs.passed }}
+  report-path:
+    description: "Path to the full JSON report"
+    value: ${{ steps.scan.outputs.report-path }}
 
 runs:
   using: "composite"
   steps:
     - name: Install PromptBeacon
       shell: bash
+      env:
+        PB_VERSION: ${{ inputs.version }}
+        PB_GROUNDED: ${{ inputs.grounded }}
       run: |
-        pipx install "${{ inputs.version }}"
-        if [ "${{ inputs.grounded }}" = "true" ]; then
+        pipx install "$PB_VERSION"
+        if [ "$PB_GROUNDED" = "true" ]; then
           pipx inject promptbeacon anthropic openai google-genai
         fi
 
-    - name: Run GEO visibility check
+    - name: Run AI visibility scan
+      id: scan
       shell: bash
+      env:
+        PB_BRAND: ${{ inputs.brand }}
+        PB_CATEGORY: ${{ inputs.category }}
+        PB_CATEGORIES: ${{ inputs.categories }}
+        PB_COMPETITORS: ${{ inputs.competitors }}
+        PB_PROVIDERS: ${{ inputs.providers }}
+        PB_PROMPTS: ${{ inputs.prompts }}
+        PB_STABILITY: ${{ inputs.stability }}
+        PB_DEMO: ${{ inputs.demo }}
+        PB_GROUNDED: ${{ inputs.grounded }}
       run: |
-        args=(scan "${{ inputs.brand }}" --format json)
-        for c in ${{ inputs.competitors }}; do args+=(--competitor "$c"); done
-        for p in ${{ inputs.providers }}; do args+=(--provider "$p"); done
-        for t in ${{ inputs.categories }}; do args+=(--category "$t"); done
-        args+=(--prompts "${{ inputs.prompts }}")
-        if [ "${{ inputs.demo }}" = "true" ]; then args+=(--demo); fi
-        if [ "${{ inputs.grounded }}" = "true" ]; then args+=(--grounded); fi
-        if [ "${{ inputs.stability }}" -gt 0 ]; then
-          args+=(--stability "${{ inputs.stability }}")
-          args+=(--assert-min-stability "${{ inputs.min-stability }}")
+        # Lists: one item per line; a single line is split on spaces (legacy).
+        split_list() {
+          if [ "$(printf '%s\n' "$1" | sed '/^[[:space:]]*$/d' | wc -l)" -gt 1 ]; then
+            printf '%s\n' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;/^$/d'
+          else
+            for item in $1; do printf '%s\n' "$item"; done
+          fi
+        }
+        args=(scan "$PB_BRAND" --format json --no-save --prompts "$PB_PROMPTS")
+        if [ -n "$PB_CATEGORY" ]; then args+=(--category "$PB_CATEGORY"); fi
+        while IFS= read -r t; do [ -n "$t" ] && args+=(--category "$t"); done < <(split_list "$PB_CATEGORIES")
+        while IFS= read -r c; do [ -n "$c" ] && args+=(--competitor "$c"); done < <(split_list "$PB_COMPETITORS")
+        for p in $PB_PROVIDERS; do args+=(--provider "$p"); done
+        if [ "$PB_DEMO" = "true" ]; then args+=(--demo); fi
+        if [ "$PB_GROUNDED" = "true" ]; then args+=(--grounded); fi
+        if [ "${PB_STABILITY:-0}" -gt 0 ]; then args+=(--stability "$PB_STABILITY"); fi
+        report="$RUNNER_TEMP/promptbeacon-report.json"
+        promptbeacon "${args[@]}" > "$report"
+        echo "report-path=$report" >> "$GITHUB_OUTPUT"
+
+    - name: Summarise and check thresholds
+      id: check
+      shell: bash
+      env:
+        PB_REPORT: ${{ steps.scan.outputs.report-path }}
+        PB_MIN_SCORE: ${{ inputs.min-score }}
+        PB_MIN_SOV: ${{ inputs.min-share-of-voice }}
+        PB_STABILITY: ${{ inputs.stability }}
+        PB_MIN_STABILITY: ${{ inputs.min-stability }}
+      run: |
+        args=(ci --report "$PB_REPORT" --comment-file "$RUNNER_TEMP/promptbeacon-comment.md")
+        if [ "$PB_MIN_SCORE" != "0" ]; then args+=(--min-score "$PB_MIN_SCORE"); fi
+        if [ "$PB_MIN_SOV" != "0" ]; then args+=(--min-sov "$PB_MIN_SOV"); fi
+        if [ "${PB_STABILITY:-0}" -gt 0 ] && [ "$PB_MIN_STABILITY" != "0" ]; then
+          args+=(--min-stability "$PB_MIN_STABILITY")
         fi
-        args+=(--assert-min-score "${{ inputs.min-score }}")
-        args+=(--assert-min-sov "${{ inputs.min-share-of-voice }}")
+        set +e
         promptbeacon "${args[@]}"
+        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Write badge and card
+      if: inputs.badge-path != '' || inputs.badge-endpoint-path != '' || inputs.card-path != ''
+      shell: bash
+      env:
+        PB_REPORT: ${{ steps.scan.outputs.report-path }}
+        PB_BADGE: ${{ inputs.badge-path }}
+        PB_ENDPOINT: ${{ inputs.badge-endpoint-path }}
+        PB_CARD: ${{ inputs.card-path }}
+      run: |
+        if [ -n "$PB_BADGE" ] || [ -n "$PB_ENDPOINT" ]; then
+          args=(badge --report "$PB_REPORT" --output "${PB_BADGE:-$RUNNER_TEMP/promptbeacon-badge.svg}")
+          if [ -n "$PB_ENDPOINT" ]; then args+=(--endpoint "$PB_ENDPOINT"); fi
+          promptbeacon "${args[@]}"
+        fi
+        if [ -n "$PB_CARD" ]; then
+          promptbeacon card --report "$PB_REPORT" --output "$PB_CARD"
+        fi
+
+    - name: Update PR comment
+      if: inputs.comment-on-pr == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PB_REPO: ${{ github.repository }}
+        PB_PR: ${{ github.event.pull_request.number }}
+        PB_BODY: ${{ runner.temp }}/promptbeacon-comment.md
+      run: |
+        # One sticky comment, found by its hidden marker and edited in place.
+        # Never fails the job (e.g. forks without write permission).
+        marker='<!-- promptbeacon-report -->'
+        id=$(gh api "repos/$PB_REPO/issues/$PB_PR/comments" --paginate \
+          --jq ".[] | select(.body | startswith(\"$marker\")) | .id" 2>/dev/null | head -n1) || id=""
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$PB_REPO/issues/comments/$id" -F body=@"$PB_BODY" >/dev/null \
+            || echo "::warning::PromptBeacon could not update the PR comment (needs pull-requests: write)."
+        else
+          gh api -X POST "repos/$PB_REPO/issues/$PB_PR/comments" -F body=@"$PB_BODY" >/dev/null \
+            || echo "::warning::PromptBeacon could not post a PR comment (needs pull-requests: write)."
+        fi
+
+    - name: Apply visibility gate
+      shell: bash
+      env:
+        PB_EXIT: ${{ steps.check.outputs.exit-code }}
+      run: exit "${PB_EXIT:-1}"
