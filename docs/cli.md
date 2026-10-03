@@ -1,273 +1,166 @@
 # CLI Reference
 
-Complete command-line interface reference for PromptBeacon. The CLI provides full access to all functionality for automation, scripting, and quick analysis.
-
-## Installation Verification
-
-After installing PromptBeacon, verify CLI access:
+Every command and option. Run `promptbeacon COMMAND --help` for the same information in
+your terminal.
 
 ```bash
 promptbeacon --help
 ```
 
-## Global Options
+## Conventions
 
-All commands support these options:
-
-- `--help`: Show help message and exit
-- `--version`: Show version and exit
+- **Category.** Scanning commands accept `--category` / `-t`: the topic the prompts ask
+  about, phrased the way a buyer would ("running shoes", "crm software", "python http
+  client"). It is what makes a result meaningful. Without it, PromptBeacon asks
+  "alternatives to *competitor*" questions when you gave competitors, otherwise it
+  falls back to generic prompts and prints how to fix it.
+- **Demo.** `--demo` runs the full pipeline on canned answers generated from your
+  inputs: no keys, no cost, and output labelled `measurement: demo`.
+- **Output streams.** Reports and machine formats (`--format json|csv|markdown|html`) go
+  to **stdout**, unwrapped. Progress spinners, notices and errors go to **stderr**, so
+  `promptbeacon scan ... -f json > report.json` always produces valid JSON.
+- **Lists.** Repeat an option for several values: `-c "Adidas" -c "New Balance"`.
 
 ## Commands
 
-- [`demo`](#demo) - Keyless demo scan (no API keys required)
-- [`quick`](#quick) - Fast 3-prompt scan with cheapest provider
-- [`scan`](#scan) - Run a full brand visibility scan
-- [`compare`](#compare) - Compare brand against competitors
-- [`sources`](#sources) - Show which source domains AI engines cite for your brand
-- [`funnel`](#funnel) - Glass-box: where your brand drops out of the agentic-search funnel
-- [`history`](#history) - View historical visibility data
-- [`dashboard`](#dashboard) - Generate HTML dashboard
-- [`providers`](#providers) - List available providers and status
+| Command | What it does |
+| --- | --- |
+| [`demo`](#demo) | Keyless demo scan |
+| [`scan`](#scan) | Full scan of a brand or project (the main command) |
+| [`quick`](#quick) | Fast 3-prompt scan |
+| [`compare`](#compare) | Scan with competitors and show the comparison table |
+| [`sources`](#sources) | Which domains AI answers cite, and which cite you |
+| [`funnel`](#funnel) | Where a brand drops out of a model of agentic search |
+| [`dashboard`](#dashboard) | Single-file HTML report |
+| [`history`](#history) | Saved scans and trend |
+| [`badge`](#badge) | README badge (SVG and shields.io endpoint JSON) |
+| [`card`](#card) | 1200x630 share card (SVG, optional PNG) |
+| [`ci`](#ci) | Outputs, job summary, PR-comment body and gates from a saved report |
+| [`mcp`](#mcp) | MCP server over stdio |
+| [`providers`](#providers) | Which provider keys are configured |
 
 ---
 
 ## `demo`
 
-Run a full demo scan using realistic canned data. No API keys required. This is the recommended first step to explore PromptBeacon's output format.
-
-### Usage
+Keyless demo scan with realistic canned answers.
 
 ```bash
-promptbeacon demo BRAND [OPTIONS]
+promptbeacon demo [BRAND] [OPTIONS]
 ```
 
-### Arguments
-
-- `BRAND` (required): The brand name to simulate
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
-| `--output` | `-o` | PATH | None | Write output to file instead of stdout |
-
-### Examples
+| Option | Short | Description |
+| --- | --- | --- |
+| `BRAND` | | Brand to analyze (default `Nike`) |
+| `--category` | `-t` | Category the prompts ask about (repeatable) |
+| `--competitor` | `-c` | Competitors (repeatable). Without it, the demo uses two placeholders, "Competitor A" and "Competitor B" |
+| `--format` | `-f` | `text` (default), `json`, `markdown`, `csv`, `html` |
 
 ```bash
-# Demo scan
-promptbeacon demo "Nike"
-
-# Demo with JSON output
-promptbeacon demo "Nike" --format json
-
-# Save demo report to file
-promptbeacon demo "Nike" --format json -o demo_report.json
-```
-
----
-
-## `quick`
-
-Run a fast 3-prompt scan with the cheapest available provider. Great for a quick check before running a full scan.
-
-### Usage
-
-```bash
-promptbeacon quick BRAND [OPTIONS]
-```
-
-### Arguments
-
-- `BRAND` (required): The brand name to analyze
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
-| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
-
-### Examples
-
-```bash
-# Quick check
-promptbeacon quick "Nike"
-
-# Quick check in demo mode
-promptbeacon quick "Nike" --demo
-
-# Quick check with JSON output
-promptbeacon quick "Nike" --format json
+promptbeacon demo "Nike" -t "running shoes" -c "Adidas" -c "New Balance"
+promptbeacon demo "Acme" -t "crm software" -f json > demo.json
 ```
 
 ---
 
 ## `scan`
 
-Run a visibility scan for a brand.
-
-### Usage
+Measure a brand or an open-source project across one or more providers.
 
 ```bash
-promptbeacon scan BRAND [OPTIONS]
+promptbeacon scan [BRAND] [OPTIONS]
 ```
 
-### Arguments
+**What to scan**
 
-- `BRAND` (required): The brand name to analyze
+| Option | Description |
+| --- | --- |
+| `BRAND` | Brand to analyze. Optional with `--protocol` or a project option |
+| `--repo OWNER/NAME` | A GitHub repository (also accepts a github.com URL) |
+| `--pypi PACKAGE` | A PyPI package |
+| `--npm PACKAGE` | An npm package (scoped names such as `@scope/pkg` work) |
+| `--project KIND:REF` | Any registered source, e.g. `pypi:httpx`, `github:owner/name` |
 
-### Options
+Project options read public metadata to choose the brand, a category and competitor
+candidates, print what they guessed and why, and can be overridden with `--category`
+and `--competitor`. See [Open-source projects](projects.md).
 
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
-| `--provider` | `-p` | TEXT | None | Provider: openai, anthropic, google, mistral, cohere, perplexity (repeatable) |
-| `--category` | `-t` | TEXT | None | Category/topic to analyze (repeatable) |
-| `--prompts` | `-n` | INT | 10 | Number of prompts per category |
-| `--storage` | `-s` | PATH | None | Path to DuckDB storage file |
-| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
-| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
-| `--smart` | | FLAG | false | Enable LLM-powered extraction and recommendations |
-| `--grounded` | | FLAG | false | Measure web-grounded answers (provider web search) instead of base-model memory — costs more, uses your keys |
-| `--stability` | `-r` | INT | None | Number of stability runs (multiplies API cost) |
-| `--assert-min-score` | | FLOAT | None | Fail (exit 1) if score below threshold |
-| `--assert-min-sov` | | FLOAT | None | Fail (exit 1) if Share of Voice below threshold |
-| `--assert-min-stability` | | FLOAT | None | Fail (exit 1) if stability score below threshold (requires `--stability`) |
-| `--protocol` | | PATH | None | Pinned scan protocol JSON for reproducible runs (overrides the config flags; `BRAND` optional) |
+**Prompts**
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--category` | `-t` | Category the prompts ask about (repeatable) |
+| `--infer-category` | | No category? Ask one model to name it (and suggest competitors if none were given). One extra LLM call, logged; ignored in demo mode |
+| `--competitor` | `-c` | Competitors to compare (repeatable) |
+| `--prompts` | `-n` | Prompts per category (default 10). Larger counts are extended deterministically with more templates and phrasing variants; a count that cannot be met is an error, never a silent cap |
+| `--protocol PATH` | | Pinned JSON protocol for reproducible runs (see below) |
+
+**Providers and mode**
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--provider` | `-p` | `openai` (default), `anthropic`, `google`, `mistral`, `cohere`, `perplexity` (repeatable). Providers are queried in parallel |
+| `--demo` | | Keyless demo mode |
+| `--grounded` | | Use each provider's web search and capture real citations (OpenAI, Anthropic, Gemini, Perplexity; needs `promptbeacon[grounded]`) |
+| `--smart` | | LLM-based extraction and recommendations (more calls) |
+| `--stability N` | `-r` | Repeat the whole scan N times and report stability (multiplies cost) |
+
+**History**
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--save` / `--no-save` | | Real scans are saved to the history file by default so `history` can show trends. Demo scans are only saved with an explicit `--storage`. `--no-save` wins over `--storage`; a default-history write failure only warns |
+| `--storage PATH` | `-s` | History file (default `~/.promptbeacon/data.db`, or `$PROMPTBEACON_HOME/data.db`) |
+
+**Gates and output**
+
+| Option | Description |
+| --- | --- |
+| `--assert-min-score X` | Exit 1 if the visibility score is below X |
+| `--assert-min-sov X` | Exit 1 if share of voice (0-1) is below X |
+| `--assert-min-stability X` | Exit 1 if the stability score is below X (needs `--stability`) |
+| `--format`, `-f` | `text` (default), `json`, `markdown`, `csv`, `html` |
 
 ### Examples
 
-#### Basic Scan
-
 ```bash
-promptbeacon scan "Nike"
+# Real scan, two providers
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -c "New Balance" -p openai -p anthropic
+
+# Same, keyless
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --demo
+
+# Web-grounded, with the real cited sources
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --grounded -p openai
+
+# An open-source project
+promptbeacon scan --pypi httpx
+promptbeacon scan --repo fastapi/fastapi -t "python web framework"
+
+# Stability and a CI gate
+promptbeacon scan "Nike" -t "running shoes" --stability 5 --assert-min-stability 60
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --assert-min-score 40 --assert-min-sov 0.2
+
+# Machine-readable, without touching history
+promptbeacon scan "Nike" -t "running shoes" -f json --no-save > report.json
 ```
 
-Output:
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Visibility Score: Nike
-Generated: 2026-06-14 10:30:00
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-         73.5 / 100
+When a scan used generic prompts (no category, no competitors) the CLI says so on
+stderr, and `report.prompt_strategy` is `"generic"`.
 
-           Metrics
-┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃ Metric             ┃ Value       ┃
-┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ Total Mentions     │ 42          │
-│ Share of Voice     │ 38%         │
-│ SoV Rank           │ #1          │
-│ Presence Rate      │ 85%         │
-│ Positive Sentiment │ 67.0%       │
-│ Neutral Sentiment  │ 28.0%       │
-│ Negative Sentiment │ 5.0%        │
-│ Providers Used     │ openai      │
-│ Scan Duration      │ 12.3s       │
-│ Estimated Cost     │ $0.0145     │
-└────────────────────┴─────────────┘
+### Reproducible protocol
 
-  Score Breakdown (0-100 per factor, before weighting)
-┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Factor                ┃ Score  ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ Mention Frequency     │ 80.0   │
-│ Sentiment             │ 75.5   │
-│ Position / Prominence │ 68.2   │
-│ Recommendation Rate   │ 65.0   │
-└───────────────────────┴────────┘
-
-Key Insights:
-  • Brand is mentioned prominently across all queries.
-
-Recommendations:
-  [HIGH] Increase presence in "athletic wear" queries.
-
-Sources Cited:
-  • nike.com [Nike]
-  • runnersworld.com [Nike]
-```
-
-#### Demo Mode
-
-```bash
-promptbeacon scan "Nike" --demo
-```
-
-#### With Competitors
-
-```bash
-promptbeacon scan "Nike" \
-  --competitor "Adidas" \
-  --competitor "Puma" \
-  --competitor "New Balance"
-```
-
-#### Multiple Providers
-
-```bash
-promptbeacon scan "Nike" \
-  --provider openai \
-  --provider anthropic \
-  --provider google \
-  --provider mistral
-```
-
-#### Smart Mode (LLM Extraction + Recommendations)
-
-```bash
-promptbeacon scan "Nike" --smart
-```
-
-#### Stability Scan
-
-Run the scan N times and compute stability metrics:
-
-```bash
-# 5 stability runs
-promptbeacon scan "Nike" --stability 5
-
-# Short form
-promptbeacon scan "Nike" -r 5
-
-# Stability in demo mode (free exploration)
-promptbeacon scan "Nike" --stability 3 --demo
-```
-
-#### CI Assertions (Exit Code 1 on Failure)
-
-```bash
-# Fail if score < 40
-promptbeacon scan "Nike" --assert-min-score 40
-
-# Fail if Share of Voice < 15%
-promptbeacon scan "Nike" --assert-min-sov 0.15
-
-# Combined thresholds
-promptbeacon scan "Nike" \
-  --competitor "Adidas" \
-  --assert-min-score 40 \
-  --assert-min-sov 0.15
-
-# Stability + stability assertion
-promptbeacon scan "Nike" \
-  --stability 5 \
-  --assert-min-stability 70
-```
-
-#### Reproducible Protocol (pinned, for CI trends)
-
-Pin the brand, prompts, providers, and run count in a JSON file so every run is
-identical and trends stay comparable ("don't measure once"):
+Pin everything in a JSON file so each run asks exactly the same questions:
 
 ```json
-// nike-protocol.json
 {
   "brand": "Nike",
   "competitors": ["Adidas", "Puma"],
   "providers": ["openai", "anthropic"],
-  "prompts": ["What are the best running shoes?", "Which running shoe brand is most recommended?"],
+  "prompts": [
+    "What are the best running shoes?",
+    "Which running shoe brand is most recommended?"
+  ],
   "runs": 5,
   "grounded": true
 }
@@ -277,569 +170,281 @@ identical and trends stay comparable ("don't measure once"):
 promptbeacon scan --protocol nike-protocol.json
 ```
 
-#### Custom Categories
+Pinned prompts are always used in full. `categories` and `prompt_count` are also
+accepted instead of `prompts`.
+
+---
+
+## `quick`
+
+A 3-prompt scan for a fast check.
 
 ```bash
-promptbeacon scan "Nike" \
-  --category "running shoes" \
-  --category "athletic wear" \
-  --category "sports brand"
+promptbeacon quick "Nike" --category "running shoes" [--demo] [-f json]
 ```
 
-#### With Storage
-
-```bash
-promptbeacon scan "Nike" \
-  --storage ~/.promptbeacon/nike.db
-```
-
-#### JSON / Markdown Output
-
-```bash
-promptbeacon scan "Nike" --format json > report.json
-promptbeacon scan "Nike" --format markdown > report.md
-```
-
-#### Complete Example
-
-```bash
-promptbeacon scan "Nike" \
-  --competitor "Adidas" \
-  --competitor "Puma" \
-  --provider openai \
-  --provider anthropic \
-  --provider mistral \
-  --category "running shoes" \
-  --category "athletic wear" \
-  --prompts 20 \
-  --storage ~/.promptbeacon/nike.db \
-  --smart \
-  --assert-min-score 40 \
-  --format text
-```
+| Option | Short | Description |
+| --- | --- | --- |
+| `--category` | `-t` | Category |
+| `--demo` | | Keyless demo mode |
+| `--format` | `-f` | Output format |
 
 ---
 
 ## `compare`
 
-Compare a brand against competitors with side-by-side results.
-
-### Usage
+A scan with competitors that ends with the comparison table.
 
 ```bash
-promptbeacon compare BRAND --against COMPETITOR [OPTIONS]
+promptbeacon compare "Nike" -t "running shoes" --against "Adidas" -a "Puma"
 ```
 
-### Arguments
-
-- `BRAND` (required): The brand name to analyze
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--against` | `-a` | TEXT | required | Competitor brand (repeatable, at least one required) |
-| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
-| `--format` | `-f` | TEXT | text | Output format: text, json, markdown |
-| `--demo` | | FLAG | false | Use demo mode |
-
-### Examples
-
-```bash
-# Basic comparison
-promptbeacon compare "Nike" --against "Adidas"
-
-# Multiple competitors
-promptbeacon compare "Nike" \
-  --against "Adidas" \
-  --against "Puma" \
-  --against "New Balance"
-
-# JSON export
-promptbeacon compare "Nike" \
-  --against "Adidas" \
-  --format json > comparison.json
-
-# Demo mode
-promptbeacon compare "Nike" --against "Adidas" --demo
-```
-
-Output includes a competitor comparison table with scores, Share of Voice, and sentiment.
+| Option | Short | Description |
+| --- | --- | --- |
+| `--against` | `-a` | Competitors (repeatable, required) |
+| `--category` | `-t` | Category |
+| `--provider` | `-p` | Providers |
+| `--demo` | | Keyless demo mode |
+| `--format` | `-f` | Output format |
 
 ---
 
 ## `sources`
 
-Show which **source domains** AI answers cite for your brand and category — and which of them cite *you*. Web-grounded answers cite their sources; this ranks those domains so you can act on them ("get cited on these sites"). Works keyless in demo mode.
-
-### Usage
-
-```bash
-promptbeacon sources BRAND [OPTIONS]
-```
-
-### Arguments
-
-- `BRAND` (required): The brand name to analyze
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
-| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
-| `--category` | `-t` | TEXT | None | Category/topic to analyze (repeatable) |
-| `--prompts` | `-n` | INT | 10 | Number of prompts per category |
-| `--demo` | | FLAG | false | Use demo mode (no API keys required) |
-| `--grounded` | | FLAG | false | Web-grounded measurement with real provider citations (uses your keys) |
-| `--format` | `-f` | TEXT | text | Output format: text, json |
-
-### Examples
+Rank the domains AI answers cite for your category and show which ones cite you.
+Real citations need `--grounded`; `--demo` previews the output.
 
 ```bash
-# Preview source attribution, keyless
-promptbeacon sources "Nike" --demo --competitor "Adidas"
-
-# Real, web-grounded citations (needs the [grounded] extra + a provider key)
-promptbeacon sources "Nike" --grounded --competitor "Adidas" --provider openai
-
-# Machine-readable for pipelines
-promptbeacon sources "Nike" --demo --format json
+promptbeacon sources "Nike" -t "running shoes" -c "Adidas" --grounded -p openai
+promptbeacon sources "Nike" -t "running shoes" --demo -f json
 ```
 
-### Output
+| Option | Short | Description |
+| --- | --- | --- |
+| `--category` | `-t` | Category |
+| `--competitor` | `-c` | Competitors |
+| `--provider` | `-p` | Providers |
+| `--prompts` | `-n` | Prompts per category |
+| `--grounded` | | Web-grounded measurement with real citations |
+| `--demo` | | Keyless demo mode |
+| `--format` | `-f` | `text` or `json` |
 
-```
+Example (demo):
+
+```text
 measurement: demo — Demo data — canned responses, not a real measurement.
+prompts: 10 · category: running shoes
 
-Top Source Domains (5 citations across 3 sources)
- Domain                    Type     Citations  Share  Cites Nike?
- www.consumerreports.org   review   3          60%    yes
- www.cnbc.com              news     1          20%    yes
- www.reddit.com            reddit   1          20%    yes
-
-Domains that cite Nike: www.consumerreports.org, www.cnbc.com, www.reddit.com
+Top Source Domains (8 citations across 5 sources)
+ Domain             Type        Citations   Share   Cites Nike?
+ en.wikipedia.org   wikipedia   2           25%     yes
+ medium.com         social      2           25%     yes
+ www.quora.com      social      2           25%     yes
+ www.reddit.com     reddit      1           12%     yes
+ www.youtube.com    video       1           12%     yes
 ```
-
-> `--grounded` measures web-grounded answers with the **real provider citations**. Covered: OpenAI, Anthropic, Gemini, and Perplexity (Mistral/Cohere fall back to base completion). Install with `pip install 'promptbeacon[grounded]'`.
 
 ---
 
 ## `funnel`
 
-Glass-box: fan a prompt into sub-queries, run an observable retrieve → rerank → cite pipeline, and see **where your brand drops out** — not just whether it was cited. A local *model* of agentic search (tier `funnel_model`), not the consumer product.
-
-### Usage
-
-```bash
-promptbeacon funnel BRAND [OPTIONS]
-```
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--prompt` | `-q` | TEXT | None | Buyer-intent prompt to fan out |
-| `--category` | `-t` | TEXT | None | Category (builds a prompt if `--prompt` is omitted) |
-| `--competitor` | `-c` | TEXT | None | Competitor brands |
-| `--demo` | | FLAG | false | Keyless mock search backend |
-| `--sub-queries` | | INT | 8 | Fan-out width (sub-queries per prompt) |
-| `--smart` | | FLAG | false | Use an LLM planner + LLM-judge reranker (needs an LLM key; not in demo) |
-| `--format` | `-f` | TEXT | text | Output format: text, json |
-
-### Examples
+A local, observable model of agentic search: the prompt is fanned out into
+sub-queries, results are retrieved, reranked and cited, and the report shows where the
+brand drops out. It is a model (`measurement: funnel_model`), not the consumer product.
 
 ```bash
-# Keyless demo
-promptbeacon funnel "Nike" --category "running shoes" --demo
-
-# Live web search (needs TAVILY_API_KEY)
-promptbeacon funnel "Nike" --prompt "What are the best running shoes?"
+promptbeacon funnel "Nike" -t "running shoes" -c "Adidas" --demo
+promptbeacon funnel "Nike" --prompt "What are the best running shoes?"   # needs TAVILY_API_KEY
 ```
 
-### Output
+| Option | Short | Description |
+| --- | --- | --- |
+| `--prompt` | `-q` | Buyer-intent prompt to fan out |
+| `--category` | `-t` | Builds the prompt when `--prompt` is omitted |
+| `--competitor` | `-c` | Competitors |
+| `--sub-queries` | | Fan-out width (default 8) |
+| `--smart` | | LLM planner and LLM-judge reranker (needs an LLM key) |
+| `--demo` | | Mock search backend |
+| `--format` | `-f` | `text` or `json` |
 
-```
-measurement: funnel_model — a local model of agentic search, not the consumer product
-Coverage (brand retrieved):   88%
-Rerank survival:              86%
-Retrieval → citation:         29%
-Dominant drop-off stage:      citation
-```
-
-Live search uses Tavily over httpx (no extra SDK): get a key at [tavily.com](https://tavily.com) and set `TAVILY_API_KEY` (an environment variable or a `.env` file). Add `--smart` to use an LLM planner + LLM-judge reranker (uses one of your LLM provider keys, with graceful fallback).
-
----
-
-## `history`
-
-View historical visibility data and trends.
-
-### Usage
-
-```bash
-promptbeacon history BRAND [OPTIONS]
-```
-
-### Arguments
-
-- `BRAND` (required): The brand name
-
-### Options
-
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--days` | `-d` | INT | 30 | Number of days of history |
-| `--storage` | `-s` | PATH | ~/.promptbeacon/data.db | Path to DuckDB storage file |
-| `--format` | `-f` | TEXT | text | Output format: text, json |
-
-### Examples
-
-```bash
-promptbeacon history "Nike"
-promptbeacon history "Nike" --days 90
-promptbeacon history "Nike" --format json > history.json
-```
+Live search uses Tavily: set `TAVILY_API_KEY` (free key at
+[tavily.com](https://tavily.com)).
 
 ---
 
 ## `dashboard`
 
-Generate a self-contained HTML dashboard with interactive charts: Share of Voice bar, score breakdown, sentiment donut, stability band (if stability data present), and optional history sparkline.
-
-### Usage
+Write a single, self-contained HTML report.
 
 ```bash
-promptbeacon dashboard BRAND [OPTIONS]
+promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --demo -o report.html
+promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --no-open
 ```
 
-### Arguments
+| Option | Short | Description |
+| --- | --- | --- |
+| `--category` | `-t` | Category |
+| `--competitor` | `-c` | Competitors |
+| `--provider` | `-p` | Providers |
+| `--output` | `-o` | Output file (default `promptbeacon-report.html`) |
+| `--open` / `--no-open` | | Open in a browser (default: open) |
+| `--demo` | | Keyless demo mode |
 
-- `BRAND` (required): The brand name
+---
 
-### Options
+## `history`
 
-| Option | Short | Type | Default | Description |
-|--------|-------|------|---------|-------------|
-| `--competitor` | `-c` | TEXT | None | Competitor brand (repeatable) |
-| `--provider` | `-p` | TEXT | None | LLM provider (repeatable) |
-| `--storage` | `-s` | PATH | None | DuckDB path (enables history sparkline) |
-| `--output` | `-o` | PATH | report.html | Output HTML file path |
-| `--demo` | | FLAG | false | Use demo mode |
-| `--no-open` | | FLAG | false | Do not auto-open in browser |
-| `--format` | `-f` | TEXT | html | Output format (currently only html) |
-
-### Examples
+Show saved scans for a brand and the trend.
 
 ```bash
-# Demo dashboard (no keys, auto-opens browser)
-promptbeacon dashboard "Nike" --demo -o report.html
-
-# Real scan with competitors
-promptbeacon dashboard "Nike" \
-  --competitor "Adidas" \
-  --provider openai \
-  --storage ~/.promptbeacon/nike.db \
-  -o nike_dashboard.html
-
-# Generate only, do not open browser
-promptbeacon dashboard "Nike" --demo -o report.html --no-open
+promptbeacon history "Nike" --days 30
+promptbeacon history "Nike" -f json
 ```
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--days` | `-d` | Days of history (default 30) |
+| `--storage` | `-s` | History file (default `~/.promptbeacon/data.db` or `$PROMPTBEACON_HOME/data.db`) |
+| `--format` | `-f` | `text` or `json` |
+
+Real `scan` runs are saved automatically. If there is no history yet, the command says
+how to create it instead of creating an empty database.
+
+---
+
+## `badge`
+
+Write a README badge from a scan, or from a saved report.
+
+```bash
+promptbeacon badge "Nike" -t "running shoes" -c "Adidas" --demo
+promptbeacon badge --report report.json -o .promptbeacon/badge.svg \
+  --endpoint .promptbeacon/badge.json
+promptbeacon badge --pypi httpx --metric sov
+```
+
+| Option | Description |
+| --- | --- |
+| `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
+| `--report PATH` | Render from a saved `scan -f json` report instead of scanning |
+| `--category`, `--competitor`, `--provider`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--output`, `-o` | SVG file (default `promptbeacon-badge.svg`) |
+| `--endpoint PATH` | Also write a shields.io endpoint JSON |
+| `--label TEXT` | Left-hand text (default `AI visibility`) |
+| `--metric` | `both` (default, e.g. `62/100 · SoV 34%`), `score`, or `sov` |
+
+The command prints a ready-to-paste Markdown snippet. Badges made from demo data say
+`demo` and are grey. See [Badges & share cards](share.md).
+
+---
+
+## `card`
+
+Write a 1200x630 share card showing how often each brand appears in the answers.
+
+```bash
+promptbeacon card "Nike" -t "running shoes" -c "Adidas" -c "Hoka" --demo
+promptbeacon card --report report.json --theme both --png card.png
+```
+
+| Option | Description |
+| --- | --- |
+| `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
+| `--report PATH` | Render from a saved report |
+| `--category`, `--competitor`, `--provider`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--output`, `-o` | SVG file (default `promptbeacon-card.svg`) |
+| `--png PATH` | Also write a PNG (needs `pip install 'promptbeacon[share]'`) |
+| `--theme` | `light` (default), `dark`, or `both` (adds a `-dark` file next to each output) |
+
+---
+
+## `ci`
+
+Turn a saved report into CI artifacts and apply thresholds. Everything is written
+before the command exits, so a failing check still reports its numbers.
+
+```bash
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -f json --no-save > report.json
+promptbeacon ci --report report.json --min-score 50 --min-sov 0.2 --comment-file comment.md
+```
+
+| Option | Description |
+| --- | --- |
+| `--report PATH` | Report from `scan -f json` (required) |
+| `--min-score`, `--min-sov`, `--min-presence`, `--min-stability`, `--max-rank` | Thresholds; exit 1 if any is missed |
+| `--comment-file PATH` | Write a Markdown PR-comment body that starts with a hidden marker, for a sticky comment |
+
+On GitHub Actions it appends step outputs to `$GITHUB_OUTPUT` (`score`,
+`share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`,
+`passed`) and a Markdown summary to `$GITHUB_STEP_SUMMARY`. Elsewhere it prints the
+summary to stdout. See [CI & examples](examples.md).
+
+---
+
+## `mcp`
+
+Run the MCP server over stdio, for Claude Code, Cursor and other MCP clients. Needs
+`pip install 'promptbeacon[mcp]'`.
+
+```bash
+promptbeacon mcp
+```
+
+See [Claude Code & MCP](mcp.md).
 
 ---
 
 ## `providers`
 
-List available LLM providers and their configuration status.
-
-### Usage
-
-```bash
-promptbeacon providers
-```
-
-### Examples
+List providers and the Tavily search backend, and whether each key is configured. Key
+values are never printed.
 
 ```bash
 promptbeacon providers
 ```
 
-Output:
-```
-         Available Providers
-┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Provider   ┃ Status           ┃ Environment Variable   ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ openai     │ ✓ Configured     │ OPENAI_API_KEY         │
-│ anthropic  │ ✓ Configured     │ ANTHROPIC_API_KEY      │
-│ google     │ ✓ Configured     │ GOOGLE_API_KEY         │
-│ mistral    │ ✗ Not configured │ MISTRAL_API_KEY        │
-│ cohere     │ ✗ Not configured │ COHERE_API_KEY         │
-│ perplexity │ ✗ Not configured │ PERPLEXITY_API_KEY     │
-└────────────┴──────────────────┴────────────────────────┘
-```
-
-Note: No API keys are required to use demo mode. The `demo` command and the `--demo` flag work without any configured providers.
-
 ---
 
-## Output Formats
+## Environment variables
 
-### Text Format (Default)
+| Variable | Used for |
+| --- | --- |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`, `PERPLEXITY_API_KEY` | Provider keys for real scans. Empty values count as not set |
+| `TAVILY_API_KEY` | Live web search for `funnel` |
+| `GITHUB_TOKEN` or `GH_TOKEN` | Higher GitHub API limit for `--repo` (60 requests/hour without a token) |
+| `PROMPTBEACON_HOME` | Data directory (history and caches); default `~/.promptbeacon` |
+| `PROMPTBEACON_DEMO` | `1` makes `@pytest.mark.visibility` tests run in demo mode (pytest plugin only) |
 
-Rich formatted output with tables, colors, score breakdown, Share of Voice, and visual hierarchy. Best for terminal display.
+Keys can also live in a `.env` file in the working directory; values already set in
+the environment win.
 
-```bash
-promptbeacon scan "Nike"
-```
-
-### JSON Format
-
-Machine-readable JSON for parsing and integration.
-
-```bash
-promptbeacon scan "Nike" --format json
-```
-
-Example output (abbreviated):
-```json
-{
-  "brand": "Nike",
-  "visibility_score": 73.5,
-  "mention_count": 42,
-  "share_of_voice": {
-    "target_share": 0.38,
-    "target_presence_rate": 0.85,
-    "target_rank": 1,
-    "aggregate": {
-      "Nike": {"share_of_voice": 0.38, "appearances": 34, "total_prompts": 40},
-      "Adidas": {"share_of_voice": 0.29, "appearances": 26, "total_prompts": 40}
-    }
-  },
-  "sentiment_breakdown": {
-    "positive": 0.67,
-    "neutral": 0.28,
-    "negative": 0.05
-  },
-  "timestamp": "2026-06-14T10:30:00Z",
-  "scan_duration_seconds": 12.3
-}
-```
-
-### Markdown Format
-
-Formatted Markdown for documentation and reports.
-
-```bash
-promptbeacon scan "Nike" --format markdown
-```
-
----
-
-## Environment Variables
-
-### Provider API Keys
-
-Required for live scans; not needed for demo mode:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
-export MISTRAL_API_KEY="..."
-export COHERE_API_KEY="..."
-export PERPLEXITY_API_KEY="pplx-..."
-```
-
-### Demo Mode Override
-
-Force demo mode for all commands (useful in CI without API keys):
-
-```bash
-export PROMPTBEACON_DEMO=1
-```
-
----
-
-## Exit Codes
+## Exit codes
 
 | Code | Meaning |
-|------|---------|
+| --- | --- |
 | 0 | Success |
-| 1 | Error (configuration, scan failure, assertion failure, etc.) |
+| 1 | Error (configuration, scan failure, missing project, or a missed threshold) |
+| 2 | Invalid command-line usage |
 
-CI assertion flags (`--assert-min-score`, `--assert-min-sov`, `--assert-min-stability`) return exit code `1` when thresholds are not met.
-
----
-
-## Automation Examples
-
-### Daily Monitoring Script
+## Scripting
 
 ```bash
-#!/bin/bash
-# daily_scan.sh
+# Score and share of voice with jq
+promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -f json --no-save > report.json
+jq '.visibility_score' report.json
+jq '.share_of_voice.aggregate | map_values(.share_of_voice)' report.json
 
-BRAND="Nike"
-DATE=$(date +%Y-%m-%d)
-OUTPUT_DIR="./reports"
-
-mkdir -p "$OUTPUT_DIR"
-
-promptbeacon scan "$BRAND" \
-  --storage ~/.promptbeacon/nike.db \
-  --competitor "Adidas" \
-  --competitor "Puma" \
-  --provider openai \
-  --provider anthropic \
-  --prompts 25 \
-  --assert-min-score 40 \
-  --format json > "$OUTPUT_DIR/nike_$DATE.json"
-
-echo "Scan completed: $OUTPUT_DIR/nike_$DATE.json"
-```
-
-### Weekly Dashboard Generation
-
-```bash
-#!/bin/bash
-# weekly_dashboard.sh
-
-promptbeacon dashboard "Nike" \
-  --competitor "Adidas" \
-  --competitor "Puma" \
-  --provider openai \
-  --storage ~/.promptbeacon/nike.db \
-  -o "reports/nike_dashboard_$(date +%Y%m%d).html" \
-  --no-open
-
-echo "Dashboard saved"
-```
-
-### Multi-Brand Monitoring
-
-```bash
-#!/bin/bash
-# multi_brand.sh
-
-BRANDS=("Nike" "Adidas" "Puma" "New Balance")
-
-for brand in "${BRANDS[@]}"; do
-    echo "Scanning $brand..."
-    promptbeacon scan "$brand" \
-      --storage ~/.promptbeacon/data.db \
-      --format json > "reports/${brand}_$(date +%Y%m%d).json"
+# Several brands, one history file
+for brand in Nike Adidas Puma; do
+  promptbeacon scan "$brand" -t "running shoes" --storage ~/.promptbeacon/shoes.db
 done
-
-echo "All scans completed"
+promptbeacon history "Nike" --storage ~/.promptbeacon/shoes.db
 ```
 
-### Quick Check Before Full Scan
+## See also
 
-```bash
-#!/bin/bash
-# quick_then_full.sh
-
-BRAND="Nike"
-
-echo "Running quick scan..."
-promptbeacon quick "$BRAND"
-
-read -p "Run full scan? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Running full scan..."
-    promptbeacon scan "$BRAND" \
-      --competitor "Adidas" \
-      --competitor "Puma" \
-      --provider openai \
-      --provider anthropic \
-      --storage ~/.promptbeacon/nike.db
-fi
-```
-
----
-
-## Integration Examples
-
-### With jq
-
-Process JSON output with jq:
-
-```bash
-# Extract visibility score
-promptbeacon scan "Nike" --format json | jq '.visibility_score'
-
-# Get Share of Voice
-promptbeacon scan "Nike" --format json | jq '.share_of_voice.target_share'
-
-# Get competitor SoV breakdown
-promptbeacon scan "Nike" --format json | \
-  jq '.share_of_voice.aggregate | to_entries[] | "\(.key): \(.value.share_of_voice)"'
-
-# Filter high-priority recommendations
-promptbeacon scan "Nike" --format json | \
-  jq '.recommendations[] | select(.priority == "high") | .action'
-
-# List cited sources
-promptbeacon scan "Nike" --format json | \
-  jq '.citation_summary.citations[] | .source_name'
-```
-
----
-
-## Troubleshooting
-
-### Command Not Found
-
-**Problem:** `promptbeacon: command not found`
-
-**Solution:**
-```bash
-pip install promptbeacon
-
-# Or with uv
-uv add promptbeacon
-
-# Check installation
-python -m promptbeacon --help
-```
-
-### No API Keys (Live Scan Fails)
-
-**Problem:** `Error: No API keys found for configured providers`
-
-**Solution:** Use demo mode, or set at least one key:
-
-```bash
-# Demo mode (no keys needed)
-promptbeacon demo "Nike"
-promptbeacon scan "Nike" --demo
-
-# Or set a provider key
-export OPENAI_API_KEY="sk-..."
-promptbeacon providers  # verify configuration
-```
-
-### Timeout Errors
-
-**Problem:** Scan times out with many prompts
-
-**Solution:**
-```bash
-# Use quick scan for a fast check
-promptbeacon quick "Nike"
-
-# Or reduce prompt count
-promptbeacon scan "Nike" --prompts 5
-```
-
----
-
-## See Also
-
-- [API Reference](api-reference.md) - Python API documentation
-- [Examples](examples.md) - Real-world usage patterns
-- [Storage Guide](storage.md) - Historical tracking details
-- [Provider Configuration](providers.md) - API key setup
-- [Advanced Usage](advanced.md) - CI/CD, stability, smart mode
+- [Quickstart](quickstart.md)
+- [Open-source projects](projects.md)
+- [Badges & share cards](share.md)
+- [CI & examples](examples.md)
+- [API reference](api-reference.md)

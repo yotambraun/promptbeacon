@@ -25,7 +25,8 @@ A release about the first result being right, and about results you can share.
 - **`scan` then `history` shows your scan.** Real CLI scans are saved to
   `~/.promptbeacon/data.db` by default (`--no-save` to skip, `--storage` to choose a
   file, `PROMPTBEACON_HOME` to move the directory). Demo scans are not saved unless you
-  pass `--storage`.
+  pass `--storage`. Saving the default history is best-effort, so a read-only home
+  directory never fails a scan.
 - **`--prompts n` / `with_prompt_count(n)` above 10 works.** Counts were silently capped
   at 10, and pinned protocol prompt sets were cut to their first 10. Larger counts are
   extended deterministically; impossible counts raise a clear error.
@@ -65,7 +66,8 @@ A release about the first result being right, and about results you can share.
 - Providers are queried concurrently (each with its own rate limit), so multi-provider
   scans take about as long as the slowest provider.
 - Scans without a category but with competitors use "alternatives to &lt;competitor&gt;"
-  prompts instead of the generic set.
+  prompts instead of the generic set (your own `with_prompts()` templates are never
+  replaced). Scores from such scans are not comparable with earlier category-less runs.
 
 ## [1.2.0] - 2026-06-20
 

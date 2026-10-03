@@ -2,7 +2,7 @@
 
 PromptBeacon supports 6 LLM providers through LiteLLM. This guide covers setup, configuration, and best practices for each provider.
 
-> **No API keys needed to try PromptBeacon.** Use demo mode (`promptbeacon demo "Nike"` or `.demo().scan()`) to explore all features without any provider configuration.
+> **No API keys needed to try PromptBeacon.** Use demo mode (`promptbeacon demo "Nike" -t "running shoes"` or `.demo().scan()`) to explore all features without any provider configuration.
 
 ## Supported Providers
 
@@ -48,6 +48,14 @@ export COHERE_API_KEY="..."
 # Perplexity
 export PERPLEXITY_API_KEY="pplx-..."
 ```
+
+Keys can also live in a `.env` file in the working directory; it is loaded
+automatically, and values already set in the environment win. An empty or
+whitespace-only value (for example `OPENAI_API_KEY=` in CI, or an unset `${VAR:-}`
+mapping in an MCP configuration) counts as **not configured**.
+
+When a scan uses several providers, they are queried in parallel; each provider keeps
+its own concurrency limit (`concurrent_requests`, default 5).
 
 ### Verify Configuration
 
@@ -99,7 +107,7 @@ Provider.OPENAI  # Uses gpt-4o-mini
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.OPENAI)
+beacon = Beacon("Nike").with_category("running shoes").with_providers(Provider.OPENAI)
 report = beacon.scan()
 ```
 
@@ -136,7 +144,7 @@ export OPENAI_API_KEY="sk-proj-..."  # Double-check key
 **429 Rate Limit**
 ```python
 # Reduce concurrent requests
-beacon = Beacon("Nike").with_prompt_count(5)
+beacon = Beacon("Nike").with_category("running shoes").with_prompt_count(5)
 ```
 
 ---
@@ -178,7 +186,9 @@ Provider.ANTHROPIC  # Uses Claude Haiku 4.5
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.ANTHROPIC)
+beacon = (
+    Beacon("Nike").with_category("running shoes").with_providers(Provider.ANTHROPIC)
+)
 report = beacon.scan()
 ```
 
@@ -216,6 +226,7 @@ echo $ANTHROPIC_API_KEY
 ```python
 beacon = (
     Beacon("Nike")
+    .with_category("running shoes")
     .with_providers(Provider.ANTHROPIC)
     .with_prompt_count(3)  # Reduce from default 10
 )
@@ -263,7 +274,7 @@ Provider.GOOGLE  # Uses Gemini 2.0 Flash
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.GOOGLE)
+beacon = Beacon("Nike").with_category("running shoes").with_providers(Provider.GOOGLE)
 report = beacon.scan()
 ```
 
@@ -321,7 +332,7 @@ Provider.MISTRAL  # Uses Mistral Small
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.MISTRAL)
+beacon = Beacon("Nike").with_category("running shoes").with_providers(Provider.MISTRAL)
 report = beacon.scan()
 ```
 
@@ -363,7 +374,7 @@ Provider.COHERE  # Uses Command R
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.COHERE)
+beacon = Beacon("Nike").with_category("running shoes").with_providers(Provider.COHERE)
 report = beacon.scan()
 ```
 
@@ -405,7 +416,9 @@ Provider.PERPLEXITY  # Uses Sonar
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(Provider.PERPLEXITY)
+beacon = (
+    Beacon("Nike").with_category("running shoes").with_providers(Provider.PERPLEXITY)
+)
 report = beacon.scan()
 ```
 
@@ -443,6 +456,7 @@ from promptbeacon import Beacon, Provider
 
 beacon = (
     Beacon("Nike")
+    .with_category("running shoes")
     .with_providers(
         Provider.OPENAI,
         Provider.ANTHROPIC,
@@ -462,25 +476,35 @@ print(f"Providers used: {', '.join(report.providers_used)}")
 **For Maximum Coverage:**
 ```python
 # Use all available providers
-beacon = Beacon("Nike")  # Automatically detects configured providers
+beacon = Beacon("Nike").with_category(
+    "running shoes"
+)  # Automatically detects configured providers
 ```
 
 **For Cost Optimization:**
 ```python
 # Use only free/cheap tier providers
-beacon = Beacon("Nike").with_providers(
-    Provider.GOOGLE,   # Generous free tier
-    Provider.OPENAI,   # gpt-4o-mini is very cheap
-    Provider.MISTRAL,  # Affordable
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_providers(
+        Provider.GOOGLE,  # Generous free tier
+        Provider.OPENAI,  # gpt-4o-mini is very cheap
+        Provider.MISTRAL,  # Affordable
+    )
 )
 ```
 
 **For Citation Tracking:**
 ```python
 # Include Perplexity for web-grounded citations
-beacon = Beacon("Nike").with_providers(
-    Provider.OPENAI,
-    Provider.PERPLEXITY,  # Best for citations
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_providers(
+        Provider.OPENAI,
+        Provider.PERPLEXITY,  # Best for citations
+    )
 )
 ```
 
@@ -490,7 +514,9 @@ PromptBeacon automatically uses only configured providers:
 
 ```python
 # If only OPENAI_API_KEY is set, only OpenAI will be used
-beacon = Beacon("Nike")  # Automatically detects available providers
+beacon = Beacon("Nike").with_category(
+    "running shoes"
+)  # Automatically detects available providers
 report = beacon.scan()
 ```
 
@@ -519,7 +545,7 @@ PromptBeacon **auto-loads `.env` on import** — no manual `load_dotenv()` neede
 ```python
 from promptbeacon import Beacon  # .env is loaded automatically
 
-beacon = Beacon("Nike")
+beacon = Beacon("Nike").with_category("running shoes")
 report = beacon.scan()
 ```
 
@@ -563,8 +589,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          promptbeacon scan "Nike" \
-            --format json \
+          promptbeacon scan "Nike" --category "running shoes" \
+            --format json --no-save \
             --assert-min-score 40 \
             > report.json
       - name: Upload Report
@@ -585,7 +611,7 @@ ENV GOOGLE_API_KEY=${GOOGLE_API_KEY}
 
 RUN pip install promptbeacon
 
-CMD ["promptbeacon", "scan", "Nike"]
+CMD ["promptbeacon", "scan", "Nike", "--category", "running shoes", "--no-save"]
 ```
 
 ---
@@ -594,14 +620,29 @@ CMD ["promptbeacon", "scan", "Nike"]
 
 ### Estimating Costs
 
+Each report carries `total_cost_usd`, an estimate from the token usage the provider
+returns and its listed price, and `cost_status`, which says how complete that estimate
+is:
+
+| `cost_status` | Meaning |
+| --- | --- |
+| `complete` | Every API call was priced |
+| `partial` | Some calls, or some web-search fees, could not be priced: the real bill is higher |
+| `unknown` | No price data for these calls (shown as "unknown", never as $0) |
+| `none` | No paid calls (demo mode, or every answer came from the cache) |
+
+Web-grounded scans include per-search fees where the price is known (Anthropic's
+listed rate, or the search fee in the price map); otherwise the status is `partial`.
+`ProviderResult.search_count` and `search_fees_included` show the detail per answer.
+
 ```python
 from promptbeacon import Beacon
 
-beacon = Beacon("Nike").with_prompt_count(10)
+beacon = Beacon("Nike").with_category("running shoes").with_prompt_count(10)
 report = beacon.scan()
 
 if report.total_cost_usd:
-    print(f"Scan cost: ${report.total_cost_usd:.4f}")
+    print(f"Scan cost: ${report.total_cost_usd:.4f} ({report.cost_status})")
     print(f"Monthly (daily scans): ${report.total_cost_usd * 30:.2f}")
 ```
 
@@ -623,9 +664,9 @@ beacon = (
     Beacon("Nike")
     .with_providers(Provider.GOOGLE)  # Free tier
     .with_categories("running shoes")  # Single category
-    .with_prompt_count(5)             # Reduced prompts
-    .with_cache()                     # Cache responses
-    .with_temperature(0.5)            # Lower temperature
+    .with_prompt_count(5)  # Reduced prompts
+    .with_cache()  # Cache responses
+    .with_temperature(0.5)  # Lower temperature
 )
 ```
 
@@ -639,7 +680,7 @@ PromptBeacon automatically retries failed requests:
 
 ```python
 # Default: 3 retries with exponential backoff
-beacon = Beacon("Nike")  # Uses max_retries=3 by default
+beacon = Beacon("Nike").with_category("running shoes")  # Uses max_retries=3 by default
 ```
 
 ### Rate Limit Best Practices
@@ -736,6 +777,7 @@ beacon = Beacon("Nike")  # Uses max_retries=3 by default
 from promptbeacon import Beacon, Provider
 from promptbeacon.core.config import has_api_key
 
+
 def test_providers():
     """Test all configured providers."""
     for provider in Provider:
@@ -745,7 +787,11 @@ def test_providers():
 
         print(f"Testing {provider.value}...")
         try:
-            beacon = Beacon("Test Brand").with_providers(provider)
+            beacon = (
+                Beacon("Test Brand")
+                .with_category("running shoes")
+                .with_providers(provider)
+            )
             beacon = beacon.with_prompt_count(1)  # Single prompt test
             report = beacon.scan()
 
@@ -756,6 +802,7 @@ def test_providers():
         except Exception as e:
             print(f"  Failed: {e}")
 
+
 if __name__ == "__main__":
     test_providers()
 ```
@@ -764,12 +811,12 @@ if __name__ == "__main__":
 
 ```bash
 # Test each provider individually
-promptbeacon scan "Test" --provider openai --prompts 1
-promptbeacon scan "Test" --provider anthropic --prompts 1
-promptbeacon scan "Test" --provider google --prompts 1
-promptbeacon scan "Test" --provider mistral --prompts 1
-promptbeacon scan "Test" --provider cohere --prompts 1
-promptbeacon scan "Test" --provider perplexity --prompts 1
+promptbeacon scan "Nike" -t "running shoes" --provider openai --prompts 1 --no-save
+promptbeacon scan "Nike" -t "running shoes" --provider anthropic --prompts 1 --no-save
+promptbeacon scan "Nike" -t "running shoes" --provider google --prompts 1 --no-save
+promptbeacon scan "Nike" -t "running shoes" --provider mistral --prompts 1 --no-save
+promptbeacon scan "Nike" -t "running shoes" --provider cohere --prompts 1 --no-save
+promptbeacon scan "Nike" -t "running shoes" --provider perplexity --prompts 1 --no-save
 ```
 
 ---

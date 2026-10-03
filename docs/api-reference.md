@@ -1,10 +1,13 @@
 # API Reference
 
-Complete API documentation for PromptBeacon v1.0. This reference covers all classes, methods, and data structures.
+API documentation for PromptBeacon: classes, methods and data structures.
 
 ## Table of Contents
 
 - [Beacon Class](#beacon-class)
+- [configure_beacon](#configure_beacon)
+- [Projects](#projects)
+- [Badges, cards and CI summaries](#badges-cards-and-ci-summaries)
 - [BeaconGuard](#beaconguard)
 - [Configuration](#configuration)
 - [Report Objects](#report-objects)
@@ -41,7 +44,7 @@ Creates a new Beacon instance for monitoring a brand.
 ```python
 from promptbeacon import Beacon
 
-beacon = Beacon("Nike")
+beacon = Beacon("Nike").with_category("running shoes")
 ```
 
 ---
@@ -58,15 +61,15 @@ Enable keyless demo mode. Returns realistic canned data without making any API c
 
 **Example:**
 ```python
-report = Beacon("Nike").demo().scan()
+report = Beacon("Nike").with_category("running shoes").demo().scan()
 print(report.visibility_score)  # realistic canned value
 ```
 
 The `--demo` CLI flag is equivalent:
 ```bash
-promptbeacon scan "Nike" --demo
-promptbeacon quick "Nike" --demo
-promptbeacon dashboard "Nike" --demo -o report.html
+promptbeacon scan "Nike" -t "running shoes" --demo
+promptbeacon quick "Nike" -t "running shoes" --demo
+promptbeacon dashboard "Nike" -t "running shoes" --demo -o report.html
 ```
 
 ---
@@ -82,7 +85,11 @@ Add alternative brand names that should be counted as the primary brand.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_aliases("Nike Inc", "Nike Corporation")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_aliases("Nike Inc", "Nike Corporation")
+)
 ```
 
 ---
@@ -98,11 +105,13 @@ Add competitor brands to track alongside your brand.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_competitors("Adidas", "Puma")
+beacon = (
+    Beacon("Nike").with_category("running shoes").with_competitors("Adidas", "Puma")
+)
 
 # Or pass as list
 competitors = ["Adidas", "Puma", "New Balance"]
-beacon = Beacon("Nike").with_competitors(*competitors)
+beacon = Beacon("Nike").with_category("running shoes").with_competitors(*competitors)
 ```
 
 ---
@@ -122,32 +131,47 @@ Set which LLM providers to query.
 ```python
 from promptbeacon import Beacon, Provider
 
-beacon = Beacon("Nike").with_providers(
-    Provider.OPENAI,
-    Provider.ANTHROPIC,
-    Provider.GOOGLE
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_providers(Provider.OPENAI, Provider.ANTHROPIC, Provider.GOOGLE)
 )
+```
+
+---
+
+#### `with_category(category: str) -> Beacon`
+
+Set the category the prompts ask about, phrased the way a buyer would ("running
+shoes", "crm software", "python http client"). Equivalent to
+`with_categories(category)`. This is what makes a scan meaningful.
+
+```python
+beacon = Beacon("Nike").with_category("running shoes")
 ```
 
 ---
 
 #### `with_categories(*categories: str) -> Beacon`
 
-Set the categories or topics to analyze.
+Set one or more categories; the prompt set is generated for each.
 
 **Parameters:**
-- `*categories` (str): One or more category/topic names
+- `*categories` (str): One or more category names
 
 **Returns:** Self for chaining
 
-**Default:** `["general"]`
+**When no category is set**, prompts are chosen in this order and recorded in
+`report.prompt_strategy`: an inferred category (if `with_category_inference()` is on),
+"alternatives to *competitor*" questions when competitors are set
+(`competitor_alternatives`), and otherwise generic prompts (`generic`), which emit a
+`UserWarning`. Custom prompts without a `{category}` placeholder are used as they are
+(`custom`).
 
 **Example:**
 ```python
 beacon = Beacon("Nike").with_categories(
-    "running shoes",
-    "athletic wear",
-    "sports brand"
+    "running shoes", "athletic wear", "sports brand"
 )
 ```
 
@@ -164,9 +188,48 @@ Set the number of prompts to use per category.
 
 **Default:** `10`
 
+Counts above the template set are honoured: the set is extended deterministically
+with more buyer-intent templates and phrasing variants. If `count` distinct prompts
+cannot be built (for example from one custom template), the scan raises
+`ConfigurationError` rather than silently using fewer. Custom prompts
+(`with_prompts`, protocols) are used in full unless a count is set explicitly.
+
 **Example:**
 ```python
-beacon = Beacon("Nike").with_prompt_count(25)
+beacon = Beacon("Nike").with_category("running shoes").with_prompt_count(25)
+```
+
+---
+
+#### `with_category_inference(enabled: bool = True, hints: list[str] | None = None) -> Beacon`
+
+Opt-in: when no category is set, ask one model to name it before the scan (and to
+suggest up to four competitors if none are set). Exactly one extra LLM call; it is
+logged, its cost is included in the report, and `report.prompt_strategy` becomes
+`"inferred_category"`. Never runs in demo mode. Pin the result with `with_category()`
+for comparable trends.
+
+```python
+report = Beacon("Nike").with_category_inference().scan()
+print(report.categories)  # e.g. ["running shoes"]
+```
+
+---
+
+#### `Beacon.from_project(ref, *, kind=None, infer=False, http=None, cache=True) -> Beacon`
+
+Create a Beacon for an open-source project or package from its public metadata:
+`"github:owner/name"`, `"pypi:package"`, `"npm:package"` (or a bare `owner/name`).
+Sets the brand, developer-oriented prompts, an offline category guess and README
+competitor candidates; inspect them on `beacon.project`. With `infer=True` the
+category is refined with one LLM call at scan time (the offline guess is the
+fallback). Raises `promptbeacon.projects.ProjectMetadataError` when the metadata
+cannot be fetched. See [Open-source projects](projects.md).
+
+```python
+beacon = Beacon.from_project("pypi:httpx")
+print(beacon.project.category.category)  # "python http client"
+report = beacon.demo().scan()
 ```
 
 ---
@@ -187,10 +250,18 @@ Enable DuckDB storage for historical tracking.
 from pathlib import Path
 
 # Using string path
-beacon = Beacon("Nike").with_storage("~/.promptbeacon/data.db")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_storage("~/.promptbeacon/data.db")
+)
 
 # Using Path object
-beacon = Beacon("Nike").with_storage(Path.home() / ".promptbeacon" / "data.db")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_storage(Path.home() / ".promptbeacon" / "data.db")
+)
 ```
 
 ---
@@ -210,7 +281,7 @@ Set the temperature for LLM queries.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_temperature(0.5)
+beacon = Beacon("Nike").with_category("running shoes").with_temperature(0.5)
 ```
 
 ---
@@ -228,7 +299,7 @@ Set the maximum tokens for LLM responses.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_max_tokens(2048)
+beacon = Beacon("Nike").with_category("running shoes").with_max_tokens(2048)
 ```
 
 ---
@@ -246,7 +317,7 @@ Set the request timeout in seconds.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_timeout(60.0)
+beacon = Beacon("Nike").with_category("running shoes").with_timeout(60.0)
 ```
 
 ---
@@ -256,7 +327,7 @@ beacon = Beacon("Nike").with_timeout(60.0)
 Use industry-specific prompt templates instead of defaults.
 
 **Parameters:**
-- `industry` (str): Industry name. Available: `ecommerce`, `saas`, `finance`, `healthcare`, `travel`, `food`, `tech`
+- `industry` (str): Industry name. Available: `ecommerce`, `saas`, `finance`, `healthcare`, `travel`, `food`, `tech`, `developer-tools`
 
 **Returns:** Self for chaining
 
@@ -265,7 +336,7 @@ Use industry-specific prompt templates instead of defaults.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_industry("ecommerce")
+beacon = Beacon("Nike").with_category("running shoes").with_industry("ecommerce")
 ```
 
 ---
@@ -283,10 +354,14 @@ Enable file-based response caching. Cached responses are keyed by (prompt, provi
 **Example:**
 ```python
 # Default cache (24h TTL)
-beacon = Beacon("Nike").with_cache()
+beacon = Beacon("Nike").with_category("running shoes").with_cache()
 
 # Custom cache directory and 1-hour TTL
-beacon = Beacon("Nike").with_cache(cache_dir="/tmp/pb_cache", ttl_seconds=3600)
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_cache(cache_dir="/tmp/pb_cache", ttl_seconds=3600)
+)
 ```
 
 ---
@@ -306,11 +381,15 @@ Customize the four scoring factor weights. Weights must sum to 1.0.
 **Example:**
 ```python
 # Weight sentiment more heavily
-beacon = Beacon("Nike").with_scoring_weights(
-    mention_frequency=0.2,
-    sentiment=0.4,
-    position=0.2,
-    recommendation=0.2,
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_scoring_weights(
+        mention_frequency=0.2,
+        sentiment=0.4,
+        position=0.2,
+        recommendation=0.2,
+    )
 )
 ```
 
@@ -330,7 +409,7 @@ Use fully custom prompts instead of defaults. Use `{category}` as a placeholder.
 custom_prompts = [
     "What is the best {category} brand?",
     "Can you recommend a {category} company?",
-    "Which {category} should I buy?"
+    "Which {category} should I buy?",
 ]
 
 beacon = Beacon("Nike").with_prompts(custom_prompts)
@@ -351,16 +430,20 @@ Configure stability scanning. When set, `.scan_stability()` runs the full scan `
 
 **Example:**
 ```python
-report = Beacon("Nike").with_stability(5).scan_stability()
+report = (
+    Beacon("Nike").with_category("running shoes").with_stability(5).scan_stability()
+)
 print(f"Stability: {report.stability.stability_score}/100")
-print(f"Rating: {report.stability.volatility.stability_rating}")  # stable/moderate/volatile
+print(
+    f"Rating: {report.stability.volatility.stability_rating}"
+)  # stable/moderate/volatile
 ```
 
 CLI equivalent:
 ```bash
-promptbeacon scan "Nike" --stability 5
+promptbeacon scan "Nike" -t "running shoes" --stability 5
 # short form:
-promptbeacon scan "Nike" -r 5
+promptbeacon scan "Nike" -t "running shoes" -r 5
 ```
 
 ---
@@ -382,7 +465,7 @@ Enable LLM-powered mention extraction and sentiment analysis instead of regex-ba
 
 **Example:**
 ```python
-report = Beacon("Nike").with_smart_extraction().scan()
+report = Beacon("Nike").with_category("running shoes").with_smart_extraction().scan()
 ```
 
 ---
@@ -400,7 +483,9 @@ Enable LLM-powered recommendation generation. Produces evidence-linked, prioriti
 
 **Example:**
 ```python
-report = Beacon("Nike").with_smart_recommendations().scan()
+report = (
+    Beacon("Nike").with_category("running shoes").with_smart_recommendations().scan()
+)
 for rec in report.recommendations:
     print(f"[{rec.priority.upper()}] {rec.action}")
     print(f"  Evidence: {rec.rationale}")
@@ -408,7 +493,7 @@ for rec in report.recommendations:
 
 CLI equivalent (enables both smart extraction and smart recommendations):
 ```bash
-promptbeacon scan "Nike" --smart
+promptbeacon scan "Nike" -t "running shoes" --smart
 ```
 
 ---
@@ -430,13 +515,13 @@ Measure **web-grounded** answers — what AI *search* returns — instead of bas
 
 **Example:**
 ```python
-report = Beacon("Nike").with_grounding().scan()
+report = Beacon("Nike").with_category("running shoes").with_grounding().scan()
 print(report.measurement_tier)  # "api_grounded" when grounding ran
 ```
 
 CLI equivalent:
 ```bash
-promptbeacon scan "Nike" --grounded
+promptbeacon scan "Nike" -t "running shoes" --grounded
 ```
 
 ---
@@ -455,7 +540,7 @@ Run a synchronous visibility scan.
 
 **Example:**
 ```python
-beacon = Beacon("Nike")
+beacon = Beacon("Nike").with_category("running shoes")
 report = beacon.scan()
 
 print(f"Score: {report.visibility_score}")
@@ -478,10 +563,12 @@ Run an asynchronous visibility scan (recommended for better performance).
 import asyncio
 from promptbeacon import Beacon
 
+
 async def main():
-    beacon = Beacon("Nike")
+    beacon = Beacon("Nike").with_category("running shoes")
     report = await beacon.scan_async()
     print(f"Score: {report.visibility_score}")
+
 
 asyncio.run(main())
 ```
@@ -500,7 +587,9 @@ Run a synchronous stability scan. Requires `.with_stability(n)` to be called fir
 
 **Example:**
 ```python
-report = Beacon("Nike").with_stability(5).scan_stability()
+report = (
+    Beacon("Nike").with_category("running shoes").with_stability(5).scan_stability()
+)
 print(f"Stability score: {report.stability.stability_score}/100")
 print(f"Flip-flop count: {report.stability.flip_flop_count}")
 ```
@@ -516,9 +605,16 @@ Asynchronous version of `scan_stability()`.
 import asyncio
 from promptbeacon import Beacon
 
+
 async def main():
-    report = await Beacon("Nike").with_stability(5).scan_stability_async()
+    report = (
+        await Beacon("Nike")
+        .with_category("running shoes")
+        .with_stability(5)
+        .scan_stability_async()
+    )
     print(f"Stability: {report.stability.stability_score}/100")
+
 
 asyncio.run(main())
 ```
@@ -541,7 +637,11 @@ Retrieve historical visibility data.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_storage("~/.promptbeacon/data.db")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_storage("~/.promptbeacon/data.db")
+)
 beacon.scan()  # Run at least one scan first
 
 history = beacon.get_history(days=30)
@@ -562,7 +662,11 @@ Compare the latest scan with the previous one.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_storage("~/.promptbeacon/data.db")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_storage("~/.promptbeacon/data.db")
+)
 report = beacon.scan()
 
 comparison = beacon.compare_with_previous()
@@ -581,7 +685,7 @@ Close database connections and clean up resources.
 
 **Example:**
 ```python
-beacon = Beacon("Nike").with_storage("data.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("data.db")
 beacon.scan()
 beacon.close()
 ```
@@ -594,7 +698,7 @@ Beacon supports context manager protocol for automatic cleanup.
 
 **Example:**
 ```python
-with Beacon("Nike").with_storage("data.db") as beacon:
+with Beacon("Nike").with_category("running shoes").with_storage("data.db") as beacon:
     report = beacon.scan()
     # Database automatically closed when exiting context
 ```
@@ -608,7 +712,7 @@ with Beacon("Nike").with_storage("data.db") as beacon:
 The brand being monitored (read-only).
 
 ```python
-beacon = Beacon("Nike")
+beacon = Beacon("Nike").with_category("running shoes")
 print(beacon.brand)  # "Nike"
 ```
 
@@ -619,8 +723,94 @@ print(beacon.brand)  # "Nike"
 The current configuration (read-only).
 
 ```python
-beacon = Beacon("Nike").with_competitors("Adidas")
+beacon = Beacon("Nike").with_category("running shoes").with_competitors("Adidas")
 print(beacon.config.competitors)  # ["Adidas"]
+```
+
+---
+
+## configure_beacon
+
+```python
+from promptbeacon.builder import configure_beacon
+
+configure_beacon(
+    brand=None, *, project=None, competitors=None, providers=None,
+    categories=None, prompt_count=None, demo=False, grounded=False,
+    infer_category=False,
+) -> Beacon
+```
+
+Build a Beacon from plain options. This is the single mapping used by the CLI and the
+MCP server, so scripts that take options from users can use the same behaviour.
+`project` takes `"github:..."`, `"pypi:..."` or `"npm:..."`; a `brand` given together
+with a project wins and the project name becomes an alias. Raises `ValueError` for a
+missing brand/project or an unknown provider.
+
+```python
+beacon = configure_beacon(
+    "Nike", categories=["running shoes"], competitors=["Adidas"], demo=True
+)
+report = beacon.scan()
+```
+
+---
+
+## Projects
+
+`promptbeacon.projects` reads public project metadata and guesses a category. See
+[Open-source projects](projects.md).
+
+| Name | Description |
+| --- | --- |
+| `fetch_project(ref, kind=None, *, http=None, cache=True) -> ProjectMetadata` | Fetch metadata for `"kind:ref"`; raises `ProjectMetadataError` (not found, rate limited, offline) |
+| `ProjectMetadata` | `source`, `ref`, `name`, `description`, `keywords`, `language`, `homepage`, `url`, `readme`, `aliases` |
+| `guess_category(meta) -> CategoryGuess` | Offline guess: `category`, `confidence` (`high`/`medium`/`low`), `basis` |
+| `guess_competitors(meta, limit=4) -> list[str]` | Peer projects the README compares itself to |
+| `profile_project(meta) -> ProjectProfile` | Category guess plus competitor candidates |
+| `MetadataSource`, `register_source(cls)` | Base class and registry for sources (`GitHubSource`, `PyPISource`, `NpmSource` built in) |
+| `available_sources() -> list[str]` | Registered source kinds |
+| `MetadataCache(directory=None, ttl_seconds=86400)` | On-disk response cache |
+
+```python
+from promptbeacon.projects import fetch_project, guess_category
+
+meta = fetch_project("npm:express")
+print(guess_category(meta))
+# CategoryGuess(category='javascript web framework', confidence='high', basis='description')
+```
+
+---
+
+## Badges, cards and CI summaries
+
+`promptbeacon.share` renders outputs from a `Report`. See
+[Badges & share cards](share.md).
+
+| Function | Returns |
+| --- | --- |
+| `render_badge_svg(report, *, label="AI visibility", metric="both")` | Self-contained SVG badge (`metric`: `both`, `score`, `sov`) |
+| `badge_endpoint(report, *, label=..., metric=..., with_logo=True)` | shields.io endpoint JSON as a dict (`schemaVersion`, `label`, `message`, `color`, `labelColor`, `logoSvg`) |
+| `shields_url(raw_json_url, *, link=None)` | `https://img.shields.io/endpoint?url=...` |
+| `render_card_svg(report, theme="light")` | 1200x630 SVG card (`light` or `dark`) |
+| `render_card_png(report, theme="light", scale=2)` | PNG bytes; needs `promptbeacon[share]` |
+| `card_data(report)` | The card's content (title, rows, tier) for custom rendering |
+
+`promptbeacon.share.summary`:
+
+| Function | Returns |
+| --- | --- |
+| `ci_outputs(report, passed=None)` | dict of string outputs (`score`, `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`, `passed`) |
+| `summary_markdown(report, *, failures=None, thresholds=None, marker=False)` | Markdown summary; with `marker=True` it starts with the hidden sticky-comment marker |
+| `report_summary(report)` | Compact JSON-serialisable dict (what the MCP tools return) |
+
+```python
+from promptbeacon.share import badge_endpoint, render_card_svg
+from promptbeacon.share.summary import summary_markdown
+
+svg = render_card_svg(report, theme="dark")
+endpoint = badge_endpoint(report)
+print(summary_markdown(report))
 ```
 
 ---
@@ -679,9 +869,9 @@ Analyze text for brand safety concerns.
 **Example:**
 ```python
 result = guard.analyze("Try Adidas instead of Nike.")
-print(result.risk_level)     # "high"
-print(result.flags)          # ["Competitor mentioned: Adidas"]
-print(result.sentiment)      # "neutral"
+print(result.risk_level)  # "medium" (one flag)
+print(result.flags)  # ['Competitor mentioned: Adidas']
+print(result.sentiment)  # "neutral"
 ```
 
 ---
@@ -722,7 +912,7 @@ Configuration dataclass for Beacon instances.
 | `brand` | str | required | Brand to monitor |
 | `competitors` | list[str] | [] | Competitor brands |
 | `providers` | list[Provider] | [Provider.OPENAI] | LLM providers |
-| `categories` | list[str] | ["general"] | Analysis categories |
+| `categories` | list[str] | ["general"] | Categories (the default is a placeholder; set one with `with_category()`) |
 | `prompt_count` | int | 10 | Prompts per category (1-1000) |
 | `storage_path` | Path \| None | None | DuckDB file path |
 | `temperature` | float | 0.7 | LLM temperature (0.0-2.0) |
@@ -760,7 +950,7 @@ Enum of supported LLM providers.
 from promptbeacon import Provider
 
 # Use all providers
-beacon = Beacon("Nike").with_providers(*Provider.all())
+beacon = Beacon("Nike").with_category("running shoes").with_providers(*Provider.all())
 
 # Check provider availability
 from promptbeacon.core.config import has_api_key
@@ -782,6 +972,8 @@ Main report object containing scan results.
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `brand` | str | Brand analyzed |
+| `categories` | list[str] | Categories the prompts asked about (empty when they were not category-based) |
+| `prompt_strategy` | str \| None | `category`, `inferred_category`, `competitor_alternatives`, `custom` or `generic` |
 | `visibility_score` | float | Overall score (0-100) |
 | `mention_count` | int | Total mentions |
 | `sentiment_breakdown` | SentimentBreakdown | Sentiment distribution |
@@ -797,7 +989,8 @@ Main report object containing scan results.
 | `measurement_tier` | "demo" \| "base_model" \| "api_grounded" | How the scan was measured (honesty label) |
 | `timestamp` | datetime | Scan timestamp |
 | `scan_duration_seconds` | float | Duration in seconds |
-| `total_cost_usd` | float \| None | Estimated API cost |
+| `total_cost_usd` | float \| None | Estimated API cost (never a misleading 0: unpriced calls leave it `None`) |
+| `cost_status` | str \| None | `complete`, `partial` (real bill is higher), `unknown` or `none` (demo / fully cached) |
 
 **Measurement tier** — `demo` (canned data), `base_model` (LLM completion, no web search — training memory), or `api_grounded` (provider web search; approximates but does not equal the consumer product). Surfaced in the CLI banner and JSON.
 
@@ -939,6 +1132,9 @@ Result from a single provider query.
 | `cost_usd` | float \| None | Estimated cost |
 | `error` | str \| None | Error message if failed |
 | `grounded` | bool | True if this result came from a web-grounded query (provider web search) |
+| `cached` | bool | True if served from the local response cache |
+| `search_count` | int | Web searches the engine ran (grounded only) |
+| `search_fees_included` | bool | False when search fees could not be priced and are missing from `cost_usd` |
 | `timestamp` | datetime | Query timestamp |
 
 **Computed Properties:**
@@ -1131,7 +1327,9 @@ print(f"Nike presence: {sov.target_presence_rate:.0%}")
 print(f"Nike rank: #{sov.target_rank}")
 
 for brand, entry in sov.aggregate.items():
-    print(f"  {brand}: {entry.share_of_voice:.0%} ({entry.appearances}/{entry.total_prompts} prompts)")
+    print(
+        f"  {brand}: {entry.share_of_voice:.0%} ({entry.appearances}/{entry.total_prompts} prompts)"
+    )
 ```
 
 ---
@@ -1199,10 +1397,12 @@ sa = aggregate_source_attribution(report.provider_results, "Nike", ["Adidas"])
 sa = report.source_attribution
 print(f"{sa.total_citations} citations across {len(sa.entries)} domains")
 for entry in sa.entries[:10]:
-    print(f"{entry.domain} ({entry.source_type}): {entry.citations} "
-          f"— cites you: {entry.cites_target}")
-print(sa.by_type)               # {'reddit': 4, 'news': 2, ...}
-print(sa.target_cited_domains)  # ['reddit.com', ...]
+    print(
+        f"{entry.domain} ({entry.source_type}): {entry.citations} "
+        f"— cites you: {entry.cites_target}"
+    )
+print(sa.by_type)  # e.g. {'reddit': 4, 'wikipedia': 2, ...}
+print(sa.target_cited_domains)  # ['www.reddit.com', ...]
 ```
 
 ---
@@ -1273,7 +1473,9 @@ Available as `report.stability` after a stability scan.
 
 **Example:**
 ```python
-report = Beacon("Nike").with_stability(5).scan_stability()
+report = (
+    Beacon("Nike").with_category("running shoes").with_stability(5).scan_stability()
+)
 s = report.stability
 
 print(f"Stability score: {s.stability_score:.1f}/100")
@@ -1428,9 +1630,9 @@ with open("dashboard.html", "w") as f:
 
 CLI equivalent (auto-opens in browser):
 ```bash
-promptbeacon dashboard "Nike" -o report.html
-promptbeacon dashboard "Nike" --demo -o demo_report.html
-promptbeacon dashboard "Nike" -o report.html --no-open
+promptbeacon dashboard "Nike" -t "running shoes" -o report.html
+promptbeacon dashboard "Nike" -t "running shoes" --demo -o demo_report.html
+promptbeacon dashboard "Nike" -t "running shoes" -o report.html --no-open
 ```
 
 ---
@@ -1533,12 +1735,12 @@ Raised for configuration errors (missing API keys, invalid config).
 **Example:**
 ```python
 try:
-    beacon = Beacon("Nike")
+    beacon = Beacon("Nike").with_category("running shoes")
     report = beacon.scan()
 except ConfigurationError as e:
     print(f"Configuration error: {e}")
     # Use demo mode as fallback
-    report = Beacon("Nike").demo().scan()
+    report = Beacon("Nike").with_category("running shoes").demo().scan()
 ```
 
 ---
@@ -1623,7 +1825,7 @@ PromptBeacon is fully type-hinted. Use with type checkers like mypy:
 ```python
 from promptbeacon import Beacon, Report, Provider
 
-beacon: Beacon = Beacon("Nike")
+beacon: Beacon = Beacon("Nike").with_category("running shoes")
 report: Report = beacon.scan()
 score: float = report.visibility_score
 ```
@@ -1635,7 +1837,7 @@ score: float = report.visibility_score
 ```python
 from promptbeacon import __version__
 
-print(__version__)  # e.g., "1.2.0"
+print(__version__)
 ```
 
 ---
@@ -1644,12 +1846,17 @@ print(__version__)  # e.g., "1.2.0"
 
 ```python
 from promptbeacon import Beacon, Provider, to_json, to_dashboard_html, to_dataframe
-from promptbeacon.core.exceptions import ConfigurationError, ScanError, VisibilityAssertionError
+from promptbeacon.core.exceptions import (
+    ConfigurationError,
+    ScanError,
+    VisibilityAssertionError,
+)
 
 try:
     # Configure beacon with full options
     beacon = (
         Beacon("Nike")
+        .with_category("running shoes")
         .with_aliases("Nike Inc", "Nike Corporation")
         .with_competitors("Adidas", "Puma", "New Balance")
         .with_providers(Provider.OPENAI, Provider.ANTHROPIC)

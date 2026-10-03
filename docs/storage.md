@@ -24,6 +24,7 @@ from promptbeacon import Beacon
 
 beacon = (
     Beacon("Nike")
+    .with_category("running shoes")
     .with_storage("~/.promptbeacon/nike.db")
 )
 
@@ -31,22 +32,33 @@ beacon = (
 report = beacon.scan()
 ```
 
-### Default Storage Location
+### The CLI saves real scans by default
 
-If not specified, PromptBeacon uses:
-
-```
-~/.promptbeacon/data.db
-```
-
-### CLI Usage
+Every real `promptbeacon scan` is saved to the default history file, so
+`promptbeacon history` works without any setup:
 
 ```bash
-# Enable storage
-promptbeacon scan "Nike" --storage ~/.promptbeacon/nike.db
+promptbeacon scan "Nike" --category "running shoes" -c "Adidas"
+promptbeacon history "Nike" --days 30
+```
 
-# Uses default location
-promptbeacon scan "Nike" --storage ~/.promptbeacon/data.db
+- Default file: `~/.promptbeacon/data.db`. Set `PROMPTBEACON_HOME` to move the whole
+  data directory (useful in CI or containers): the file becomes
+  `$PROMPTBEACON_HOME/data.db`.
+- `--no-save` skips saving (it wins over `--storage`); `--storage PATH` uses another file.
+- Saving to the default file is best-effort: if it can't be written (read-only home, locked database), the scan still succeeds and a warning explains why.
+- Demo scans (`--demo`) are never mixed into history unless you pass `--storage`
+  explicitly.
+
+In Python nothing is written to disk unless you call `.with_storage(path)`.
+`promptbeacon.core.config.get_default_storage_path()` returns the default path.
+
+### CLI usage
+
+```bash
+# A separate history file for one brand
+promptbeacon scan "Nike" -t "running shoes" --storage ~/.promptbeacon/nike.db
+promptbeacon history "Nike" --storage ~/.promptbeacon/nike.db
 ```
 
 ---
@@ -58,7 +70,7 @@ promptbeacon scan "Nike" --storage ~/.promptbeacon/data.db
 ```python
 from promptbeacon import Beacon
 
-beacon = Beacon("Nike").with_storage("./nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("./nike.db")
 
 # Run scan - automatically saved to database
 report = beacon.scan()
@@ -81,7 +93,7 @@ print(f"Data points: {len(history.data_points)}")
 
 ```python
 # Run multiple scans over time
-beacon = Beacon("Nike").with_storage("./nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("./nike.db")
 
 # First scan
 report1 = beacon.scan()
@@ -222,7 +234,7 @@ db_path = "~/.promptbeacon/brands.db"
 brands = ["Nike", "Adidas", "Puma"]
 
 for brand in brands:
-    beacon = Beacon(brand).with_storage(db_path)
+    beacon = Beacon(brand).with_category("running shoes").with_storage(db_path)
     report = beacon.scan()
     print(f"{brand}: {report.visibility_score:.1f}")
 ```
@@ -242,6 +254,7 @@ def compare_brands(brands: list[str], days: int = 30):
         print(f"  Average: {history.average_score:.1f}")
         print(f"  Trend: {history.trend_direction}")
         print(f"  Volatility: {history.volatility:.2f}")
+
 
 compare_brands(["Nike", "Adidas", "Puma"])
 ```
@@ -430,6 +443,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+
 def backup_database(db_path: str, backup_dir: str = "~/.promptbeacon/backups"):
     """Backup PromptBeacon database."""
     db_path = Path(db_path).expanduser()
@@ -445,6 +459,7 @@ def backup_database(db_path: str, backup_dir: str = "~/.promptbeacon/backups"):
 
     return backup_path
 
+
 # Usage
 backup_database("~/.promptbeacon/nike.db")
 ```
@@ -455,6 +470,7 @@ backup_database("~/.promptbeacon/nike.db")
 from pathlib import Path
 import time
 
+
 def rotate_backups(backup_dir: str = "~/.promptbeacon/backups", keep_days: int = 30):
     """Remove backups older than keep_days."""
     backup_dir = Path(backup_dir).expanduser()
@@ -464,6 +480,7 @@ def rotate_backups(backup_dir: str = "~/.promptbeacon/backups", keep_days: int =
         if backup_file.stat().st_mtime < cutoff_time:
             backup_file.unlink()
             print(f"Removed old backup: {backup_file.name}")
+
 
 # Run after backup
 backup_database("~/.promptbeacon/nike.db")
@@ -606,7 +623,7 @@ start = time.time()
 results = db.connection.execute(query).fetchall()
 duration = time.time() - start
 
-print(f"Query took {duration*1000:.2f}ms")
+print(f"Query took {duration * 1000:.2f}ms")
 ```
 
 ---
@@ -662,9 +679,12 @@ print("Databases merged")
 from promptbeacon import Beacon
 from datetime import datetime
 
-def monitor_brand(brand: str, alert_threshold: float = 5.0):
+
+def monitor_brand(brand: str, category: str, alert_threshold: float = 5.0):
     """Monitor brand and alert on significant changes."""
-    beacon = Beacon(brand).with_storage("~/.promptbeacon/data.db")
+    beacon = (
+        Beacon(brand).with_category(category).with_storage("~/.promptbeacon/data.db")
+    )
 
     # Run scan
     report = beacon.scan()
@@ -677,8 +697,9 @@ def monitor_brand(brand: str, alert_threshold: float = 5.0):
             brand=brand,
             current=comparison.current_score,
             previous=comparison.previous_score,
-            change=comparison.score_change
+            change=comparison.score_change,
         )
+
 
 def send_alert(brand: str, current: float, previous: float, change: float):
     """Send alert (email, slack, etc.)"""
@@ -694,8 +715,9 @@ def send_alert(brand: str, current: float, previous: float, change: float):
     print(message)
     # Add email/Slack integration here
 
+
 # Run daily
-monitor_brand("Nike", alert_threshold=5.0)
+monitor_brand("Nike", "running shoes", alert_threshold=5.0)
 ```
 
 ---
@@ -709,12 +731,12 @@ monitor_brand("Nike", alert_threshold=5.0)
 **Solution:**
 ```python
 # Ensure you close connections
-with Beacon("Nike").with_storage("nike.db") as beacon:
+with Beacon("Nike").with_category("running shoes").with_storage("nike.db") as beacon:
     report = beacon.scan()
 # Connection automatically closed
 
 # Or manually close
-beacon = Beacon("Nike").with_storage("nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("nike.db")
 report = beacon.scan()
 beacon.close()
 ```
@@ -768,19 +790,23 @@ db.connection.execute("VACUUM")
 **Recommended:**
 ```python
 # User home directory
-beacon = Beacon("Nike").with_storage("~/.promptbeacon/nike.db")
+beacon = (
+    Beacon("Nike")
+    .with_category("running shoes")
+    .with_storage("~/.promptbeacon/nike.db")
+)
 
 # Project-specific
-beacon = Beacon("Nike").with_storage("./data/nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("./data/nike.db")
 ```
 
 **Not recommended:**
 ```python
 # Temporary directory (may be cleared)
-beacon = Beacon("Nike").with_storage("/tmp/nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("/tmp/nike.db")
 
 # System directories (permission issues)
-beacon = Beacon("Nike").with_storage("/var/lib/nike.db")
+beacon = Beacon("Nike").with_category("running shoes").with_storage("/var/lib/nike.db")
 ```
 
 ### Naming Conventions
@@ -788,6 +814,7 @@ beacon = Beacon("Nike").with_storage("/var/lib/nike.db")
 ```python
 # Per-brand databases
 "~/.promptbeacon/nike.db"
+
 "~/.promptbeacon/adidas.db"
 
 # Centralized database
@@ -803,6 +830,7 @@ beacon = Beacon("Nike").with_storage("/var/lib/nike.db")
 ```python
 from promptbeacon.storage.database import Database
 from datetime import datetime
+
 
 def weekly_maintenance(db_path: str):
     """Weekly database maintenance."""
@@ -822,9 +850,12 @@ def weekly_maintenance(db_path: str):
     print(f"Integrity: {result[0]}")
 
     # 4. Cleanup old data (optional)
-    db.connection.execute("DELETE FROM scans WHERE timestamp < datetime('now', '-90 days')")
+    db.connection.execute(
+        "DELETE FROM scans WHERE timestamp < datetime('now', '-90 days')"
+    )
 
     print(f"Maintenance completed: {datetime.now()}")
+
 
 # Run weekly
 weekly_maintenance("~/.promptbeacon/nike.db")
