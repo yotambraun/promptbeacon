@@ -311,6 +311,7 @@ def test_grounded_scan_marks_tier_and_flag(monkeypatch):
 
     report = (
         Beacon("Nike")
+        .with_category("running shoes")
         .with_providers(Provider.ANTHROPIC)
         .with_grounding()
         .with_prompt_count(2)

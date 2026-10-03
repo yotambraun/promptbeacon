@@ -416,11 +416,12 @@ def quick(
     Example:
         promptbeacon quick "Nike" --category "running shoes"
     """
-    beacon = Beacon(brand).with_prompt_count(3)
-    if category:
-        beacon = beacon.with_category(category)
-    if demo:
-        beacon = beacon.demo()
+    beacon = _beacon_from_options(
+        brand,
+        categories=[category] if category else None,
+        prompt_count=3,
+        demo=demo,
+    )
 
     report = _run_scan(beacon, f"Quick scan for {brand}...")
 
@@ -453,15 +454,14 @@ def demo(
     Example:
         promptbeacon demo "Nike" --category "running shoes" --competitor "Adidas"
     """
-    beacon = Beacon(brand).demo()
-    if categories:
-        beacon = beacon.with_categories(*categories)
-
     err_console.print("[cyan]Running in DEMO mode — canned data, no API calls.[/cyan]")
-    if competitors:
-        beacon = beacon.with_competitors(*competitors)
-    else:
-        beacon = beacon.with_competitors(*DEMO_PLACEHOLDER_COMPETITORS)
+    beacon = _beacon_from_options(
+        brand,
+        competitors=competitors or list(DEMO_PLACEHOLDER_COMPETITORS),
+        categories=categories,
+        demo=True,
+    )
+    if not competitors:
         err_console.print(
             "[dim]No --competitor given: comparing against placeholder "
             "competitors ('Competitor A', 'Competitor B'). Add -c to compare "
@@ -504,18 +504,13 @@ def dashboard(
     Example:
         promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --demo
     """
-    beacon = Beacon(brand)
-    if categories:
-        beacon = beacon.with_categories(*categories)
-    if competitors:
-        beacon = beacon.with_competitors(*competitors)
-    if providers:
-        provider_enums = provider_callback(providers)
-        if provider_enums:
-            beacon = beacon.with_providers(*provider_enums)
-    if demo:
-        beacon = beacon.demo()
-
+    beacon = _beacon_from_options(
+        brand,
+        competitors=competitors,
+        providers=providers,
+        categories=categories,
+        demo=demo,
+    )
     report = _run_scan(beacon, f"Building dashboard for {brand}...")
 
     output.write_text(to_dashboard_html(report), encoding="utf-8")
@@ -554,16 +549,13 @@ def compare(
     Example:
         promptbeacon compare "Nike" -t "running shoes" --against "Adidas" -a "Puma"
     """
-    beacon = Beacon(brand).with_competitors(*against)
-    if categories:
-        beacon = beacon.with_categories(*categories)
-    if demo:
-        beacon = beacon.demo()
-
-    if providers:
-        provider_enums = provider_callback(providers)
-        if provider_enums:
-            beacon = beacon.with_providers(*provider_enums)
+    beacon = _beacon_from_options(
+        brand,
+        competitors=against,
+        providers=providers,
+        categories=categories,
+        demo=demo,
+    )
 
     report = _run_scan(beacon, f"Comparing {brand} with competitors...")
 
@@ -617,22 +609,15 @@ def sources(
 
         promptbeacon sources "Nike" -t "running shoes" --demo
     """
-    beacon = Beacon(brand)
-    if competitors:
-        beacon = beacon.with_competitors(*competitors)
-    if providers:
-        provider_enums = provider_callback(providers)
-        if provider_enums:
-            beacon = beacon.with_providers(*provider_enums)
-    if categories:
-        beacon = beacon.with_categories(*categories)
-    if prompt_count is not None:
-        beacon = beacon.with_prompt_count(prompt_count)
-    if demo:
-        beacon = beacon.demo()
-    if grounded:
-        beacon = beacon.with_grounding()
-
+    beacon = _beacon_from_options(
+        brand,
+        competitors=competitors,
+        providers=providers,
+        categories=categories,
+        prompt_count=prompt_count,
+        demo=demo,
+        grounded=grounded,
+    )
     report = _run_scan(beacon, f"Finding sources for {brand}...")
 
     sa = report.source_attribution
