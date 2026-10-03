@@ -65,6 +65,36 @@ jobs:
       - name: Run ruff format check
         run: uv run ruff format --check .
 
+  action-smoke:
+    # Runs this repository's GitHub Action in keyless demo mode.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the action (demo)
+        id: beacon
+        uses: ./
+        with:
+          version: "."
+          brand: "Nike"
+          category: "running shoes"
+          competitors: |
+            Adidas
+            New Balance
+          demo: "true"
+          badge-path: out/badge.svg
+          badge-endpoint-path: out/badge.json
+          card-path: out/card.svg
+
+      - name: Check outputs
+        env:
+          SCORE: ${{ steps.beacon.outputs.score }}
+          TIER: ${{ steps.beacon.outputs.tier }}
+        run: |
+          test -n "$SCORE"
+          test "$TIER" = "demo"
+          test -s out/badge.svg && test -s out/badge.json && test -s out/card.svg
+
   build:
     runs-on: ubuntu-latest
     needs: [test, lint]

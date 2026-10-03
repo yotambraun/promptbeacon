@@ -1476,6 +1476,114 @@ def card(
         )
 
 
+@app.command()
+def ci(
+    report_path: Annotated[
+        Path,
+        typer.Option("--report", help="Report from `promptbeacon scan -f json`"),
+    ],
+    min_score: Annotated[
+        float | None, typer.Option("--min-score", help="Minimum visibility score")
+    ] = None,
+    min_sov: Annotated[
+        float | None, typer.Option("--min-sov", help="Minimum share of voice (0-1)")
+    ] = None,
+    min_presence: Annotated[
+        float | None,
+        typer.Option("--min-presence", help="Minimum presence rate (0-1)"),
+    ] = None,
+    min_stability: Annotated[
+        float | None,
+        typer.Option("--min-stability", help="Minimum stability score (0-100)"),
+    ] = None,
+    max_rank: Annotated[
+        int | None, typer.Option("--max-rank", help="Worst acceptable SoV rank")
+    ] = None,
+    comment_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--comment-file", help="Write a PR-comment body (with a hidden marker)"
+        ),
+    ] = None,
+) -> None:
+    """Summarise a report for CI: outputs, job summary, PR comment, and gates.
+
+    Writes step outputs to $GITHUB_OUTPUT and a Markdown summary to
+    $GITHUB_STEP_SUMMARY when those are set (GitHub Actions), prints the summary
+    otherwise, and exits 1 if any threshold is missed — after writing
+    everything, so a failing check still reports its numbers.
+
+    Example:
+        promptbeacon scan "Nike" -t "running shoes" -f json --no-save > report.json
+        promptbeacon ci --report report.json --min-score 50 --min-sov 0.3
+    """
+    import os
+
+    from promptbeacon.core.schemas import Report
+    from promptbeacon.share.summary import ci_outputs, summary_markdown
+
+    try:
+        report = Report.model_validate_json(report_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        err_console.print(f"[red]Error reading report {report_path}:[/red] {e}")
+        raise typer.Exit(1) from None
+
+    thresholds = {
+        name: value
+        for name, value in (
+            ("min score", min_score),
+            ("min share of voice", min_sov),
+            ("min presence", min_presence),
+            ("min stability", min_stability),
+            ("max rank", max_rank),
+        )
+        if value is not None
+    }
+    failures: list[str] = []
+    try:
+        report.assert_visibility(
+            min_score=min_score,
+            min_share_of_voice=min_sov,
+            min_presence_rate=min_presence,
+            min_stability_score=min_stability,
+            max_rank=max_rank,
+        )
+    except VisibilityAssertionError as e:
+        failures = list(e.failures)
+    passed = not failures
+
+    output_file = os.environ.get("GITHUB_OUTPUT")
+    if output_file:
+        with open(output_file, "a", encoding="utf-8") as fh:
+            for key, value in ci_outputs(report, passed).items():
+                fh.write(f"{key}={value}\n")
+
+    summary = summary_markdown(report, failures=failures, thresholds=thresholds)
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_file:
+        with open(summary_file, "a", encoding="utf-8") as fh:
+            fh.write(summary + "\n")
+    else:
+        _emit(summary)
+
+    if comment_file is not None:
+        comment_file.parent.mkdir(parents=True, exist_ok=True)
+        comment_file.write_text(
+            summary_markdown(
+                report, failures=failures, thresholds=thresholds, marker=True
+            ),
+            encoding="utf-8",
+        )
+
+    if failures:
+        err_console.print(
+            "[red]✗ Visibility check failed:[/red] " + "; ".join(failures)
+        )
+        raise typer.Exit(1)
+    if thresholds:
+        err_console.print("[green]✓ Visibility check passed.[/green]")
+
+
 @app.callback()
 def main() -> None:
     """PromptBeacon - LLM visibility monitoring for brands."""
