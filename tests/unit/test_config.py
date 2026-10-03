@@ -111,7 +111,9 @@ class TestAPIKeyFunctions:
 class TestStoragePath:
     """Tests for storage path functions."""
 
-    def test_get_default_storage_path(self):
+    def test_get_default_storage_path(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("PROMPTBEACON_HOME", raising=False)
+        monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
         path = get_default_storage_path()
 
         assert path is not None
