@@ -123,10 +123,17 @@ def card_data(report: Report, max_rows: int = MAX_ROWS) -> CardData:
         )
         for i, e in enumerate(entries)
     ]
-    if not rows:
+    if not any(r.is_target for r in rows):
+        # Old or hand-edited reports may lack the target's share-of-voice entry.
         total = len(report.provider_results)
-        present = sum(1 for r in report.provider_results if r.mentions)
-        rows = [CardRow(report.brand, present, total, is_target=True, rank=1)]
+        present = sum(
+            1
+            for r in report.provider_results
+            if any(m.brand_name == report.brand for m in r.mentions)
+        )
+        rows.append(
+            CardRow(report.brand, present, total, is_target=True, rank=len(rows) + 1)
+        )
 
     shown = rows[:max_rows]
     if not any(r.is_target for r in shown):

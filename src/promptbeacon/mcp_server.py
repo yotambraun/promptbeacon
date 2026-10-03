@@ -248,6 +248,12 @@ async def share_assets(
     )
     from promptbeacon.share.summary import report_summary
 
+    out = Path(output_dir).expanduser().resolve()
+    cwd = Path.cwd().resolve()
+    if out != cwd and cwd not in out.parents:
+        raise ValueError(
+            f"output_dir must be inside the working directory ({cwd}); got {out}"
+        )
     use_demo, note = _resolve_demo(demo)
 
     def build():
@@ -266,7 +272,6 @@ async def share_assets(
             warnings.simplefilter("ignore", UserWarning)
             report = await beacon.scan_async()
 
-    out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     files = {
         "badge_svg": out / "badge.svg",

@@ -87,7 +87,8 @@ def test_sources_returns_domains():
 
 
 @pytest.mark.usefixtures("no_keys")
-def test_share_assets_writes_files(tmp_path):
+def test_share_assets_writes_files(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     result = asyncio.run(
         mcp_server.share_assets(
             "Nike", category="running shoes", competitors=["Adidas"],

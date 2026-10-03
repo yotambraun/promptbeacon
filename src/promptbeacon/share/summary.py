@@ -54,7 +54,8 @@ def ci_outputs(report: Report, passed: bool | None = None) -> dict[str, str]:
     }
     if passed is not None:
         outputs["passed"] = "true" if passed else "false"
-    return outputs
+    # One line per output: a newline could inject extra keys into $GITHUB_OUTPUT.
+    return {k: " ".join(v.split()) for k, v in outputs.items()}
 
 
 def summary_markdown(
@@ -97,8 +98,9 @@ def summary_markdown(
             key=lambda e: (-e.appearances, e.brand_name != report.brand),
         )
         shown = entries[:max_rows]
-        if not any(e.brand_name == report.brand for e in shown):
-            shown = shown[: max_rows - 1] + [sov.aggregate[report.brand]]
+        target = sov.aggregate.get(report.brand)
+        if target is not None and not any(e.brand_name == report.brand for e in shown):
+            shown = shown[: max_rows - 1] + [target]
         for e in shown:
             name = _md(e.brand_name)
             if e.brand_name == report.brand:
