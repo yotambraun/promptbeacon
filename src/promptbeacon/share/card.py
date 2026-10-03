@@ -42,6 +42,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "bar": "#CBD5E1",
         "target_text": "#4338CA",
         "rule": "#E2E8F0",
+        "border": "#E2E8F0",
     },
     "dark": {
         "bg": "#0B1020",
@@ -51,6 +52,7 @@ _PALETTES: dict[str, dict[str, str]] = {
         "bar": "#475569",
         "target_text": "#A5B4FC",
         "rule": "#1E293B",
+        "border": "#334155",
     },
 }
 
@@ -316,6 +318,9 @@ def layout(
             )
         )
 
+    # Hairline frame so the card stays visible on same-coloured pages.
+    shapes.append(Rect(0.5, 0.5, WIDTH - 1, HEIGHT - 1, "none", stroke=p["border"]))
+
     # Footer.
     shapes.append(Rect(PAD, 560, content_w, 1, p["rule"]))
     right = f"{data.date} · measured with PromptBeacon"
@@ -367,9 +372,10 @@ def render_card_svg(report: Report, theme: Theme = "light") -> str:
     for s in shapes:
         if isinstance(s, Rect):
             fill = "url(#pb-grad)" if s.fill == "gradient" else s.fill
+            stroke = f' stroke="{s.stroke}" stroke-width="1"' if s.stroke else ""
             out.append(
                 f'<rect x="{s.x:.1f}" y="{s.y:.1f}" width="{s.w:.1f}" '
-                f'height="{s.h:.1f}" rx="{s.rx:.1f}" fill="{fill}"/>'
+                f'height="{s.h:.1f}" rx="{s.rx:.1f}" fill="{fill}"{stroke}/>'
             )
         elif isinstance(s, Ring):
             if s.fill:
@@ -548,6 +554,14 @@ def render_card_png(report: Report, theme: Theme = "light", scale: int = 2) -> b
                 round((s.x + s.w) * scale) - 1,
                 round((s.y + s.h) * scale) - 1,
             ]
+            if s.fill == "none":
+                if s.stroke:
+                    draw.rectangle(
+                        [0, 0, WIDTH * scale - 1, HEIGHT * scale - 1],
+                        outline=_hex(s.stroke),
+                        width=scale,
+                    )
+                continue
             draw.rounded_rectangle(box, radius=round(s.rx * scale), fill=_hex(s.fill))
         elif isinstance(s, Ring):
             color = _mix(bg, INDIGO, s.opacity)

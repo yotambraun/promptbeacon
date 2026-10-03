@@ -42,11 +42,9 @@ def describe_cost(report: Report) -> str | None:
     cost = report.total_cost_usd
     status = getattr(report, "cost_status", None)
     if status == "none":
-        return (
-            "no API cost (demo/cached)"
-            if report.measurement_tier == "demo"
-            else ("no API cost (all responses cached)")
-        )
+        if report.measurement_tier == "demo":
+            return "none (demo data, no API calls)"
+        return "none (all responses cached)"
     if status == "unknown":
         return "unknown (no price data for these calls)"
     if status == "partial":
