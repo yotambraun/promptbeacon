@@ -33,6 +33,30 @@ def _score_color(score: float) -> str:
     return "#22c55e" if score >= 70 else "#eab308" if score >= 40 else "#ef4444"
 
 
+def describe_cost(report: Report) -> str | None:
+    """Human-readable cost line that never presents an unpriced scan as $0.
+
+    Returns ``None`` when there is nothing meaningful to say (older reports
+    without cost data).
+    """
+    cost = report.total_cost_usd
+    status = getattr(report, "cost_status", None)
+    if status == "none":
+        return (
+            "no API cost (demo/cached)"
+            if report.measurement_tier == "demo"
+            else ("no API cost (all responses cached)")
+        )
+    if status == "unknown":
+        return "unknown (no price data for these calls)"
+    if status == "partial":
+        shown = f"${cost:.4f}" if cost else "$?"
+        return f"at least {shown} (some calls or web-search fees could not be priced)"
+    if cost:
+        return f"${cost:.4f}"
+    return None
+
+
 def to_json(report: Report, indent: int = 2) -> str:
     """Export report to JSON string.
 
@@ -308,8 +332,9 @@ def to_markdown(report: Report) -> str:
         ]
     )
 
-    if report.total_cost_usd:
-        lines.append(f"\n*Estimated Cost: ${report.total_cost_usd:.4f}*")
+    cost_text = describe_cost(report)
+    if cost_text:
+        lines.append(f"\n*Estimated Cost: {cost_text}*")
 
     return "\n".join(lines)
 
@@ -423,7 +448,7 @@ def to_html(report: Report) -> str:
     <p style="color: #6b7280; font-size: 0.9em;">
         Scan Duration: {report.scan_duration_seconds:.1f}s |
         Providers: {", ".join(report.providers_used)}
-        {f" | Estimated Cost: ${report.total_cost_usd:.4f}" if report.total_cost_usd else ""}
+        {f" | Estimated Cost: {_esc(describe_cost(report) or '')}" if describe_cost(report) else ""}
     </p>
 </body>
 </html>"""
@@ -647,11 +672,8 @@ def to_dashboard_html(report: Report, *, history: HistoryReport | None = None) -
 
     spark = _sparkline_svg(history.visibility_trend) if history else ""
 
-    cost = (
-        f" &middot; Est. cost ${report.total_cost_usd:.4f}"
-        if report.total_cost_usd
-        else ""
-    )
+    cost_text = describe_cost(report)
+    cost = f" &middot; Est. cost {_esc(cost_text)}" if cost_text else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">

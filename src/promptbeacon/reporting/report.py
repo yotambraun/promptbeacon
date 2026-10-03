@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from promptbeacon.core.schemas import Report
+from promptbeacon.reporting.formats import describe_cost
 
 if TYPE_CHECKING:
     pass
@@ -72,8 +73,9 @@ class ReportBuilder:
             ]
         )
 
-        if self._report.total_cost_usd:
-            lines.append(f"Estimated Cost: ${self._report.total_cost_usd:.4f}")
+        cost_text = describe_cost(self._report)
+        if cost_text:
+            lines.append(f"Estimated Cost: {cost_text}")
 
         return "\n".join(lines)
 

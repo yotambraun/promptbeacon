@@ -146,6 +146,17 @@ class ProviderResult(BaseModel):
         description="True if this result came from a web-grounded query "
         "(provider web search) rather than a base-model completion",
     )
+    cached: bool = Field(
+        default=False, description="True if served from the local response cache"
+    )
+    search_count: int = Field(
+        default=0, ge=0, description="Web searches the engine ran (grounded only)"
+    )
+    search_fees_included: bool = Field(
+        default=True,
+        description="False when web-search fees could not be priced and are not "
+        "included in cost_usd",
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     @computed_field  # type: ignore[prop-decorator]
@@ -498,6 +509,13 @@ class Report(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     scan_duration_seconds: float = Field(default=0.0, ge=0)
     total_cost_usd: float | None = Field(default=None, ge=0)
+    cost_status: Literal["complete", "partial", "unknown", "none"] | None = Field(
+        default=None,
+        description="How complete total_cost_usd is: 'complete' (every API call "
+        "priced), 'partial' (some calls or search fees could not be priced — "
+        "the real bill is higher), 'unknown' (no pricing data), 'none' (no paid "
+        "API calls, e.g. demo or fully cached).",
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
