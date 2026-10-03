@@ -1,0 +1,32 @@
+{
+ "full_name": "fastapi/fastapi",
+ "name": "fastapi",
+ "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production",
+ "topics": [
+  "api",
+  "async",
+  "asyncio",
+  "fastapi",
+  "framework",
+  "json",
+  "json-schema",
+  "openapi",
+  "openapi3",
+  "pydantic",
+  "python",
+  "python-types",
+  "python3",
+  "redoc",
+  "rest",
+  "starlette",
+  "swagger",
+  "swagger-ui",
+  "uvicorn",
+  "web"
+ ],
+ "language": "Python",
+ "homepage": "https://fastapi.tiangolo.com/",
+ "html_url": "https://github.com/fastapi/fastapi",
+ "stargazers_count": 102793,
+ "archived": false
+}

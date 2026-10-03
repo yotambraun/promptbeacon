@@ -6,6 +6,7 @@ import asyncio
 import logging
 import time
 import warnings
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -21,7 +22,7 @@ else:
 from promptbeacon.analysis.category import (
     build_category_prompt,
     competitor_alternative_prompts,
-    parse_category,
+    parse_profile,
 )
 from promptbeacon.analysis.explainer import (
     generate_explanations,
@@ -72,6 +73,9 @@ from promptbeacon.providers.litellm_client import LiteLLMClient, get_available_p
 from promptbeacon.providers.mock_client import MockLLMClient
 from promptbeacon.storage.cache import ResponseCache
 from promptbeacon.storage.database import Database
+
+if TYPE_CHECKING:
+    from promptbeacon.projects import HttpResponse, ProjectProfile
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +141,9 @@ class Beacon:
         self._infer_category: bool = False
         self._category_hints: list[str] = []
         self._category_inferred: bool = False
+        self._fallback_category: str | None = None
+        self._competitors_inferred: bool = False
+        self.project: ProjectProfile | None = None
         self._extra_cost: float = 0.0
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
@@ -593,7 +600,7 @@ class Beacon:
                 strategy = "category"
             return prompts, strategy
 
-        if self._custom_prompts is None and self._config.competitors:
+        if self._config.competitors:
             try:
                 prompts = competitor_alternative_prompts(
                     self._config.competitors, self._config.prompt_count
@@ -619,20 +626,27 @@ class Beacon:
             self._infer_category
             and not self._categories_set
             and not self._demo_mode
-            and self._custom_prompts is None
+            and any("{category}" in t for t in self._get_templates())
         ):
-            category = await self._infer_category_llm()
+            category, competitors = await self._infer_profile_llm()
             if category:
                 self.with_categories(category)
                 self._category_inferred = True
+            if competitors and not self._config.competitors:
+                self.with_competitors(*competitors)
+                self._competitors_inferred = True
+
+        if not self._categories_set and self._fallback_category:
+            self.with_categories(self._fallback_category)
 
         if self._prompt_plan()[1] == "generic":
             message = _NO_CATEGORY_MESSAGE.format(brand=self._config.brand)
             logger.warning(message)
             warnings.warn(message, UserWarning, stacklevel=3)
 
-    async def _infer_category_llm(self) -> str | None:
-        """Ask one model for the brand's category (one extra call; logged)."""
+    async def _infer_profile_llm(self) -> tuple[str | None, list[str]]:
+        """Ask one model for the category (and competitors, if none are set)."""
+        want_competitors = not self._config.competitors
         try:
             provider = self._resolve_providers()[0]
             client = self._make_client(provider)
@@ -640,19 +654,25 @@ class Beacon:
                 self._config.brand,
                 competitors=self._config.competitors,
                 hints=self._category_hints,
+                want_competitors=want_competitors,
             )
-            resp = await client.complete(prompt=prompt, temperature=0.0, max_tokens=20)
+            resp = await client.complete(
+                prompt=prompt,
+                temperature=0.0,
+                max_tokens=120 if want_competitors else 20,
+            )
             if resp.cost_usd:
                 self._extra_cost += resp.cost_usd
-            category = parse_category(resp.content, self._config.brand)
+            category, competitors = parse_profile(resp.content, self._config.brand)
         except Exception as e:  # noqa: BLE001 — inference is best-effort
             logger.warning("Category inference failed: %s", e)
-            return None
+            return None, []
         if category:
             logger.info(
-                "Inferred category %r for %s with one %s call; pin it with "
+                "Inferred category %r%s for %s with one %s call; pin it with "
                 "with_category() for reproducible trends.",
                 category,
+                f" and competitors {competitors}" if competitors else "",
                 self._config.brand,
                 provider.value,
             )
@@ -660,7 +680,57 @@ class Beacon:
             logger.warning(
                 "Category inference returned no usable category: %r", resp.content
             )
-        return category
+        return category, competitors
+
+    @classmethod
+    def from_project(
+        cls,
+        ref: str,
+        *,
+        kind: str | None = None,
+        infer: bool = False,
+        http: Callable[[str, dict[str, str]], HttpResponse] | None = None,
+        cache: bool = True,
+    ) -> Beacon:
+        """Create a Beacon for an open-source project or package.
+
+        Reads public metadata (GitHub repository, PyPI or npm package — see
+        :mod:`promptbeacon.projects`), then sets the brand (project name),
+        developer-oriented prompts, a category guessed offline from the
+        description and topics, and competitor candidates the README compares
+        itself to. Inspect ``beacon.project`` to see the guesses; override
+        them with :meth:`with_category` / :meth:`with_competitors`.
+
+        Args:
+            ref: ``"github:owner/name"``, ``"pypi:package"``, ``"npm:package"``,
+                or a bare ref together with ``kind``.
+            kind: Source kind when ``ref`` has no ``kind:`` prefix.
+            infer: Refine the category (and competitors, if none were found)
+                with one LLM call when the scan runs; the offline guess is the
+                fallback, and is used as-is in demo mode.
+            http: Optional HTTP getter (tests, proxies).
+            cache: Cache metadata responses on disk for a day.
+
+        Raises:
+            ProjectMetadataError: If the metadata cannot be fetched.
+        """
+        from promptbeacon.projects import fetch_project, profile_project
+
+        meta = fetch_project(ref, kind, http=http, cache=cache)
+        profile = profile_project(meta)
+        beacon = cls(meta.name).with_industry("developer-tools")
+        if meta.aliases:
+            beacon = beacon.with_aliases(*meta.aliases)
+        if profile.competitors:
+            beacon = beacon.with_competitors(*profile.competitors)
+        guess = profile.category.category
+        if infer:
+            beacon = beacon.with_category_inference(hints=meta.hints())
+            beacon._fallback_category = guess
+        elif guess:
+            beacon = beacon.with_category(guess)
+        beacon.project = profile
+        return beacon
 
     def _get_database(self) -> Database | None:
         """Get or create the database connection."""

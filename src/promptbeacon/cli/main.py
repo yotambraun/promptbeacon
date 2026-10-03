@@ -165,7 +165,30 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
 def scan(
     brand: Annotated[
         str | None,
-        typer.Argument(help="The brand name to analyze (optional with --protocol)"),
+        typer.Argument(
+            help="The brand name to analyze (optional with --protocol or a project "
+            "option such as --repo)"
+        ),
+    ] = None,
+    repo: Annotated[
+        str | None,
+        typer.Option(
+            "--repo",
+            help="Scan a GitHub project, e.g. encode/httpx (reads public "
+            "metadata to pick the category and competitors)",
+        ),
+    ] = None,
+    pypi: Annotated[
+        str | None, typer.Option("--pypi", help="Scan a PyPI package, e.g. httpx")
+    ] = None,
+    npm: Annotated[
+        str | None, typer.Option("--npm", help="Scan an npm package, e.g. express")
+    ] = None,
+    project: Annotated[
+        str | None,
+        typer.Option(
+            "--project", help="Scan any supported source as kind:ref, e.g. pypi:httpx"
+        ),
     ] = None,
     competitors: Annotated[
         list[str] | None,
@@ -281,6 +304,8 @@ def scan(
         promptbeacon scan "Nike" --assert-min-score 50   # CI gate (exit 1 on fail)
 
         promptbeacon scan --protocol nike.json     # pinned, reproducible run
+
+        promptbeacon scan --pypi httpx --demo      # an open-source package
     """
     # Build beacon configuration — from a pinned protocol, or from CLI flags.
     if protocol is not None:
@@ -299,34 +324,28 @@ def scan(
         brand = proto.brand
         run_stability = proto.runs > 0
     else:
-        if not brand:
-            err_console.print("[red]Error:[/red] Provide a BRAND or use --protocol.")
+        project_ref = _project_ref(repo, pypi, npm, project)
+        if not brand and not project_ref:
+            err_console.print(
+                "[red]Error:[/red] Provide a BRAND, a project (--repo/--pypi/--npm), "
+                "or --protocol."
+            )
             raise typer.Exit(1)
 
-        beacon = Beacon(brand)
-
-        if competitors:
-            beacon = beacon.with_competitors(*competitors)
-
-        if providers:
-            provider_enums = provider_callback(providers)
-            if provider_enums:
-                beacon = beacon.with_providers(*provider_enums)
-
-        if categories:
-            beacon = beacon.with_categories(*categories)
-
-        if infer_category:
-            beacon = beacon.with_category_inference()
-
-        if prompt_count is not None:
-            beacon = beacon.with_prompt_count(prompt_count)
+        beacon = _beacon_from_options(
+            brand,
+            project=project_ref,
+            competitors=competitors,
+            providers=providers,
+            categories=categories,
+            prompt_count=prompt_count,
+            demo=demo,
+            infer_category=infer_category,
+        )
+        brand = beacon.brand
 
         if storage:
             beacon = beacon.with_storage(storage)
-
-        if demo:
-            beacon = beacon.demo()
 
         if smart:
             beacon = beacon.with_smart_extraction().with_smart_recommendations()
@@ -1233,9 +1252,32 @@ class ThemeOption(str, Enum):
     both = "both"
 
 
+def _project_ref(
+    repo: str | None = None,
+    pypi: str | None = None,
+    npm: str | None = None,
+    project: str | None = None,
+) -> str | None:
+    """Combine the project options into one ``kind:ref`` (at most one allowed)."""
+    refs = [
+        f"github:{repo}" if repo else None,
+        f"pypi:{pypi}" if pypi else None,
+        f"npm:{npm}" if npm else None,
+        project,
+    ]
+    given = [r for r in refs if r]
+    if len(given) > 1:
+        err_console.print(
+            "[red]Error:[/red] Use only one of --repo, --pypi, --npm, --project."
+        )
+        raise typer.Exit(1)
+    return given[0] if given else None
+
+
 def _beacon_from_options(
-    brand: str,
+    brand: str | None,
     *,
+    project: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
     categories: list[str] | None = None,
@@ -1244,8 +1286,32 @@ def _beacon_from_options(
     grounded: bool = False,
     infer_category: bool = False,
 ) -> Beacon:
-    """Build a Beacon from the common scan options (one source of truth)."""
-    beacon = Beacon(brand)
+    """Build a Beacon from the common scan options (one source of truth).
+
+    With ``project`` the brand, category and competitors start from the
+    project's public metadata; explicit options always win.
+    """
+    if project:
+        from promptbeacon.projects import ProjectMetadataError
+
+        try:
+            with _progress() as progress:
+                progress.add_task(description=f"Reading {project}...", total=None)
+                beacon = Beacon.from_project(
+                    project, infer=infer_category and not categories and not demo
+                )
+        except ProjectMetadataError as e:
+            err_console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        if brand:
+            beacon = beacon.with_aliases(beacon.brand, *beacon.config.brand_aliases)
+            beacon._config = beacon.config.model_copy(update={"brand": brand})
+        _project_notice(beacon, categories, competitors, infer_category, demo)
+    else:
+        assert brand is not None
+        beacon = Beacon(brand)
+        if infer_category:
+            beacon = beacon.with_category_inference()
     if competitors:
         beacon = beacon.with_competitors(*competitors)
     if providers:
@@ -1254,8 +1320,6 @@ def _beacon_from_options(
             beacon = beacon.with_providers(*provider_enums)
     if categories:
         beacon = beacon.with_categories(*categories)
-    if infer_category:
-        beacon = beacon.with_category_inference()
     if prompt_count is not None:
         beacon = beacon.with_prompt_count(prompt_count)
     if demo:
@@ -1265,8 +1329,63 @@ def _beacon_from_options(
     return beacon
 
 
+def _project_notice(
+    beacon: Beacon,
+    categories: list[str] | None,
+    competitors: list[str] | None,
+    infer: bool,
+    demo: bool,
+) -> None:
+    """Explain (on stderr) what was read from the project and how to override."""
+    profile = beacon.project
+    if profile is None:
+        return
+    meta = profile.metadata
+    err_console.print(
+        f"[cyan]Project:[/cyan] {meta.name} ({meta.source}: {meta.ref})"
+        + (f" — {meta.description}" if meta.description else ""),
+        highlight=False,
+    )
+    guess = profile.category
+    if categories:
+        err_console.print(
+            f"[dim]Category: {', '.join(categories)} (from --category)[/dim]"
+        )
+    elif infer and not demo:
+        fallback = f"; offline guess {guess.category!r}" if guess.category else ""
+        err_console.print(
+            f"[dim]Category: asked one model (--infer-category){fallback}[/dim]"
+        )
+    elif guess.category:
+        err_console.print(
+            f"[dim]Category: {guess.category!r} (guessed from {guess.basis}, "
+            f"{guess.confidence} confidence). Override with --category.[/dim]"
+        )
+    else:
+        err_console.print(
+            "[yellow]Could not guess a category from the project metadata. "
+            "Pass --category (or --infer-category with an API key).[/yellow]"
+        )
+    if competitors:
+        return
+    if profile.competitors:
+        err_console.print(
+            f"[dim]Competitors: {', '.join(profile.competitors)} "
+            f"({profile.competitor_basis}). Override with --competitor.[/dim]"
+        )
+    else:
+        err_console.print(
+            "[dim]No competitors found in the README; add --competitor to compare "
+            "share of voice.[/dim]"
+        )
+
+
 def _report_for_share(
-    report_path: Path | None, brand: str | None, description: str, **options
+    report_path: Path | None,
+    brand: str | None,
+    description: str,
+    project: str | None = None,
+    **options,
 ):
     """Load a saved JSON report, or run a scan from the given options."""
     from promptbeacon.core.schemas import Report
@@ -1277,15 +1396,17 @@ def _report_for_share(
         except Exception as e:
             err_console.print(f"[red]Error reading report {report_path}:[/red] {e}")
             raise typer.Exit(1) from None
-    if not brand:
+    if not brand and not project:
         err_console.print(
-            "[red]Error:[/red] Provide a BRAND to scan, or --report with a saved "
-            "`promptbeacon scan -f json` report."
+            "[red]Error:[/red] Provide a BRAND or project (--repo/--pypi/--npm) to "
+            "scan, or --report with a saved `promptbeacon scan -f json` report."
         )
         raise typer.Exit(1)
     if options.get("demo"):
         err_console.print("[cyan]DEMO mode — canned data, labelled as demo.[/cyan]")
-    return _run_scan(_beacon_from_options(brand, **options), description)
+    return _run_scan(
+        _beacon_from_options(brand, project=project, **options), description
+    )
 
 
 _ShareBrand = Annotated[
@@ -1311,6 +1432,12 @@ _ShareCategories = Annotated[
 _SharePrompts = Annotated[
     int | None, typer.Option("--prompts", "-n", help="Number of prompts per category")
 ]
+_ShareRepo = Annotated[str | None, typer.Option("--repo", help="GitHub owner/name")]
+_SharePyPI = Annotated[str | None, typer.Option("--pypi", help="PyPI package")]
+_ShareNpm = Annotated[str | None, typer.Option("--npm", help="npm package")]
+_ShareProject = Annotated[
+    str | None, typer.Option("--project", help="kind:ref, e.g. pypi:httpx")
+]
 _ShareDemo = Annotated[
     bool, typer.Option("--demo", help="Keyless demo mode (output is labelled demo)")
 ]
@@ -1323,6 +1450,10 @@ _ShareGrounded = Annotated[
 def badge(
     brand: _ShareBrand = None,
     report_path: _ShareReport = None,
+    repo: _ShareRepo = None,
+    pypi: _SharePyPI = None,
+    npm: _ShareNpm = None,
+    project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
     categories: _ShareCategories = None,
@@ -1360,7 +1491,8 @@ def badge(
     report = _report_for_share(
         report_path,
         brand,
-        f"Scanning {brand} for a badge...",
+        f"Scanning {brand or 'project'} for a badge...",
+        project=_project_ref(repo, pypi, npm, project),
         competitors=competitors,
         providers=providers,
         categories=categories,
@@ -1402,6 +1534,10 @@ def badge(
 def card(
     brand: _ShareBrand = None,
     report_path: _ShareReport = None,
+    repo: _ShareRepo = None,
+    pypi: _SharePyPI = None,
+    npm: _ShareNpm = None,
+    project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
     categories: _ShareCategories = None,
@@ -1440,7 +1576,8 @@ def card(
     report = _report_for_share(
         report_path,
         brand,
-        f"Scanning {brand} for a card...",
+        f"Scanning {brand or 'project'} for a card...",
+        project=_project_ref(repo, pypi, npm, project),
         competitors=competitors,
         providers=providers,
         categories=categories,

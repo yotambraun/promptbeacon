@@ -79,6 +79,18 @@ INDUSTRY_TEMPLATES: dict[str, list[str]] = {
         "What {category} brand is most sustainable?",
         "What are the highest-rated {category} products?",
     ],
+    "developer-tools": [
+        "What is the best {category}?",
+        "Which {category} should I use for a new project?",
+        "What {category} do you recommend?",
+        "What are the most popular {category} options?",
+        "Compare the leading {category} options.",
+        "Which {category} is the most reliable for production use?",
+        "What {category} has the best documentation and community?",
+        "What is the easiest {category} to get started with?",
+        "What are good alternatives to the most popular {category}?",
+        "Which {category} do experienced developers prefer?",
+    ],
     "tech": [
         "What are the best {category} tech companies?",
         "Which {category} brand makes the best products?",
