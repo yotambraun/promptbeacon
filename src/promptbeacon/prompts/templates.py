@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 # Each industry maps to a list of prompt templates that use {category}
 # as a placeholder.  They are designed to surface how LLMs talk about
 # brands in the contexts most relevant to that industry.
@@ -136,6 +138,14 @@ _BUYER_INTENT_TEMPLATES: list[str] = [
     "Which {category} is best for enterprises?",
     "What {category} should I avoid?",
     "What is the best all-around {category}?",
+]
+
+# Buyer-intent templates without domain nouns ("brand", "company"), used to
+# extend the default prompt set for any category.
+NEUTRAL_BUYER_INTENT_TEMPLATES: list[str] = [
+    t
+    for t in _BUYER_INTENT_TEMPLATES
+    if not re.search(r"\b(brands?|compan(y|ies))\b", t)
 ]
 
 # Appended to broaden coverage when more prompts than base templates are needed.

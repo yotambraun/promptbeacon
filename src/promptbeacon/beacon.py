@@ -59,7 +59,7 @@ from promptbeacon.extraction.llm_extraction import (
 )
 from promptbeacon.extraction.mentions import MentionExtractionResult, extract_mentions
 from promptbeacon.prompts.templates import (
-    _BUYER_INTENT_TEMPLATES,
+    NEUTRAL_BUYER_INTENT_TEMPLATES,
     expand_prompt_templates,
     get_industry_prompts,
 )
@@ -84,24 +84,26 @@ PromptStrategy = Literal[
 ]
 
 _NO_CATEGORY_MESSAGE = (
-    "No category set for '{brand}', so prompts are generic (\"What are the best "
-    'general brands?") and the score says little. Set one with '
+    "No category set for '{brand}', so prompts ask about \"general\" and the "
+    "score says little. Set one with "
     ".with_category('running shoes') (CLI: --category), add competitors, or "
     "opt in to .with_category_inference()."
 )
 
-# Default prompts for brand visibility analysis
+# Default prompts. Noun-neutral so they read naturally for any category
+# (consumer goods, software, libraries, services); the category string is used
+# exactly as given. Industry template sets may use domain words like "brands".
 DEFAULT_PROMPTS = [
-    "What are the best {category} brands?",
-    "Can you recommend a good {category} company?",
+    "What are the best {category}?",
+    "Which {category} would you recommend?",
     "What are the top options for {category}?",
-    "Which {category} brand should I choose?",
-    "What is the most popular {category} brand?",
-    "Can you compare {category} brands?",
-    "What {category} would you recommend?",
-    "Which company is the leader in {category}?",
-    "What are the pros and cons of different {category} brands?",
-    "Who makes the best {category} products?",
+    "Which {category} should I choose?",
+    "What are the most popular {category}?",
+    "Compare the top {category}.",
+    "What {category} do experts recommend?",
+    "Who are the leaders in {category}?",
+    "What are the pros and cons of the leading {category}?",
+    "What are the most trusted {category}?",
 ]
 
 
@@ -537,6 +539,7 @@ class Beacon:
                 brand=self._config.brand,
                 competitors=self._config.competitors,
                 variation=variation,
+                topics=self._config.categories,
             )
         return LiteLLMClient(
             provider=provider,
@@ -571,7 +574,7 @@ class Beacon:
         if custom and not self._prompt_count_set:
             return list(custom)
         base = custom or DEFAULT_PROMPTS
-        extra = None if custom else _BUYER_INTENT_TEMPLATES
+        extra = None if custom else NEUTRAL_BUYER_INTENT_TEMPLATES
         try:
             return expand_prompt_templates(base, self._config.prompt_count, extra)
         except ValueError as e:

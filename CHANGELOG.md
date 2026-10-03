@@ -63,6 +63,13 @@ A release about the first result being right, and about results you can share.
   options; workflow templates for a weekly badge and a PR check.
 
 ### Changed
+- **Default prompts are worded for any category.** They no longer add "brands" or
+  "company" ("What are the best project management software brands?" is now "What are
+  the best project management software?"), so they read naturally for software,
+  libraries and services as well as consumer goods. The category is used exactly as you
+  give it, so phrase it the way a buyer would ask ("running shoes", "python http
+  client"). Industry template sets (`with_industry`) and pinned protocol prompts are
+  unchanged. Scores from default prompts are not directly comparable with 1.2.0 runs.
 - Providers are queried concurrently (each with its own rate limit), so multi-provider
   scans take about as long as the slowest provider.
 - Scans without a category but with competitors use "alternatives to &lt;competitor&gt;"

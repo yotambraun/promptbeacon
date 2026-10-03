@@ -148,7 +148,7 @@ report = (
     .scan()
 )
 sov = report.share_of_voice
-print(sov.target_share)  # 0.41 -> 41% share of voice
+print(sov.target_share)  # 0.5  -> 50% share of voice
 print(sov.target_presence_rate)  # 0.9  -> mentioned in 90% of answers
 print(sov.target_rank)  # 1    -> rank by appearances
 ```
@@ -168,9 +168,9 @@ report = (
     .scan_stability()
 )
 s = report.stability
-print(s.stability_score)  # 53.5 (higher = more trustworthy)
-print(s.score_confidence_interval)  # (66.4, 82.1)
-print(s.flip_flop_count)  # 8 prompts appeared in some runs but not others
+print(s.stability_score)  # 67.3 (higher = more trustworthy)
+print(s.score_confidence_interval)  # (67.1, 75.9)
+print(s.flip_flop_count)  # 7 prompts appeared in some runs but not others
 ```
 
 ### In CI: gate deploys on AI visibility

@@ -26,6 +26,7 @@ class MockLLMClient(BaseLLMClient):
         competitors: list[str] | None = None,
         variation: int = 0,
         model: str | None = None,
+        topics: list[str] | None = None,
     ):
         """Initialize the mock client.
 
@@ -35,11 +36,13 @@ class MockLLMClient(BaseLLMClient):
             competitors: Competitor brands to weave into responses.
             variation: Seed that varies responses across stability runs.
             model: Override the simulated model name.
+            topics: Known topics (categories) the canned answers should name.
         """
         self.provider = provider
         self._brand = brand
         self._competitors = competitors or []
         self._variation = variation
+        self._topics = list(topics or [])
         self._model = model or DEFAULT_MODELS.get(provider, "gpt-4o-mini")
 
     @property
@@ -55,7 +58,11 @@ class MockLLMClient(BaseLLMClient):
 
     def _build(self, prompt: str) -> LLMResponse:
         content = build_demo_response(
-            prompt, self._brand, self._competitors, variation=self._variation
+            prompt,
+            self._brand,
+            self._competitors,
+            variation=self._variation,
+            topics=self._topics,
         )
         # Deterministic, realistic-looking latency (200-900ms); zero cost.
         latency_ms = 200.0 + (hash((prompt, self._variation)) % 700)
