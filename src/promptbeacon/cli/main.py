@@ -28,6 +28,7 @@ from promptbeacon.core.config import (
 )
 from promptbeacon.core.exceptions import VisibilityAssertionError
 from promptbeacon.reporting.formats import (
+    describe_cost,
     to_csv,
     to_dashboard_html,
     to_html,
@@ -972,8 +973,9 @@ def _print_text_report(report) -> None:
     table.add_row("Negative Sentiment", f"{report.sentiment_breakdown.negative:.1%}")
     table.add_row("Providers Used", ", ".join(report.providers_used))
     table.add_row("Scan Duration", f"{report.scan_duration_seconds:.1f}s")
-    if report.total_cost_usd:
-        table.add_row("Estimated Cost", f"${report.total_cost_usd:.4f}")
+    cost_text = describe_cost(report)
+    if cost_text:
+        table.add_row("Estimated Cost", cost_text)
 
     console.print(table)
 

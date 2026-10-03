@@ -33,6 +33,105 @@ logger = logging.getLogger(__name__)
 # version returns the same citation structure we parse.
 ANTHROPIC_WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
 
+# Anthropic bills web search at $10 per 1,000 searches, on top of tokens.
+ANTHROPIC_WEB_SEARCH_USD_PER_SEARCH = 0.01
+
+# litellm provider names used for price lookups.
+_LITELLM_PROVIDER = {
+    Provider.ANTHROPIC: "anthropic",
+    Provider.OPENAI: "openai",
+    Provider.GOOGLE: "gemini",
+    Provider.PERPLEXITY: "perplexity",
+}
+
+
+def _token_cost(
+    provider: Provider, model: str, input_tokens: int, output_tokens: int
+) -> float | None:
+    """Token cost from litellm's price map, trying the common key spellings."""
+    try:
+        import litellm
+    except ImportError:  # pragma: no cover - litellm is a core dependency
+        return None
+    prefix = _LITELLM_PROVIDER.get(provider)
+    attempts: list[tuple[str, str | None]] = [(model, prefix)]
+    if prefix:
+        attempts += [(f"{prefix}/{model}", None)]
+    attempts += [(model, None)]
+    for name, llm_provider in attempts:
+        try:
+            prompt_cost, completion_cost = litellm.cost_per_token(
+                model=name,
+                prompt_tokens=input_tokens,
+                completion_tokens=output_tokens,
+                custom_llm_provider=llm_provider,
+            )
+        except Exception:  # noqa: BLE001 — try the next spelling
+            continue
+        return float(prompt_cost) + float(completion_cost)
+    return None
+
+
+def estimate_grounded_cost(
+    provider: Provider,
+    model: str,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    search_count: int = 0,
+) -> tuple[float | None, bool]:
+    """Estimate a grounded call's USD cost from token usage and searches.
+
+    Token prices come from litellm's model price map. Per-search fees are added
+    where the price is known (Anthropic's documented rate, or a
+    ``search_context_cost_per_query`` entry in the price map).
+
+    Returns:
+        ``(cost_usd, search_fees_included)``. ``cost_usd`` is ``None`` when the
+        usage or the model price is unknown — never a misleading ``0``.
+        ``search_fees_included`` is ``True`` when there were no searches or
+        their fee was added.
+    """
+    if input_tokens is None and output_tokens is None:
+        return None, False
+    cost = _token_cost(provider, model, int(input_tokens or 0), int(output_tokens or 0))
+    if cost is None:
+        return None, False
+
+    if search_count <= 0:
+        return cost, True
+    per_search: float | None = None
+    if provider == Provider.ANTHROPIC:
+        per_search = ANTHROPIC_WEB_SEARCH_USD_PER_SEARCH
+    else:
+        try:
+            import litellm
+
+            info = litellm.model_cost.get(model) or litellm.model_cost.get(
+                f"{_LITELLM_PROVIDER.get(provider)}/{model}", {}
+            )
+            ctx = info.get("search_context_cost_per_query") or {}
+            value = ctx.get("search_context_size_medium")
+            per_search = float(value) if value is not None else None
+        except Exception:  # noqa: BLE001
+            per_search = None
+    if per_search is None:
+        return cost, False
+    return cost + per_search * search_count, True
+
+
+def _usage_tokens(
+    usage: Any, input_name: str, output_name: str
+) -> tuple[int | None, int | None]:
+    """Read (input, output) token counts from an SDK usage object, if present."""
+    if usage is None:
+        return None, None
+    inp = _field(usage, input_name)
+    out = _field(usage, output_name)
+    return (
+        int(inp) if isinstance(inp, (int, float)) else None,
+        int(out) if isinstance(out, (int, float)) else None,
+    )
+
 
 @dataclass
 class GroundedResponse:
@@ -45,6 +144,8 @@ class GroundedResponse:
     latency_ms: float
     cost_usd: float | None = None
     search_count: int = 0
+    # False when web-search fees could not be priced and are not in cost_usd.
+    search_fees_included: bool = True
 
 
 def _field(block: Any, name: str, default: Any = None) -> Any:
@@ -284,7 +385,7 @@ class AnthropicGroundedClient(GroundedClient):
             model=use_model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
-            tools=[ANTHROPIC_WEB_SEARCH_TOOL],
+            tools=[ANTHROPIC_WEB_SEARCH_TOOL],  # type: ignore[list-item]
         )
         latency_ms = (time.time() - start) * 1000
 
@@ -301,14 +402,19 @@ class AnthropicGroundedClient(GroundedClient):
         if server_tool_use is not None:
             search_count = getattr(server_tool_use, "web_search_requests", 0) or 0
 
+        inp, out = _usage_tokens(usage, "input_tokens", "output_tokens")
+        cost, fees_included = estimate_grounded_cost(
+            Provider.ANTHROPIC, use_model, inp, out, search_count
+        )
         return GroundedResponse(
             content=content,
             citations=citations,
             model=use_model,
             provider=Provider.ANTHROPIC.value,
             latency_ms=latency_ms,
-            cost_usd=None,  # token+search cost not computed here; billed to user
+            cost_usd=cost,
             search_count=search_count,
+            search_fees_included=fees_included,
         )
 
 
@@ -352,14 +458,21 @@ class OpenAIGroundedClient(GroundedClient):
         search_count = sum(
             1 for item in output if _field(item, "type") == "web_search_call"
         )
+        inp, out = _usage_tokens(
+            getattr(response, "usage", None), "input_tokens", "output_tokens"
+        )
+        cost, fees_included = estimate_grounded_cost(
+            Provider.OPENAI, use_model, inp, out, search_count
+        )
         return GroundedResponse(
             content=content,
             citations=citations,
             model=use_model,
             provider=Provider.OPENAI.value,
             latency_ms=latency_ms,
-            cost_usd=None,
+            cost_usd=cost,
             search_count=search_count,
+            search_fees_included=fees_included,
         )
 
 
@@ -405,14 +518,25 @@ class GeminiGroundedClient(GroundedClient):
         citations = (
             parse_gemini_grounded(candidates[0], query=prompt) if candidates else []
         )
+        search_count = 1 if citations else 0
+        inp, out = _usage_tokens(
+            getattr(response, "usage_metadata", None),
+            "prompt_token_count",
+            "candidates_token_count",
+        )
+        cost, fees_included = estimate_grounded_cost(
+            Provider.GOOGLE, use_model, inp, out, search_count
+        )
         return GroundedResponse(
             content=content,
             citations=citations,
             model=use_model,
             provider=Provider.GOOGLE.value,
             latency_ms=latency_ms,
-            cost_usd=None,
-            search_count=1 if citations else 0,
+            cost_usd=cost,
+            search_count=search_count,
+            # Gemini bills grounded prompts separately; not in the price map.
+            search_fees_included=fees_included and search_count == 0,
         )
 
 
@@ -466,14 +590,22 @@ class PerplexityGroundedClient(GroundedClient):
             if isinstance(extra, dict):
                 citation_urls = extra.get("citations")
         citations = parse_perplexity_grounded(citation_urls, query=prompt)
+        search_count = 1 if citations else 0
+        inp, out = _usage_tokens(
+            getattr(response, "usage", None), "prompt_tokens", "completion_tokens"
+        )
+        cost, fees_included = estimate_grounded_cost(
+            Provider.PERPLEXITY, use_model, inp, out, search_count
+        )
         return GroundedResponse(
             content=content,
             citations=citations,
             model=use_model,
             provider=Provider.PERPLEXITY.value,
             latency_ms=latency_ms,
-            cost_usd=None,
-            search_count=1 if citations else 0,
+            cost_usd=cost,
+            search_count=search_count,
+            search_fees_included=fees_included,
         )
 
 

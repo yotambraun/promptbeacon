@@ -888,8 +888,25 @@ class Beacon:
             measurement_tier=self._measurement_tier(results),
             timestamp=datetime.utcnow(),
             scan_duration_seconds=round(scan_duration, 2),
-            total_cost_usd=round(total_cost, 4) if total_cost > 0 else None,
+            total_cost_usd=round(total_cost, 6) if total_cost > 0 else None,
+            cost_status=self._cost_status(results, total_cost),
         )
+
+    def _cost_status(
+        self, results: list[ProviderResult], total_cost: float
+    ) -> Literal["complete", "partial", "unknown", "none"]:
+        """How complete the cost estimate is (never a silent $0)."""
+        if self._demo_mode:
+            return "none"
+        paid = [r for r in results if r.success and not r.cached]
+        if not paid:
+            return "none"
+        priced = [r for r in paid if r.cost_usd is not None]
+        if not priced:
+            return "unknown"
+        if len(priced) < len(paid) or any(not r.search_fees_included for r in paid):
+            return "partial"
+        return "complete" if total_cost > 0 else "unknown"
 
     def _measurement_tier(
         self, results: list[ProviderResult]
@@ -990,6 +1007,8 @@ class Beacon:
             latency_ms=resp.latency_ms,
             cost_usd=resp.cost_usd,
             grounded=True,
+            search_count=resp.search_count,
+            search_fees_included=resp.search_fees_included,
             timestamp=datetime.utcnow(),
         )
 
@@ -1084,6 +1103,7 @@ class Beacon:
                 ],
                 latency_ms=latency_ms,
                 cost_usd=cost_usd,
+                cached=cached_content is not None,
                 timestamp=datetime.utcnow(),
             )
 
