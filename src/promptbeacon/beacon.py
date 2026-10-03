@@ -145,6 +145,7 @@ class Beacon:
         self._competitors_inferred: bool = False
         self.project: ProjectProfile | None = None
         self._extra_cost: float = 0.0
+        self._explicit_prompts: bool = False
         self._scoring_weights: ScoringWeights | None = None
         self._cache: ResponseCache | None = None
         self._demo_mode: bool = False
@@ -361,6 +362,7 @@ class Beacon:
             Self for chaining.
         """
         self._custom_prompts = prompts
+        self._explicit_prompts = True
         return self
 
     def with_industry(self, industry: str) -> Self:
@@ -380,6 +382,7 @@ class Beacon:
             ValueError: If the industry is not recognized.
         """
         self._custom_prompts = get_industry_prompts(industry)
+        self._explicit_prompts = False
         return self
 
     def with_scoring_weights(
@@ -600,7 +603,7 @@ class Beacon:
                 strategy = "category"
             return prompts, strategy
 
-        if self._config.competitors:
+        if self._config.competitors and not self._explicit_prompts:
             try:
                 prompts = competitor_alternative_prompts(
                     self._config.competitors, self._config.prompt_count
@@ -622,6 +625,7 @@ class Beacon:
 
     async def _prepare_categories(self) -> None:
         """Resolve the category before a scan (opt-in inference) and warn if absent."""
+        self._extra_cost = 0.0  # only this scan's inference call is billed to it
         if (
             self._infer_category
             and not self._categories_set

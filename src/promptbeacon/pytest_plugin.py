@@ -20,6 +20,7 @@ Registered automatically via the ``pytest11`` entry point — no conftest needed
 from __future__ import annotations
 
 import os
+import warnings
 from typing import Any
 
 import pytest
@@ -121,11 +122,15 @@ def pytest_runtest_call(item: pytest.Item) -> None:
 
     beacon = _build_beacon(brand, kwargs, demo)
     stability = kwargs.get("stability")
-    if stability:
-        beacon = beacon.with_stability(int(stability))
-        report = beacon.scan_stability()
-    else:
-        report = beacon.scan()
+    # A missing category is reported by the scan itself; don't turn it into a
+    # failure for projects that run with filterwarnings=error.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        if stability:
+            beacon = beacon.with_stability(int(stability))
+            report = beacon.scan_stability()
+        else:
+            report = beacon.scan()
 
     report.assert_visibility(
         min_score=kwargs.get("min_score"),

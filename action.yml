@@ -13,7 +13,7 @@ inputs:
     required: false
     default: ""
   categories:
-    description: "Several categories, one per line (or space-separated single words)"
+    description: "Several categories, one per line (a single line is split on spaces)"
     required: false
     default: ""
   competitors:
@@ -131,13 +131,13 @@ runs:
         PB_DEMO: ${{ inputs.demo }}
         PB_GROUNDED: ${{ inputs.grounded }}
       run: |
-        # Lists: one item per line; a single line is split on spaces (legacy).
+        # Lists: one item per line (YAML `|` blocks); a value without a newline
+        # is split on spaces for backward compatibility. Globbing is disabled.
         split_list() {
-          if [ "$(printf '%s\n' "$1" | sed '/^[[:space:]]*$/d' | wc -l)" -gt 1 ]; then
-            printf '%s\n' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;/^$/d'
-          else
-            for item in $1; do printf '%s\n' "$item"; done
-          fi
+          case "$1" in
+            *$'\n'*) printf '%s\n' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;/^$/d' ;;
+            *) set -f; for item in $1; do printf '%s\n' "$item"; done; set +f ;;
+          esac
         }
         args=(scan "$PB_BRAND" --format json --no-save --prompts "$PB_PROMPTS")
         if [ -n "$PB_CATEGORY" ]; then args+=(--category "$PB_CATEGORY"); fi

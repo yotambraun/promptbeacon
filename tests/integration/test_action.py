@@ -157,3 +157,18 @@ def test_action_legacy_space_separated_lists(tmp_path):
     )
     assert report["categories"] == ["shoes", "apparel"]
     assert set(report["competitor_comparison"]) == {"Adidas", "Puma"}
+
+
+def test_action_single_item_block_list_keeps_spaces(tmp_path):
+    # YAML `competitors: |` with one item arrives as "Under Armour\n".
+    result = run_action(
+        tmp_path,
+        {"brand": "Nike", "categories": "running shoes\n",
+         "competitors": "Under Armour\n", "demo": "true"},
+    )  # fmt: skip
+    assert result["exit"] == 0
+    report = json.loads(
+        Path(result["outputs"]["report-path"]).read_text(encoding="utf-8")
+    )
+    assert report["categories"] == ["running shoes"]
+    assert set(report["competitor_comparison"]) == {"Under Armour"}

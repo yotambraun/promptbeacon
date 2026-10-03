@@ -88,9 +88,17 @@ def truncate(
     return (out.rstrip() + ellipsis) if out else ellipsis
 
 
+def _xml_ok(ch: str) -> bool:
+    """Whether ``ch`` may appear in XML 1.0 text (no controls, surrogates, U+FFFE/F)."""
+    cp = ord(ch)
+    if ch in "\t\n":
+        return True
+    if unicodedata.category(ch) in ("Cc", "Cs"):
+        return False
+    return cp not in (0xFFFE, 0xFFFF)
+
+
 def xml(text: str) -> str:
     """Escape text for SVG element content and attribute values."""
-    cleaned = "".join(
-        ch for ch in text if ch in "\t\n" or unicodedata.category(ch) != "Cc"
-    )
+    cleaned = "".join(ch for ch in text if _xml_ok(ch))
     return escape(cleaned, {'"': "&quot;"})

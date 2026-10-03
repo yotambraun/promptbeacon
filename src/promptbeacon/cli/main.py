@@ -145,6 +145,33 @@ def _prompt_notice(report) -> None:
         )
 
 
+def _saved_notice(path, brand: str) -> None:
+    err_console.print(
+        f"[dim]Saved to history ({path}). "
+        f'View trends: promptbeacon history "{brand}"[/dim]'
+    )
+
+
+def _save_default_history(report, brand: str) -> None:
+    """Save to the default history file; warn instead of failing."""
+    from promptbeacon.storage.database import Database
+
+    try:
+        path = get_default_storage_path()
+        db = Database(path)
+        try:
+            db.save_report(report)
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001 — history is a convenience
+        err_console.print(
+            f"[yellow]Could not save to history ({e}). The scan itself "
+            "succeeded; use --storage PATH or set PROMPTBEACON_HOME.[/yellow]"
+        )
+        return
+    _saved_notice(path, brand)
+
+
 def provider_callback(value: list[str] | None) -> list[Provider] | None:
     """Convert provider strings to Provider enums."""
     if value is None:
@@ -315,8 +342,6 @@ def scan(
         beacon = build_beacon(proto)
         if demo:
             beacon = beacon.demo()
-        if storage:
-            beacon = beacon.with_storage(storage)
         brand = proto.brand
         run_stability = proto.runs > 0
     else:
@@ -340,9 +365,6 @@ def scan(
         )
         brand = beacon.brand
 
-        if storage:
-            beacon = beacon.with_storage(storage)
-
         if smart:
             beacon = beacon.with_smart_extraction().with_smart_recommendations()
 
@@ -355,24 +377,21 @@ def scan(
         run_stability = stability > 0
 
     # Real scans are saved to the default history file unless --no-save, so
-    # `promptbeacon history` works out of the box. Demo data is never mixed in
-    # unless --storage is given explicitly.
-    history_path = storage
-    if storage is None and save and not demo:
-        history_path = get_default_storage_path()
-        beacon = beacon.with_storage(history_path)
-    if not save and storage is None:
-        history_path = None
+    # `promptbeacon history` works out of the box. Demo data is only saved with
+    # an explicit --storage. Saving the default history is best-effort: a
+    # read-only home or a locked database never loses a scan you paid for.
+    explicit_storage = storage is not None and save
+    if storage is not None and save:
+        beacon = beacon.with_storage(storage)
 
     report = _run_scan(
         beacon, f"Scanning visibility for {brand}...", stability=run_stability
     )
     beacon.close()
-    if history_path is not None:
-        err_console.print(
-            f"[dim]Saved to history ({history_path}). "
-            f'View trends: promptbeacon history "{brand}"[/dim]'
-        )
+    if explicit_storage:
+        _saved_notice(storage, brand)
+    elif save and not demo:
+        _save_default_history(report, brand)
 
     # Output results
     _output_report(report, output_format, _print_text_report)
@@ -1530,7 +1549,7 @@ def card(
         typer.Option(
             "--png",
             help="Also write a PNG (for X, LinkedIn, Slack; needs "
-            "'promptbeacon[share]')",
+            "'promptbeacon\\[share]')",
         ),
     ] = None,
     theme: Annotated[
