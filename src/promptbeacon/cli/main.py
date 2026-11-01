@@ -1380,6 +1380,7 @@ class BadgeMetricOption(str, Enum):
     both = "both"
     score = "score"
     sov = "sov"
+    rank = "rank"
 
 
 class ThemeOption(str, Enum):
@@ -1649,11 +1650,19 @@ def badge(
         ),
     ] = None,
     label: Annotated[
-        str, typer.Option("--label", help="Badge label")
-    ] = "AI visibility",
+        str | None,
+        typer.Option(
+            "--label", help='Badge label (default "AI visibility", or "AI rank")'
+        ),
+    ] = None,
     metric: Annotated[
         BadgeMetricOption,
-        typer.Option("--metric", help="What the badge shows: both, score, or sov"),
+        typer.Option(
+            "--metric",
+            help="What the badge shows: both (score and share of voice), score, "
+            'sov, or rank ("#2 of 9 · python http clients"; needs a category and '
+            "at least two competitors)",
+        ),
     ] = BadgeMetricOption.both,
 ) -> None:
     """Write a README badge (SVG, and optionally shields.io endpoint JSON).
@@ -1663,8 +1672,15 @@ def badge(
 
         promptbeacon scan "Nike" -t "running shoes" -f json > report.json
         promptbeacon badge --report report.json --endpoint .promptbeacon/badge.json
+
+        promptbeacon badge --report report.json --metric rank -o rank.svg
     """
-    from promptbeacon.share import badge_endpoint, render_badge_svg
+    from promptbeacon.share import (
+        RankUnavailableError,
+        badge_endpoint,
+        render_badge_svg,
+    )
+    from promptbeacon.share.badge import default_label
 
     report = _report_for_share(
         report_path,
@@ -1680,10 +1696,14 @@ def badge(
         grounded=grounded,
         max_cost=max_cost,
     )
+    label = label or default_label(metric.value)
+    try:
+        svg = render_badge_svg(report, label=label, metric=metric.value)
+    except RankUnavailableError as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        render_badge_svg(report, label=label, metric=metric.value), encoding="utf-8"
-    )
+    output.write_text(svg, encoding="utf-8")
     err_console.print(f"[green]Badge written to[/green] {output}")
     if endpoint is not None:
         endpoint.parent.mkdir(parents=True, exist_ok=True)
@@ -1707,6 +1727,11 @@ def badge(
         err_console.print(
             "[yellow]This badge is from demo data and says so. Run without --demo "
             "for a real measurement.[/yellow]"
+        )
+    elif report.partial:
+        err_console.print(
+            "[yellow]The scan was cut short by --max-cost, so the badge says "
+            "'partial'.[/yellow]"
         )
 
 

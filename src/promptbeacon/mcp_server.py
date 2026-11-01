@@ -290,6 +290,9 @@ async def share_assets(
 ) -> dict[str, Any]:
     """Scan once and write a README badge, shields.io JSON and share cards.
 
+    Also writes a rank badge (rank.svg, rank.json: "#2 of 3 · python http
+    clients") when the scan has a category and at least two competitors.
+
     Args:
         brand: Brand to scan (or use project).
         project: "github:owner/name", "pypi:package", "npm:package",
@@ -315,6 +318,7 @@ async def share_assets(
     import anyio
 
     from promptbeacon.share import (
+        RankUnavailableError,
         badge_endpoint,
         render_badge_svg,
         render_card_png,
@@ -361,6 +365,20 @@ async def share_assets(
     )
     files["card_svg"].write_text(render_card_svg(report, "light"), encoding="utf-8")
     files["card_dark_svg"].write_text(render_card_svg(report, "dark"), encoding="utf-8")
+    rank_note = None
+    try:
+        rank_svg = render_badge_svg(report, label="AI rank", metric="rank")
+    except RankUnavailableError as e:
+        rank_note = str(e)
+    else:
+        files["rank_svg"] = out / "rank.svg"
+        files["rank_json"] = out / "rank.json"
+        files["rank_svg"].write_text(rank_svg, encoding="utf-8")
+        files["rank_json"].write_text(
+            json.dumps(badge_endpoint(report, label="AI rank", metric="rank"), indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
     warning = None
     if png:
         try:
@@ -384,6 +402,13 @@ async def share_assets(
         ),
         "summary": report_summary(report),
     }
+    if "rank_svg" in files:
+        result["readme_rank_badge"] = (
+            f"[![AI rank]({files['rank_svg'].as_posix()})]"
+            "(https://github.com/yotambraun/promptbeacon)"
+        )
+    else:
+        result["rank_badge"] = rank_note
     if report.measurement_tier == "demo":
         result["note"] = note or "Demo data: the badge and card are labelled as demo."
     if warning:

@@ -852,7 +852,9 @@ print(guess_category(meta))
 
 | Function | Returns |
 | --- | --- |
-| `render_badge_svg(report, *, label="AI visibility", metric="both")` | Self-contained SVG badge (`metric`: `both`, `score`, `sov`) |
+| `render_badge_svg(report, *, label="AI visibility", metric="both")` | Self-contained SVG badge (`metric`: `both`, `score`, `sov`, `rank`) |
+| `report_rank(report) -> (rank, total, tied, category)` | Rank among the compared projects; raises `RankUnavailableError` without a category or with fewer than three projects |
+| `rank_badge_parts(rank, total, category, *, demo=False, tied=False)`, `rank_endpoint(...)` | Rank badge text, colour and shields.io JSON for any ranking (demo is grey) |
 | `badge_endpoint(report, *, label=..., metric=..., with_logo=True)` | shields.io endpoint JSON as a dict (`schemaVersion`, `label`, `message`, `color`, `labelColor`, `logoSvg`) |
 | `shields_url(raw_json_url, *, link=None)` | `https://img.shields.io/endpoint?url=...` |
 | `render_card_svg(report, theme="light")` | 1200x630 SVG card (`light` or `dark`) |

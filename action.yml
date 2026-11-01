@@ -68,6 +68,10 @@ inputs:
     description: "Write a shields.io endpoint JSON here (e.g. .promptbeacon/badge.json)"
     required: false
     default: ""
+  rank-badge-path:
+    description: "Write a rank badge here ('#2 of 4 · python http clients'; needs a category and 2+ competitors), plus a shields.io endpoint JSON with the same name and a .json extension"
+    required: false
+    default: ""
   card-path:
     description: "Write a 1200x630 SVG result card here (e.g. .promptbeacon/card.svg)"
     required: false
@@ -187,18 +191,25 @@ runs:
         echo "exit-code=$?" >> "$GITHUB_OUTPUT"
 
     - name: Write badge and card
-      if: inputs.badge-path != '' || inputs.badge-endpoint-path != '' || inputs.card-path != ''
+      if: inputs.badge-path != '' || inputs.badge-endpoint-path != '' || inputs.rank-badge-path != '' || inputs.card-path != ''
       shell: bash
       env:
         PB_REPORT: ${{ steps.scan.outputs.report-path }}
         PB_BADGE: ${{ inputs.badge-path }}
         PB_ENDPOINT: ${{ inputs.badge-endpoint-path }}
+        PB_RANK: ${{ inputs.rank-badge-path }}
         PB_CARD: ${{ inputs.card-path }}
       run: |
         if [ -n "$PB_BADGE" ] || [ -n "$PB_ENDPOINT" ]; then
           args=(badge --report "$PB_REPORT" --output "${PB_BADGE:-$RUNNER_TEMP/promptbeacon-badge.svg}")
           if [ -n "$PB_ENDPOINT" ]; then args+=(--endpoint "$PB_ENDPOINT"); fi
           promptbeacon "${args[@]}"
+        fi
+        if [ -n "$PB_RANK" ]; then
+          # A rank needs 2+ competitors; without them, warn instead of failing.
+          promptbeacon badge --report "$PB_REPORT" --metric rank --output "$PB_RANK" \
+            --endpoint "${PB_RANK%.*}.json" \
+            || echo "::warning::PromptBeacon could not write the rank badge (it needs a category and at least two competitors)."
         fi
         if [ -n "$PB_CARD" ]; then
           promptbeacon card --report "$PB_REPORT" --output "$PB_CARD"

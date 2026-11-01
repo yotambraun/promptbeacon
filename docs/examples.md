@@ -68,6 +68,7 @@ comment up to date, and applies your thresholds last.
 | `max-cost` | | Spending cap in US dollars, e.g. `"0.05"`. The scan is estimated first and does not start above the cap; it stops issuing requests once the cap is reached, and the summary and the `partial` output say so. Empty = no cap |
 | `badge-path` | | Write an SVG badge here, e.g. `.promptbeacon/badge.svg` |
 | `badge-endpoint-path` | | Write a shields.io endpoint JSON here |
+| `rank-badge-path` | | Write a rank badge (`#2 of 4 · python http clients`) here, plus its endpoint JSON next to it (`.json`). Needs a category and 2+ competitors; otherwise the step warns |
 | `card-path` | | Write a 1200x630 SVG card here |
 | `comment-on-pr` | `false` | Keep one sticky comment on the pull request |
 | `github-token` | `${{ github.token }}` | Token for the PR comment |

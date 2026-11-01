@@ -67,7 +67,7 @@ responses).
 | `scan` | `brand`, `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `grounded`, `max_cost` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, `partial` and `budget`, top recommendations, `measurement_tier` |
 | `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`, `crates:name`, `hf:owner/name`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category`, `max_cost` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
 | `sources` | `brand`, `category`, `competitors`, `providers`, `models`, `demo`, `grounded` (default `true`), `max_cost` | The domains AI answers cite and whether each cites the brand |
-| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png`, `max_cost` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
+| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png`, `max_cost` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`; `rank.svg` and `rank.json` when there are 2+ competitors), README snippets, and the summary |
 
 `models` is an object mapping providers to model IDs, for example
 `{"anthropic": "claude-sonnet-5-5"}`, or `{"litellm": "ollama/llama3.2"}` for a local

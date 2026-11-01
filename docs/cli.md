@@ -346,6 +346,7 @@ promptbeacon badge "Nike" -t "running shoes" -c "Adidas" --demo
 promptbeacon badge --report report.json -o .promptbeacon/badge.svg \
   --endpoint .promptbeacon/badge.json
 promptbeacon badge --pypi httpx --metric sov
+promptbeacon badge --report report.json --metric rank -o rank.svg --endpoint rank.json
 ```
 
 | Option | Description |
@@ -355,8 +356,8 @@ promptbeacon badge --pypi httpx --metric sov
 | `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--max-cost`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-badge.svg`) |
 | `--endpoint PATH` | Also write a shields.io endpoint JSON |
-| `--label TEXT` | Left-hand text (default `AI visibility`) |
-| `--metric` | `both` (default, e.g. `62/100 · SoV 34%`), `score`, or `sov` |
+| `--label TEXT` | Left-hand text (default `AI visibility`, or `AI rank` with `--metric rank`) |
+| `--metric` | `both` (default, e.g. `62/100 · SoV 34%`), `score`, `sov`, or `rank` (`#2 of 4 · python http clients`; needs a category and at least two competitors) |
 
 The command prints a ready-to-paste Markdown snippet. Badges made from demo data say
 `demo` and are grey. See [Badges & share cards](share.md).

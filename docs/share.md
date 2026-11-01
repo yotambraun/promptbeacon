@@ -72,6 +72,26 @@ and optional `color`, `labelColor` and `logoSvg`:
 
 shields.io caches endpoint badges, so a refreshed file can take a few minutes to show.
 
+### Rank in your category
+
+`--metric rank` shows where you stand among the projects the scan compared, ranked by
+how many answers mention each one:
+
+```bash
+promptbeacon scan httpx -t "python http client" -c requests -c aiohttp -c urllib3 \
+  -f json --no-save > report.json
+promptbeacon badge --report report.json --metric rank \
+  -o .promptbeacon/rank.svg --endpoint .promptbeacon/rank.json
+```
+
+The badge reads `AI rank | #2 of 4 · python http clients` (`tied #2 of 4` when another
+project has the same count). It needs a category and at least two competitors, and the
+command says how to fix it otherwise. The rank is a position, not a grade, so the badge
+has one neutral color; a rank from demo data reads `AI rank · demo` and is grey, and a
+scan cut short by `--max-cost` reads `· partial`. The rank only covers the projects you
+compared: name the real alternatives, or use the
+[AI Recommendation Index](recommendation-index.md) once it is published.
+
 In Python:
 
 ```python
@@ -87,6 +107,7 @@ report = (
 )
 svg = render_badge_svg(report)
 endpoint = badge_endpoint(report, metric="both")
+rank = badge_endpoint(report, label="AI rank", metric="rank")  # needs 2+ competitors
 url = shields_url(
     "https://raw.githubusercontent.com/OWNER/REPO/main/.promptbeacon/badge.json"
 )
@@ -150,6 +171,7 @@ and commits the badge, its JSON and the card back to the repository:
       Competitor Two
     badge-path: .promptbeacon/badge.svg
     badge-endpoint-path: .promptbeacon/badge.json
+    rank-badge-path: .promptbeacon/rank.svg    # optional; needs 2+ competitors
     card-path: .promptbeacon/card.svg
   env:
     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -200,3 +200,25 @@ def test_action_max_cost_input_caps_the_scan(tmp_path):
     report = json.loads(Path(out["report-path"]).read_text(encoding="utf-8"))
     assert report["budget"]["max_cost_usd"] == 0.05
     assert "within the $0.050 budget" in result["summary"]
+
+
+def test_action_rank_badge_path(tmp_path):
+    result = run_action(
+        tmp_path,
+        {"brand": "httpx", "category": "python http client", "demo": "true",
+         "competitors": "requests\naiohttp", "rank-badge-path": ".pb/rank.svg"},
+    )  # fmt: skip
+    assert result["exit"] == 0
+    data = json.loads((tmp_path / ".pb/rank.json").read_text(encoding="utf-8"))
+    assert data["label"] == "AI rank · demo"
+    assert (tmp_path / ".pb/rank.svg").exists()
+
+
+def test_action_rank_badge_without_competitors_only_warns(tmp_path):
+    result = run_action(
+        tmp_path,
+        {"brand": "httpx", "category": "python http client", "demo": "true",
+         "rank-badge-path": ".pb/rank.svg"},
+    )  # fmt: skip
+    assert result["exit"] == 0
+    assert not (tmp_path / ".pb/rank.svg").exists()

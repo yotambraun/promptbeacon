@@ -161,6 +161,11 @@ def card_data(report: Report, max_rows: int = MAX_ROWS) -> CardData:
         f"{'prompt' if prompts == 1 else 'prompts'} × {n_models} "
         f"{'model' if n_models == 1 else 'models'}"
     )
+    if report.partial and report.budget:
+        subtitle += (
+            f" · partial: cost cap reached after {report.budget.completed_answers}"
+            f" of {report.budget.planned_answers} answers"
+        )
     date = (
         report.timestamp.strftime("%b %-d, %Y")
         if _supports_dash()
