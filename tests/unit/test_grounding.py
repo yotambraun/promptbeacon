@@ -292,7 +292,7 @@ class _FakeGrounded(GroundedClient):
                     retrieved_but_uncited=True,
                 ),
             ],
-            model="claude-haiku-4-5",
+            model="claude-haiku-5-5",
             provider="anthropic",
             latency_ms=12.0,
             search_count=1,
@@ -306,7 +306,7 @@ def test_grounded_scan_marks_tier_and_flag(monkeypatch):
     )
     monkeypatch.setattr(
         "promptbeacon.beacon.get_grounded_client",
-        lambda p: _FakeGrounded() if p == Provider.ANTHROPIC else None,
+        lambda p, **_kw: _FakeGrounded() if p == Provider.ANTHROPIC else None,
     )
 
     report = (

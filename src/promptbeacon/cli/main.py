@@ -99,6 +99,22 @@ def _text_only_notice(output_format: OutputFormat, command: str) -> None:
         )
 
 
+PROVIDER_HELP = (
+    "LLM providers to query (repeatable): openai, anthropic, google, mistral, "
+    "cohere, perplexity, or litellm (any LiteLLM model, set with --model)"
+)
+MODEL_HELP = (
+    "Model for a provider as provider=model_id (repeatable), e.g. "
+    "anthropic=claude-sonnet-5-5, or litellm=ollama/llama3.2 for a local model. "
+    "Providers named here are queried when --provider is not given. "
+    "Default: $PROMPTBEACON_<PROVIDER>_MODEL, else the built-in default "
+    "(see `promptbeacon providers`)"
+)
+_ModelsOption = Annotated[
+    list[str] | None, typer.Option("--model", "-m", help=MODEL_HELP)
+]
+
+
 # Shown when the user gave no competitors to the keyless demo. Clearly fictional
 # so the demo never implies anything about a real company.
 DEMO_PLACEHOLDER_COMPETITORS = ("Competitor A", "Competitor B")
@@ -219,10 +235,9 @@ def scan(
     ] = None,
     providers: Annotated[
         list[str] | None,
-        typer.Option(
-            "--provider", "-p", help="LLM providers to use (openai, anthropic, google)"
-        ),
+        typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
+    models: _ModelsOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option(
@@ -329,6 +344,10 @@ def scan(
         promptbeacon scan --protocol nike.json     # pinned, reproducible run
 
         promptbeacon scan --pypi httpx --demo      # an open-source package
+
+        promptbeacon scan "httpx" -t "python http client" -m openai=gpt-6-sol
+
+        promptbeacon scan "httpx" -t "python http client" -m litellm=ollama/llama3.2
     """
     # Build beacon configuration — from a pinned protocol, or from CLI flags.
     if protocol is not None:
@@ -358,6 +377,7 @@ def scan(
             project=project_ref,
             competitors=competitors,
             providers=providers,
+            models=models,
             categories=categories,
             prompt_count=prompt_count,
             demo=demo,
@@ -501,8 +521,9 @@ def dashboard(
     ] = None,
     providers: Annotated[
         list[str] | None,
-        typer.Option("--provider", "-p", help="LLM providers to use"),
+        typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
+    models: _ModelsOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
@@ -527,6 +548,7 @@ def dashboard(
         brand,
         competitors=competitors,
         providers=providers,
+        models=models,
         categories=categories,
         demo=demo,
     )
@@ -548,8 +570,9 @@ def compare(
     ],
     providers: Annotated[
         list[str] | None,
-        typer.Option("--provider", "-p", help="LLM providers to use"),
+        typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
+    models: _ModelsOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
@@ -572,6 +595,7 @@ def compare(
         brand,
         competitors=against,
         providers=providers,
+        models=models,
         categories=categories,
         demo=demo,
     )
@@ -590,8 +614,9 @@ def sources(
     ] = None,
     providers: Annotated[
         list[str] | None,
-        typer.Option("--provider", "-p", help="LLM providers to use"),
+        typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
+    models: _ModelsOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help="Categories/topics to analyze"),
@@ -632,6 +657,7 @@ def sources(
         brand,
         competitors=competitors,
         providers=providers,
+        models=models,
         categories=categories,
         prompt_count=prompt_count,
         demo=demo,
@@ -845,30 +871,36 @@ def history(
 
 @app.command()
 def providers() -> None:
-    """List available providers and search backends, and their key status."""
-    from promptbeacon.core.config import has_api_key
+    """List providers, their key status, and the model each one will use."""
+    from promptbeacon.core.config import (
+        API_KEY_ENV_VARS,
+        has_api_key,
+        model_env_var,
+        resolve_model,
+    )
 
     table = Table(title="Available Providers")
     table.add_column("Provider", style="cyan")
     table.add_column("Status", style="green")
-    table.add_column("Environment Variable")
-
-    env_vars = {
-        Provider.OPENAI: "OPENAI_API_KEY",
-        Provider.ANTHROPIC: "ANTHROPIC_API_KEY",
-        Provider.GOOGLE: "GOOGLE_API_KEY",
-        Provider.MISTRAL: "MISTRAL_API_KEY",
-        Provider.COHERE: "COHERE_API_KEY",
-        Provider.PERPLEXITY: "PERPLEXITY_API_KEY",
-    }
+    table.add_column("API key variable")
+    table.add_column("Model (override variable)")
 
     for provider in Provider:
-        status = "✓ Configured" if has_api_key(provider) else "✗ Not configured"
-        status_style = "green" if has_api_key(provider) else "red"
+        model = resolve_model(provider) or "not set"
+        if provider == Provider.LITELLM:
+            ok = model != "not set"
+            status = "✓ Model set" if ok else "– Set a model to use"
+            key_vars = "read by LiteLLM"
+        else:
+            ok = has_api_key(provider)
+            status = "✓ Configured" if ok else "✗ Not configured"
+            key_vars = " or ".join(API_KEY_ENV_VARS[provider])
+        style = "green" if ok else ("dim" if provider == Provider.LITELLM else "red")
         table.add_row(
             provider.value,
-            f"[{status_style}]{status}[/{status_style}]",
-            env_vars.get(provider, ""),
+            f"[{style}]{status}[/{style}]",
+            key_vars,
+            f"{model} ({model_env_var(provider)})",
         )
 
     # Tavily powers the funnel's live web search (not an LLM provider).
@@ -885,7 +917,9 @@ def providers() -> None:
     console.print(
         "[dim]Keys load from the environment or a .env file. LLM keys power "
         "scan/--grounded; TAVILY_API_KEY powers funnel live search "
-        "(get one at https://tavily.com).[/dim]"
+        "(get one at https://tavily.com). Choose a model per scan with "
+        "--model provider=model_id; litellm=ollama/llama3.2 runs a local "
+        "Ollama model.[/dim]"
     )
 
 
@@ -1280,6 +1314,7 @@ def _beacon_from_options(
     project: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
+    models: list[str] | None = None,
     categories: list[str] | None = None,
     prompt_count: int | None = None,
     demo: bool = False,
@@ -1303,6 +1338,7 @@ def _beacon_from_options(
                     project=project,
                     competitors=competitors,
                     providers=providers,
+                    models=models,
                     categories=categories,
                     prompt_count=prompt_count,
                     demo=demo,
@@ -1315,6 +1351,7 @@ def _beacon_from_options(
             brand,
             competitors=competitors,
             providers=providers,
+            models=models,
             categories=categories,
             prompt_count=prompt_count,
             demo=demo,
@@ -1420,7 +1457,7 @@ _ShareCompetitors = Annotated[
     list[str] | None, typer.Option("--competitor", "-c", help="Competitor brands")
 ]
 _ShareProviders = Annotated[
-    list[str] | None, typer.Option("--provider", "-p", help="LLM providers to use")
+    list[str] | None, typer.Option("--provider", "-p", help=PROVIDER_HELP)
 ]
 _ShareCategories = Annotated[
     list[str] | None,
@@ -1453,6 +1490,7 @@ def badge(
     project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
+    models: _ModelsOption = None,
     categories: _ShareCategories = None,
     prompt_count: _SharePrompts = None,
     demo: _ShareDemo = False,
@@ -1492,6 +1530,7 @@ def badge(
         project=_project_ref(repo, pypi, npm, project),
         competitors=competitors,
         providers=providers,
+        models=models,
         categories=categories,
         prompt_count=prompt_count,
         demo=demo,
@@ -1537,6 +1576,7 @@ def card(
     project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
+    models: _ModelsOption = None,
     categories: _ShareCategories = None,
     prompt_count: _SharePrompts = None,
     demo: _ShareDemo = False,
@@ -1577,6 +1617,7 @@ def card(
         project=_project_ref(repo, pypi, npm, project),
         competitors=competitors,
         providers=providers,
+        models=models,
         categories=categories,
         prompt_count=prompt_count,
         demo=demo,

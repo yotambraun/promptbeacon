@@ -42,7 +42,7 @@ def sample_provider_result(sample_mention):
     """Create a sample provider result."""
     return ProviderResult(
         provider="openai",
-        model="gpt-4o-mini",
+        model="gpt-6-luna",
         prompt="What are the best brands?",
         response="I recommend TestBrand for their excellent products.",
         mentions=[sample_mention],

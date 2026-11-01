@@ -21,9 +21,13 @@ inputs:
     required: false
     default: ""
   providers:
-    description: "Space-separated LLM providers (openai anthropic google mistral cohere perplexity)"
+    description: "Space-separated LLM providers: openai anthropic google mistral cohere perplexity litellm (default: openai, or the providers named in models)"
     required: false
-    default: "openai"
+    default: ""
+  models:
+    description: "Model per provider as provider=model_id, one per line or space-separated (e.g. 'anthropic=claude-sonnet-5-5'). Empty uses each provider's default model"
+    required: false
+    default: ""
   prompts:
     description: "Number of prompts per category"
     required: false
@@ -73,7 +77,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   version:
-    description: "PromptBeacon version spec to install (e.g. 'promptbeacon==1.3.0')"
+    description: "PromptBeacon version spec to install (e.g. 'promptbeacon==1.4.0')"
     required: false
     default: "promptbeacon"
 
@@ -126,6 +130,7 @@ runs:
         PB_CATEGORIES: ${{ inputs.categories }}
         PB_COMPETITORS: ${{ inputs.competitors }}
         PB_PROVIDERS: ${{ inputs.providers }}
+        PB_MODELS: ${{ inputs.models }}
         PB_PROMPTS: ${{ inputs.prompts }}
         PB_STABILITY: ${{ inputs.stability }}
         PB_DEMO: ${{ inputs.demo }}
@@ -144,6 +149,7 @@ runs:
         while IFS= read -r t; do [ -n "$t" ] && args+=(--category "$t"); done < <(split_list "$PB_CATEGORIES")
         while IFS= read -r c; do [ -n "$c" ] && args+=(--competitor "$c"); done < <(split_list "$PB_COMPETITORS")
         for p in $PB_PROVIDERS; do args+=(--provider "$p"); done
+        while IFS= read -r m; do [ -n "$m" ] && args+=(--model "$m"); done < <(split_list "$PB_MODELS")
         if [ "$PB_DEMO" = "true" ]; then args+=(--demo); fi
         if [ "$PB_GROUNDED" = "true" ]; then args+=(--grounded); fi
         if [ "${PB_STABILITY:-0}" -gt 0 ]; then args+=(--stability "$PB_STABILITY"); fi

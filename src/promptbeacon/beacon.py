@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -42,7 +42,7 @@ from promptbeacon.analysis.sources import aggregate_source_attribution
 from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import calculate_confidence_interval
 from promptbeacon.core.clock import utc_now
-from promptbeacon.core.config import BeaconConfig, Provider
+from promptbeacon.core.config import BeaconConfig, Provider, parse_model_overrides
 from promptbeacon.core.exceptions import ConfigurationError, ScanError
 from promptbeacon.core.schemas import (
     Citation,
@@ -177,6 +177,7 @@ class Beacon:
         self._smart_extraction: bool = False
         self._extraction_model: str | None = None
         self._smart_recommendations: bool = False
+        self._providers_set: bool = False
 
     @property
     def brand(self) -> str:
@@ -244,6 +245,44 @@ class Beacon:
             else:
                 flat_providers.append(p)
         self._config = self._config.model_copy(update={"providers": flat_providers})
+        self._providers_set = bool(flat_providers)
+        return self
+
+    def with_models(
+        self,
+        models: Mapping[str, str] | Mapping[Provider, str] | None = None,
+        **by_provider: str,
+    ) -> Self:
+        """Choose the model used for each provider.
+
+        Without this, each provider uses ``PROMPTBEACON_<PROVIDER>_MODEL`` if
+        set, otherwise its built-in default (see
+        :data:`promptbeacon.core.config.DEFAULT_MODELS`). Later calls add to or
+        replace earlier entries.
+
+        If you have not chosen providers with :meth:`with_providers`, the
+        providers named here are the ones queried. Use the ``litellm`` slot for
+        any model string LiteLLM supports, such as a local Ollama model::
+
+            Beacon("httpx").with_models({"anthropic": "claude-sonnet-5-5"})
+            Beacon("httpx").with_models(litellm="ollama/llama3.2")
+
+        Args:
+            models: ``{provider: model_id}``; provider names or :class:`Provider`.
+            **by_provider: The same, as keyword arguments.
+
+        Returns:
+            Self for chaining.
+
+        Raises:
+            ValueError: For an unknown provider name or an empty model id.
+        """
+        combined: dict[str | Provider, str] = dict(by_provider)
+        for name, model_id in (models or {}).items():
+            combined.setdefault(name, model_id)
+        parsed = parse_model_overrides(combined)
+        merged = {**self._config.models, **parsed}
+        self._config = self._config.model_copy(update={"models": merged})
         return self
 
     def with_categories(self, *categories: str) -> Self:
@@ -554,32 +593,68 @@ class Beacon:
 
     def _make_client(self, provider: Provider, variation: int = 0) -> BaseLLMClient:
         """Create the LLM client for a provider (real or demo mock)."""
+        model = self._config.get_model_for_provider(provider)
         if self._demo_mode:
             return MockLLMClient(
                 provider,
                 brand=self._config.brand,
                 competitors=self._config.competitors,
                 variation=variation,
+                model=model,
                 topics=self._config.categories,
             )
         return LiteLLMClient(
             provider=provider,
+            model=model,
             timeout=self._config.timeout,
             max_retries=self._config.max_retries,
         )
 
+    def _configured_providers(self) -> list[Provider]:
+        """Providers to query before checking keys.
+
+        Explicit :meth:`with_providers` wins. Otherwise, providers named in
+        :meth:`with_models` are used; otherwise the default provider list.
+        """
+        configured = list(self._config.providers)
+        models = self._config.models
+        if self._providers_set:
+            ignored = [p.value for p in models if p not in configured]
+            if ignored:
+                logger.warning(
+                    "Models set for providers that are not being queried: %s. "
+                    "Add them with with_providers() / --provider.",
+                    ", ".join(ignored),
+                )
+            return configured
+        return list(models) if models else configured
+
     def _resolve_providers(self) -> list[Provider]:
         """Determine which providers to query, honouring demo mode."""
+        configured = self._configured_providers()
         if self._demo_mode:
             # No API keys needed; use the configured providers as-is.
-            return list(self._config.providers)
+            return configured
 
-        available = get_available_providers()
-        providers_to_use = [p for p in self._config.providers if p in available]
+        available = set(get_available_providers())
+        providers_to_use = [
+            p
+            for p in configured
+            if p in available
+            or (p == Provider.LITELLM and self._config.get_model_for_provider(p))
+        ]
         if not providers_to_use:
+            if configured == [Provider.LITELLM]:
+                raise ConfigurationError(
+                    "No model set for the 'litellm' provider. Set one with "
+                    '.with_models(litellm="ollama/llama3.2"), --model '
+                    "litellm=ollama/llama3.2, or PROMPTBEACON_LITELLM_MODEL."
+                )
+            names = ", ".join(p.value for p in configured)
             raise ConfigurationError(
-                f"No API keys found for configured providers: {self._config.providers}. "
-                "Set environment variables like OPENAI_API_KEY, ANTHROPIC_API_KEY, etc. "
+                f"No API keys found for configured providers: {names}. "
+                "Set environment variables like OPENAI_API_KEY, ANTHROPIC_API_KEY, "
+                "GOOGLE_API_KEY (or GEMINI_API_KEY), etc. "
                 "Or try keyless demo mode: Beacon(...).demo().scan()"
             )
         return providers_to_use
@@ -1148,7 +1223,13 @@ class Beacon:
                 provider: Provider | None = Provider(client.provider_name)
             except ValueError:
                 provider = None
-            gclient = get_grounded_client(provider) if provider else None
+            gclient = (
+                get_grounded_client(
+                    provider, model=self._config.get_model_for_provider(provider)
+                )
+                if provider
+                else None
+            )
             if gclient is not None and gclient.is_available():
                 try:
                     return await self._query_provider_grounded(gclient, prompt)

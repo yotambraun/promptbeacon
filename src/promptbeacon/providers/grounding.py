@@ -22,15 +22,26 @@ from dataclasses import dataclass
 from typing import Any
 
 from promptbeacon.analysis.sources import classify_source_type
-from promptbeacon.core.config import Provider, get_api_key
+from promptbeacon.core.config import (
+    DEFAULT_MODELS,
+    Provider,
+    get_api_key,
+    resolve_model,
+)
 from promptbeacon.core.schemas import Citation
 from promptbeacon.extraction.citations import _extract_domain
+from promptbeacon.providers.litellm_client import load_litellm, to_native_model
 
 logger = logging.getLogger(__name__)
 
-# Stable web-search tool (no code-execution dependency). The 20260209 version
-# adds dynamic filtering but requires the code-execution tool; the stable
-# version returns the same citation structure we parse.
+# Basic web search, on purpose. web_search_20260209 and later default to
+# "dynamic filtering": Claude runs code that filters results before they reach
+# its context, the response gains code-execution blocks, models without
+# programmatic tool calling need allowed_callers=["direct"], and it is not
+# ZDR-eligible. A visibility scan wants the plain retrieve-then-cite behaviour
+# (what we parse into retrieved vs cited sources), and web_search_20250305 is
+# available on every Claude model and platform, including the default
+# claude-haiku-5-5. Re-checked against Anthropic's web search docs 2026-11-01.
 ANTHROPIC_WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search"}
 
 # Anthropic bills web search at $10 per 1,000 searches, on top of tokens.
@@ -50,7 +61,7 @@ def _token_cost(
 ) -> float | None:
     """Token cost from litellm's price map, trying the common key spellings."""
     try:
-        import litellm
+        litellm = load_litellm()
     except ImportError:  # pragma: no cover - litellm is a core dependency
         return None
     prefix = _LITELLM_PROVIDER.get(provider)
@@ -104,8 +115,7 @@ def estimate_grounded_cost(
         per_search = ANTHROPIC_WEB_SEARCH_USD_PER_SEARCH
     else:
         try:
-            import litellm
-
+            litellm = load_litellm()
             info = litellm.model_cost.get(model) or litellm.model_cost.get(
                 f"{_LITELLM_PROVIDER.get(provider)}/{model}", {}
             )
@@ -341,10 +351,20 @@ def associate_brands(citations: list[Citation], brands: list[str]) -> list[Citat
     return citations
 
 
+def _native_model(provider: Provider, model: str | None) -> str:
+    """The model for a grounded SDK call: override, env var, then default."""
+    chosen = model or resolve_model(provider) or DEFAULT_MODELS[provider]
+    return to_native_model(provider, chosen)
+
+
 class GroundedClient:
     """Base for provider-native web-grounded clients."""
 
     provider: Provider
+
+    def __init__(self, model: str | None = None, timeout: float = 60.0) -> None:
+        self._model = _native_model(self.provider, model)
+        self.timeout = timeout
 
     def is_available(self) -> bool:  # pragma: no cover - trivial
         raise NotImplementedError
@@ -359,10 +379,6 @@ class AnthropicGroundedClient(GroundedClient):
     """Web-grounded client using the official ``anthropic`` SDK (Brave-backed)."""
 
     provider = Provider.ANTHROPIC
-
-    def __init__(self, model: str | None = None, timeout: float = 60.0) -> None:
-        self._model = model or "claude-haiku-4-5"
-        self.timeout = timeout
 
     def is_available(self) -> bool:
         if get_api_key(Provider.ANTHROPIC) is None:
@@ -423,10 +439,6 @@ class OpenAIGroundedClient(GroundedClient):
 
     provider = Provider.OPENAI
 
-    def __init__(self, model: str | None = None, timeout: float = 60.0) -> None:
-        self._model = model or "gpt-4o-mini"
-        self.timeout = timeout
-
     def is_available(self) -> bool:
         if get_api_key(Provider.OPENAI) is None:
             return False
@@ -480,10 +492,6 @@ class GeminiGroundedClient(GroundedClient):
     """Web-grounded client using the official ``google-genai`` SDK (grounding)."""
 
     provider = Provider.GOOGLE
-
-    def __init__(self, model: str | None = None, timeout: float = 60.0) -> None:
-        self._model = model or "gemini-2.0-flash"
-        self.timeout = timeout
 
     def is_available(self) -> bool:
         if get_api_key(Provider.GOOGLE) is None:
@@ -549,10 +557,6 @@ class PerplexityGroundedClient(GroundedClient):
 
     provider = Provider.PERPLEXITY
 
-    def __init__(self, model: str | None = None, timeout: float = 60.0) -> None:
-        self._model = model or "sonar"
-        self.timeout = timeout
-
     def is_available(self) -> bool:
         if get_api_key(Provider.PERPLEXITY) is None:
             return False
@@ -585,10 +589,17 @@ class PerplexityGroundedClient(GroundedClient):
         # Perplexity returns `citations` (a list of URLs) at the top level — a
         # non-standard field, so read it defensively.
         citation_urls = getattr(response, "citations", None)
+        extra = getattr(response, "model_extra", None)
+        if citation_urls is None and isinstance(extra, dict):
+            citation_urls = extra.get("citations")
         if citation_urls is None:
-            extra = getattr(response, "model_extra", None)
-            if isinstance(extra, dict):
-                citation_urls = extra.get("citations")
+            # Newer responses list sources as `search_results` objects.
+            results = getattr(response, "search_results", None)
+            if results is None and isinstance(extra, dict):
+                results = extra.get("search_results")
+            citation_urls = [
+                _field(r, "url") for r in results or [] if _field(r, "url")
+            ] or None
         citations = parse_perplexity_grounded(citation_urls, query=prompt)
         search_count = 1 if citations else 0
         inp, out = _usage_tokens(
@@ -619,7 +630,16 @@ _GROUNDED_CLIENTS: dict[Provider, type[GroundedClient]] = {
 }
 
 
-def get_grounded_client(provider: Provider) -> GroundedClient | None:
-    """Return a grounded client for the provider, or None if unsupported."""
+def get_grounded_client(
+    provider: Provider, model: str | None = None
+) -> GroundedClient | None:
+    """Return a grounded client for the provider, or None if unsupported.
+
+    Args:
+        provider: The provider.
+        model: Model override (a LiteLLM-style prefix such as ``gemini/`` is
+            stripped for the provider's own SDK). Defaults to the provider's
+            default model.
+    """
     cls = _GROUNDED_CLIENTS.get(provider)
-    return cls() if cls is not None else None
+    return cls(model=model) if cls is not None else None

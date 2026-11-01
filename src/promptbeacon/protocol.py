@@ -2,8 +2,9 @@
 
 The "don't measure once" principle requires a *stable* protocol re-run
 identically over time — otherwise trends are noise. A protocol file pins the
-brand, prompts, providers, run count, and mode so a scan is reproducible in CI
-and comparable across dates.
+brand, prompts, providers, models, run count, and mode so a scan is
+reproducible in CI and comparable across dates. Pin ``models`` too: provider
+defaults change between releases, and a model change moves the score.
 
 Example ``protocol.json``::
 
@@ -11,6 +12,7 @@ Example ``protocol.json``::
       "brand": "Nike",
       "competitors": ["Adidas", "Puma"],
       "providers": ["openai", "anthropic"],
+      "models": {"openai": "gpt-6-luna", "anthropic": "claude-haiku-5-5"},
       "prompts": ["What are the best running shoes?", "..."],
       "runs": 5,
       "grounded": true
@@ -34,6 +36,10 @@ class ScanProtocol(BaseModel):
     brand: str = Field(..., min_length=1)
     competitors: list[str] = Field(default_factory=list)
     providers: list[str] = Field(default_factory=list)
+    models: dict[str, str] = Field(
+        default_factory=dict,
+        description="Pinned model per provider, e.g. {'openai': 'gpt-6-luna'}",
+    )
     categories: list[str] = Field(default_factory=list)
     prompts: list[str] = Field(
         default_factory=list, description="Explicit, pinned prompt set"
@@ -56,9 +62,9 @@ def build_beacon(protocol: ScanProtocol) -> Beacon:
     if protocol.competitors:
         beacon = beacon.with_competitors(*protocol.competitors)
     if protocol.providers:
-        beacon = beacon.with_providers(
-            *[Provider(p.lower()) for p in protocol.providers]
-        )
+        beacon = beacon.with_providers(*[Provider.parse(p) for p in protocol.providers])
+    if protocol.models:
+        beacon = beacon.with_models(protocol.models)
     if protocol.categories:
         beacon = beacon.with_categories(*protocol.categories)
     if protocol.prompts:

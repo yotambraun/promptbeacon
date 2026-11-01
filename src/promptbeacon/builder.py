@@ -7,10 +7,10 @@ those options map onto the fluent API.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from promptbeacon.beacon import Beacon
-from promptbeacon.core.config import Provider
+from promptbeacon.core.config import Provider, parse_model_overrides
 
 
 def parse_providers(names: Sequence[str | Provider]) -> list[Provider]:
@@ -19,19 +19,7 @@ def parse_providers(names: Sequence[str | Provider]) -> list[Provider]:
     Raises:
         ValueError: For an unknown provider, listing the valid ones.
     """
-    providers: list[Provider] = []
-    for name in names:
-        if isinstance(name, Provider):
-            providers.append(name)
-            continue
-        try:
-            providers.append(Provider(str(name).strip().lower()))
-        except ValueError:
-            valid = ", ".join(p.value for p in Provider)
-            raise ValueError(
-                f"Invalid provider: {name}. Choose from: {valid}"
-            ) from None
-    return providers
+    return [Provider.parse(name) for name in names]
 
 
 def configure_beacon(
@@ -40,6 +28,7 @@ def configure_beacon(
     project: str | None = None,
     competitors: Sequence[str] | None = None,
     providers: Sequence[str | Provider] | None = None,
+    models: Mapping[str, str] | Mapping[Provider, str] | Sequence[str] | None = None,
     categories: Sequence[str] | None = None,
     prompt_count: int | None = None,
     demo: bool = False,
@@ -56,6 +45,9 @@ def configure_beacon(
             public metadata for the category and competitor candidates.
         competitors: Competitors (override project guesses).
         providers: Provider names such as ``["openai", "anthropic"]``.
+        models: Model per provider, as a mapping (``{"openai": "gpt-6-sol"}``)
+            or ``provider=model_id`` strings (``["litellm=ollama/llama3.2"]``).
+            Providers named here are queried when ``providers`` is not given.
         categories: Categories the prompts ask about (override guesses).
         prompt_count: Prompts per category.
         demo: Keyless demo mode.
@@ -64,8 +56,8 @@ def configure_beacon(
             competitors) when none is given. Ignored in demo mode.
 
     Raises:
-        ValueError: If neither brand nor project is given, or a provider is
-            unknown.
+        ValueError: If neither brand nor project is given, or a provider or
+            model option is invalid.
         promptbeacon.projects.ProjectMetadataError: If project metadata cannot be
             fetched.
     """
@@ -88,6 +80,8 @@ def configure_beacon(
         beacon = beacon.with_competitors(*competitors)
     if providers:
         beacon = beacon.with_providers(*parse_providers(providers))
+    if models:
+        beacon = beacon.with_models(parse_model_overrides(models))
     if categories:
         beacon = beacon.with_categories(*categories)
     if prompt_count is not None:

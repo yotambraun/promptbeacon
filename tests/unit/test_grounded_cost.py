@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from promptbeacon import Beacon, Provider
+from promptbeacon.core.config import DEFAULT_MODELS
 from promptbeacon.providers import grounding
 from promptbeacon.providers.grounding import (
     AnthropicGroundedClient,
@@ -58,7 +59,7 @@ def test_anthropic_grounded_cost_includes_tokens_and_searches(monkeypatch):
     import asyncio
 
     resp = asyncio.run(AnthropicGroundedClient().complete_grounded("best shoes?"))
-    tokens = _litellm_cost("claude-haiku-4-5", "anthropic", 1000, 500)
+    tokens = _litellm_cost(DEFAULT_MODELS[Provider.ANTHROPIC], "anthropic", 1000, 500)
     assert resp.cost_usd == pytest.approx(tokens + 2 * 0.01)
     assert resp.search_fees_included is True
 
@@ -81,7 +82,9 @@ def test_openai_grounded_cost_from_usage(monkeypatch):
 
     resp = asyncio.run(OpenAIGroundedClient().complete_grounded("best shoes?"))
     assert resp.cost_usd is not None and resp.cost_usd > 0
-    assert resp.cost_usd >= _litellm_cost("gpt-4o-mini", "openai", 2000, 300)
+    assert resp.cost_usd >= _litellm_cost(
+        DEFAULT_MODELS[Provider.OPENAI], "openai", 2000, 300
+    )
 
 
 def test_gemini_grounded_cost_from_usage_metadata(monkeypatch):
@@ -115,7 +118,7 @@ def test_gemini_grounded_cost_from_usage_metadata(monkeypatch):
     )
     import asyncio
 
-    client = GeminiGroundedClient(model="gemini-2.5-flash")
+    client = GeminiGroundedClient(model="gemini-3.5-flash-lite")
     resp = asyncio.run(client.complete_grounded("best shoes?"))
     assert resp.cost_usd is not None and resp.cost_usd > 0
     # Gemini grounding fees are not in the price map: say so, don't hide it.
@@ -165,7 +168,7 @@ def test_report_marks_cost_partial_when_some_costs_unknown(monkeypatch):
             return GroundedResponse(
                 content="Nike is great",
                 citations=[],
-                model="claude-haiku-4-5",
+                model="claude-haiku-5-5",
                 provider="anthropic",
                 latency_ms=1.0,
                 cost_usd=next(responses),
@@ -176,7 +179,9 @@ def test_report_marks_cost_partial_when_some_costs_unknown(monkeypatch):
     monkeypatch.setattr(
         "promptbeacon.beacon.get_available_providers", lambda: [Provider.ANTHROPIC]
     )
-    monkeypatch.setattr("promptbeacon.beacon.get_grounded_client", lambda _p: _Fake())
+    monkeypatch.setattr(
+        "promptbeacon.beacon.get_grounded_client", lambda _p, **_kw: _Fake()
+    )
     report = (
         Beacon("Nike")
         .with_category("running shoes")

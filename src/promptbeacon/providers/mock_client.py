@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from promptbeacon.core.config import DEFAULT_MODELS, Provider
+from promptbeacon.core.config import Provider, resolve_model
 from promptbeacon.providers.base import BaseLLMClient, LLMResponse
 from promptbeacon.providers.fixtures import build_demo_response
 
@@ -43,7 +43,9 @@ class MockLLMClient(BaseLLMClient):
         self._competitors = competitors or []
         self._variation = variation
         self._topics = list(topics or [])
-        self._model = model or DEFAULT_MODELS.get(provider, "gpt-4o-mini")
+        # Same model resolution as a live scan, so demo reports show the model
+        # a real run would use.
+        self._model = model or resolve_model(provider) or "custom-model"
 
     @property
     def provider_name(self) -> str:

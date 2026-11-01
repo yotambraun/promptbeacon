@@ -26,7 +26,7 @@ from typing import Any
 import pytest
 
 from promptbeacon.beacon import Beacon
-from promptbeacon.core.config import Provider, has_api_key
+from promptbeacon.core.config import Provider, has_api_key, resolve_model
 
 
 def _env_demo() -> bool:
@@ -34,9 +34,14 @@ def _env_demo() -> bool:
     return os.environ.get("PROMPTBEACON_DEMO", "").lower() in {"1", "true", "yes", "on"}
 
 
-def _any_keys() -> bool:
-    """Whether any provider API key is configured."""
-    return any(has_api_key(p) for p in Provider)
+def _any_keys(models: dict[Any, str] | None = None) -> bool:
+    """Whether a provider key is configured, or a LiteLLM model is set."""
+    if any(has_api_key(p) for p in Provider.all()):
+        return True
+    litellm_model = (models or {}).get("litellm") or (models or {}).get(
+        Provider.LITELLM
+    )
+    return bool(litellm_model or resolve_model(Provider.LITELLM))
 
 
 def _resolve_demo(explicit: bool | None) -> bool:
@@ -58,8 +63,10 @@ def _build_beacon(brand: str, kwargs: dict[str, Any], demo: bool) -> Beacon:
         beacon = beacon.with_categories(*categories)
     providers = kwargs.get("providers")
     if providers:
-        enums = [p if isinstance(p, Provider) else Provider(str(p)) for p in providers]
-        beacon = beacon.with_providers(*enums)
+        beacon = beacon.with_providers(*[Provider.parse(p) for p in providers])
+    models = kwargs.get("models")
+    if models:
+        beacon = beacon.with_models(models)
     prompt_count = kwargs.get("prompt_count")
     if prompt_count:
         beacon = beacon.with_prompt_count(prompt_count)
@@ -73,8 +80,8 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "visibility(brand, min_score=, min_share_of_voice=, min_stability_score=, "
-        "max_rank=, competitors=[], providers=[], categories=[], prompt_count=, "
-        "stability=, demo=): run a PromptBeacon scan and assert AI visibility "
+        "max_rank=, competitors=[], providers=[], models={}, categories=[], "
+        "prompt_count=, stability=, demo=): run a PromptBeacon scan and assert AI visibility "
         "thresholds.",
     )
 
@@ -114,7 +121,7 @@ def pytest_runtest_call(item: pytest.Item) -> None:
         )
 
     demo = _resolve_demo(kwargs.get("demo"))
-    if not demo and not _any_keys():
+    if not demo and not _any_keys(kwargs.get("models")):
         pytest.skip(
             "No provider API keys configured. Set one (e.g. OPENAI_API_KEY) or "
             "PROMPTBEACON_DEMO=1 to run @pytest.mark.visibility tests."

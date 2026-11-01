@@ -26,6 +26,7 @@ _PROVIDER_NAMES = {
     "mistral": "Mistral",
     "cohere": "Cohere",
     "perplexity": "Perplexity",
+    "litellm": "LiteLLM",
 }
 
 

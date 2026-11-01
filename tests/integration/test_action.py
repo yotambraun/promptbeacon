@@ -172,3 +172,17 @@ def test_action_single_item_block_list_keeps_spaces(tmp_path):
     )
     assert report["categories"] == ["running shoes"]
     assert set(report["competitor_comparison"]) == {"Under Armour"}
+
+
+def test_action_models_input_selects_providers_and_models(tmp_path):
+    result = run_action(
+        tmp_path,
+        {"brand": "httpx", "category": "python http client", "demo": "true",
+         "models": "anthropic=claude-sonnet-5-5\nopenai=gpt-6-sol\n"},
+    )  # fmt: skip
+    assert result["exit"] == 0
+    report = json.loads(
+        Path(result["outputs"]["report-path"]).read_text(encoding="utf-8")
+    )
+    models = {(r["provider"], r["model"]) for r in report["provider_results"]}
+    assert models == {("anthropic", "claude-sonnet-5-5"), ("openai", "gpt-6-sol")}

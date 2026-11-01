@@ -17,13 +17,20 @@ from pathlib import Path
 from typing import Any
 
 from promptbeacon.builder import configure_beacon
-from promptbeacon.core.config import Provider, has_api_key, has_tavily_api_key
+from promptbeacon.core.config import (
+    Provider,
+    has_api_key,
+    has_tavily_api_key,
+    parse_model_overrides,
+    resolve_model,
+)
 
 DEMO_NOTE = (
     "No provider API key is configured, so this used keyless demo data "
     "(canned answers, not a real measurement). Set OPENAI_API_KEY, "
-    "ANTHROPIC_API_KEY, GOOGLE_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY or "
-    "PERPLEXITY_API_KEY for a real scan."
+    "ANTHROPIC_API_KEY, GOOGLE_API_KEY (or GEMINI_API_KEY), MISTRAL_API_KEY, "
+    "COHERE_API_KEY or PERPLEXITY_API_KEY for a real scan, or pass "
+    'models={"litellm": "ollama/llama3.2"} for a local model.'
 )
 
 INSTRUCTIONS = (
@@ -34,16 +41,22 @@ INSTRUCTIONS = (
 )
 
 
-def _any_keys() -> bool:
-    return any(has_api_key(p) for p in Provider)
+def _live_possible(models: dict[str, str] | None = None) -> bool:
+    """A key is configured, or a LiteLLM model (e.g. local Ollama) is set."""
+    if any(has_api_key(p) for p in Provider.all()):
+        return True
+    overrides = parse_model_overrides(models)
+    return resolve_model(Provider.LITELLM, overrides) is not None
 
 
-def _resolve_demo(demo: bool | None) -> tuple[bool, str | None]:
-    """Default to demo when no keys are configured, and explain why."""
+def _resolve_demo(
+    demo: bool | None, models: dict[str, str] | None = None
+) -> tuple[bool, str | None]:
+    """Default to demo when nothing live is configured, and explain why."""
+    live = _live_possible(models)
     if demo is None:
-        demo = not _any_keys()
-        return demo, DEMO_NOTE if demo else None
-    if not demo and not _any_keys():
+        return (False, None) if live else (True, DEMO_NOTE)
+    if not demo and not live:
         raise ValueError("No provider API key is configured. " + DEMO_NOTE)
     return demo, None
 
@@ -97,11 +110,13 @@ async def _scan(beacon, note: str | None) -> dict[str, Any]:
 
 def providers() -> dict[str, Any]:
     """Which LLM providers and search backends are configured (never the keys)."""
-    configured = {p.value: has_api_key(p) for p in Provider}
+    configured = {p.value: has_api_key(p) for p in Provider.all()}
+    models = {p.value: resolve_model(p) for p in Provider}
     return {
         "providers": configured,
+        "models": models,
         "tavily": has_tavily_api_key(),
-        "default_mode": "live" if any(configured.values()) else "demo",
+        "default_mode": "live" if _live_possible() else "demo",
     }
 
 
@@ -110,6 +125,7 @@ async def scan(
     category: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
+    models: dict[str, str] | None = None,
     prompts: int | None = None,
     demo: bool | None = None,
     grounded: bool = False,
@@ -121,15 +137,20 @@ async def scan(
         category: What buyers ask about, e.g. "running shoes" (strongly advised).
         competitors: Competitors to compare share of voice against.
         providers: e.g. ["openai", "anthropic"]; defaults to openai.
+        models: Model per provider, e.g. {"anthropic": "claude-sonnet-5-5"}, or
+            {"litellm": "ollama/llama3.2"} for a local Ollama model. Providers
+            named here are queried when providers is not given. Defaults: see
+            the providers tool.
         prompts: Prompts per category (default 10).
         demo: True for keyless demo data; default is demo only when no keys exist.
         grounded: Measure web-grounded answers (provider web search; costs more).
     """
-    use_demo, note = _resolve_demo(demo)
+    use_demo, note = _resolve_demo(demo, models)
     beacon = configure_beacon(
         brand,
         competitors=competitors,
         providers=providers,
+        models=models,
         categories=[category] if category else None,
         prompt_count=prompts,
         demo=use_demo,
@@ -143,6 +164,7 @@ async def project_scan(
     category: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
+    models: dict[str, str] | None = None,
     prompts: int | None = None,
     demo: bool | None = None,
     infer_category: bool = False,
@@ -156,13 +178,17 @@ async def project_scan(
         category: Override the guessed category, e.g. "python http client".
         competitors: Override the competitor candidates.
         providers: e.g. ["openai", "anthropic"].
+        models: Model per provider, e.g. {"anthropic": "claude-sonnet-5-5"}, or
+            {"litellm": "ollama/llama3.2"} for a local Ollama model. Providers
+            named here are queried when providers is not given. Defaults: see
+            the providers tool.
         prompts: Prompts per category (default 10).
         demo: True for keyless demo data; default is demo only when no keys exist.
         infer_category: Refine the category with one LLM call (live mode only).
     """
     import anyio
 
-    use_demo, note = _resolve_demo(demo)
+    use_demo, note = _resolve_demo(demo, models)
 
     def build():
         return configure_beacon(
@@ -170,6 +196,7 @@ async def project_scan(
             project=project,
             competitors=competitors,
             providers=providers,
+            models=models,
             categories=[category] if category else None,
             prompt_count=prompts,
             demo=use_demo,
@@ -188,6 +215,7 @@ async def sources(
     category: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
+    models: dict[str, str] | None = None,
     demo: bool | None = None,
     grounded: bool = True,
 ) -> dict[str, Any]:
@@ -198,6 +226,10 @@ async def sources(
         category: The category, e.g. "running shoes".
         competitors: Competitors to attribute citations to.
         providers: Providers with web search (openai, anthropic, google, perplexity).
+        models: Model per provider, e.g. {"anthropic": "claude-sonnet-5-5"}, or
+            {"litellm": "ollama/llama3.2"} for a local Ollama model. Providers
+            named here are queried when providers is not given. Defaults: see
+            the providers tool.
         demo: True for keyless demo data; default is demo only when no keys exist.
         grounded: Use provider web search (needed for real citations).
     """
@@ -206,6 +238,7 @@ async def sources(
         category=category,
         competitors=competitors,
         providers=providers,
+        models=models,
         demo=demo,
         grounded=grounded,
     )
@@ -219,6 +252,7 @@ async def share_assets(
     category: str | None = None,
     competitors: list[str] | None = None,
     providers: list[str] | None = None,
+    models: dict[str, str] | None = None,
     demo: bool | None = None,
     output_dir: str = ".promptbeacon",
     png: bool = False,
@@ -231,6 +265,10 @@ async def share_assets(
         category: The category, e.g. "python http client".
         competitors: Competitors to compare against.
         providers: e.g. ["openai", "anthropic"].
+        models: Model per provider, e.g. {"anthropic": "claude-sonnet-5-5"}, or
+            {"litellm": "ollama/llama3.2"} for a local Ollama model. Providers
+            named here are queried when providers is not given. Defaults: see
+            the providers tool.
         demo: True for keyless demo data; default is demo only when no keys exist.
         output_dir: Directory for badge.svg, badge.json, card.svg, card-dark.svg.
         png: Also write card.png (needs the 'promptbeacon[share]' extra).
@@ -254,7 +292,7 @@ async def share_assets(
         raise ValueError(
             f"output_dir must be inside the working directory ({cwd}); got {out}"
         )
-    use_demo, note = _resolve_demo(demo)
+    use_demo, note = _resolve_demo(demo, models)
 
     def build():
         return configure_beacon(
@@ -262,6 +300,7 @@ async def share_assets(
             project=project,
             competitors=competitors,
             providers=providers,
+            models=models,
             categories=[category] if category else None,
             demo=use_demo,
         )
