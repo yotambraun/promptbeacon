@@ -175,7 +175,12 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-v --tb=short"
 # Warnings are errors, so deprecations surface in CI rather than in users'
 # projects. Add narrow, explained ignores for third-party warnings only.
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # langsmith (installed with the langchain extra) registers a pytest plugin
+    # that calls asyncio.iscoroutinefunction at import, deprecated in 3.14.
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+]
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
