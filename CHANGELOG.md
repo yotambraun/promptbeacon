@@ -7,10 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.0] - Unreleased
 
-Choose the model for each provider, including local models, with current defaults, a
-faster start, and fixes for Python 3.12+.
+Set a repository up in one command, cap what a scan may spend, share a rank badge and a
+score trend, scan crates and Hugging Face models; choose the model for each provider,
+including local models, with current defaults, a faster start, and fixes for Python
+3.12+. The AI Recommendation Index is built but not yet run.
 
 ### Added
+- **`promptbeacon init`.** Reads `pyproject.toml`, `package.json` or `Cargo.toml`, the
+  README and the git remote (no network), proposes a category with its basis (confirm or
+  change it in a terminal; `--category` / `--competitor` skip the questions), and writes
+  `.github/workflows/ai-visibility.yml`: weekly, using `yotambraun/promptbeacon@v1`, with
+  a commented `models` example, a `max-cost` cap and badge, rank badge, card and trend
+  paths. It shows new files in full and changed files as a diff and asks before writing;
+  it never replaces a file without confirmation (`--yes` writes new files only, `--force`
+  also replaces changed ones, and without a terminal nothing is written). Re-running it
+  changes nothing. It works without API keys, prints the exact `gh secret set` command
+  and the README badge snippet, can run a labelled demo scan, and ends with next steps.
+  `--protocol` also writes a pinned `.promptbeacon/protocol.json`; `--dry-run` previews;
+  `--format json` returns the plan.
+- **Cost cap: `--max-cost USD`** on `scan`, `compare`, `sources`, `dashboard`, `badge`
+  and `card` (Python `Beacon.with_max_cost()`, Action input `max-cost`, MCP argument
+  `max_cost`). The scan is priced first from LiteLLM's price map and refuses to start
+  above the cap, with the estimate and how to lower it; during the scan no new request
+  starts once the spend plus the requests in flight reaches the cap, and the result is
+  marked partial (`report.partial`, `report.budget`) in every output, the CI summary,
+  the new `partial` Action output, the badge and the card. Models with no known price
+  (for example local Ollama) count as $0 and are named. `scan --estimate` prints the
+  estimate without sending anything; `Beacon.estimate_cost()` returns it; `ci
+  --max-cost` gates on a report's cost.
+- **Rank badge:** `badge --metric rank` ("AI rank: #2 of 9 · python http clients", ties
+  say "tied"), with its shields.io endpoint JSON, from a scan with a category and at
+  least two competitors. Demo ranks are grey and say "demo". Action input
+  `rank-badge-path`; the MCP `share_assets` tool writes `rank.svg` and `rank.json` when it
+  can.
+- **Score trend on share cards:** with three or more real scans measured the same way,
+  SVG and PNG cards show a score sparkline. The scores come from the local history or,
+  in CI, from a trend file (`card --trend .promptbeacon/trend.json`, Action input
+  `trend-path`). Demo data never gets a trend.
+- **crates.io and Hugging Face sources:** `--crate serde` and `--hf owner/name` (also
+  `datasets/owner/name` and `spaces/owner/name`) on `scan`, `badge` and `card`, `crates:`
+  and `hf:` in `Beacon.from_project()` and the MCP tools. Only the public crates.io and
+  Hugging Face Hub APIs are read. A model's `pipeline_tag` or a dataset's
+  `task_categories` is used as the category. A keyless `--demo` run carries on offline
+  with the project name.
+- **GitHub Action:** `protocol` input (a pinned protocol file; `brand` is then
+  optional), and `max-cost`, `rank-badge-path` and `trend-path` inputs.
+- `promptbeacon.analysis.statistics.proportion_interval()`: a Wilson score interval for
+  rates such as "mentioned in 12 of 90 answers".
+- **AI Recommendation Index (not launched):** a generator in the repository's `index/`
+  folder with 30 pinned category protocols, mention-rate ranking with confidence
+  intervals, a static site with methodology and rank badges, a labelled demo build with
+  placeholder names, and a monthly workflow that is disabled until the maintainer enables
+  it. No rankings have been published. Docs page:
+  [AI Recommendation Index](https://yotambraun.github.io/promptbeacon/recommendation-index/).
 - **Model choice per provider.** `Beacon.with_models({"anthropic": "claude-sonnet-5-5"})`
   (or `with_models(openai="gpt-6-sol")`), the repeatable CLI option
   `--model provider=model_id` / `-m` (on `scan`, `compare`, `sources`, `dashboard`,
@@ -52,6 +101,14 @@ faster start, and fixes for Python 3.12+.
   15.x and `duckdb` up to 2.x are allowed. The `cli` extra is empty (its packages are
   core dependencies) and kept for compatibility.
 - The docs no longer publish per-model price tables; cost estimates come from LiteLLM.
+- `promptbeacon --help` leads with the developer use case and groups commands into
+  "Start here", "Analyse", "Share and track" and "Integrations".
+- Project categories read better: "higher level HTTP client library" becomes "http
+  client", and "serialization/deserialization framework" becomes "serialization
+  framework".
+- History files record each scan's measurement tier and categories (older files gain
+  the columns automatically; their rows are left out of card trends).
+- New dependency on Python 3.10 only: `tomli` (for `init`; Python 3.11+ uses `tomllib`).
 
 ### Fixed
 - **Scans failed under `-W error` / `filterwarnings = error` on Python 3.12+.**
@@ -67,6 +124,9 @@ faster start, and fixes for Python 3.12+.
   when the virtualenv lived inside the project.
 - Perplexity grounded results also read cited URLs from `search_results` when a response
   has no `citations` list.
+- Smart-extraction calls (`--smart`) are now included in a scan's cost.
+- LiteLLM no longer prints its provider list to stdout when pricing an unknown model, so
+  `-f json` output stays valid.
 
 ### Internal
 - CI tests Python 3.10-3.14 with the matrix interpreter (the committed `.python-version`
