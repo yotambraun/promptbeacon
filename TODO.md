@@ -82,12 +82,22 @@
 - [x] Open-source project scans (`--repo`, `--pypi`, `--npm`)
 - [x] MCP server and Claude Code plugin
 
+## Completed in v1.4.0
+
+- [x] Model choice per provider (`with_models`, `--model`, `PROMPTBEACON_<PROVIDER>_MODEL`,
+      Action `models` input, MCP `models` argument, protocol `models`)
+- [x] Local and other LiteLLM models (Ollama, OpenRouter, ...) through the `litellm` slot
+- [x] Current default models from a single `DEFAULT_MODELS` table
+- [x] `GEMINI_API_KEY` support
+- [x] Fast import (LiteLLM loaded only for live requests)
+- [x] Python 3.14; warnings-as-errors test suite
+
 ---
 
 ## High Priority (next)
 
-### Continuous monitoring (the big remaining gap)
-- [ ] Scheduled / repeatable scans (cron-like)
+### Continuous monitoring
+- [x] Scheduled scans (weekly GitHub workflow template that refreshes the badge)
 - [ ] Webhook + Slack notifications on visibility / Share of Voice drop
 - [ ] Email alerts for significant changes
 
@@ -102,8 +112,10 @@
 - [ ] A/B testing for prompts
 
 ### Provider Improvements
+- [ ] Perplexity: move grounded scans to the Agent API (Sonar chat completions are
+      served through it since September 2026)
 - [ ] Provider-specific rate limiting
-- [ ] Automatic retry with exponential backoff
+- [x] Retries (LiteLLM `num_retries`)
 - [x] Cost tracking (grounded and base scans)
 - [ ] Cost budgeting (stop a scan at a spend limit)
 
@@ -147,7 +159,7 @@
 ### Additional Providers
 - [x] Cohere support
 - [x] Mistral support
-- [ ] Local models (Ollama)
+- [x] Local models (Ollama) and any LiteLLM model (1.4.0)
 - [ ] Custom provider plugins
 
 ---
@@ -155,7 +167,7 @@
 ## Technical Debt
 
 - [ ] Increase test coverage to 90%+
-- [ ] Add integration tests with mock LLM responses
+- [x] Integration tests with mock LLM responses (`tests/integration`)
 - [ ] Performance benchmarking
 - [ ] Memory optimization for large scans
 - [ ] Better error messages and debugging
@@ -163,6 +175,7 @@
 ## Documentation
 
 - [x] API documentation site
+- [ ] Plan the docs move off MkDocs Material (end of life announced for May 2027)
 - [ ] Tutorial videos
 - [ ] Industry-specific guides (e.g., "PromptBeacon for E-commerce")
 - [ ] Best practices guide

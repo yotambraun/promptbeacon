@@ -5,7 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - Unreleased
+## [1.4.0] - Unreleased
+
+Choose the model for each provider, including local models, with current defaults, a
+faster start, and fixes for Python 3.12+.
+
+### Added
+- **Model choice per provider.** `Beacon.with_models({"anthropic": "claude-sonnet-5-5"})`
+  (or `with_models(openai="gpt-6-sol")`), the repeatable CLI option
+  `--model provider=model_id` / `-m` (on `scan`, `compare`, `sources`, `dashboard`,
+  `badge`, `card`), the environment variables `PROMPTBEACON_<PROVIDER>_MODEL`, a `models`
+  input on the GitHub Action, a `models` field in scan protocols and in
+  `@pytest.mark.visibility`, and a `models` argument on the MCP `scan`, `project_scan`,
+  `sources` and `share_assets` tools. When no providers are given, the providers you
+  name models for are the ones queried.
+- **Local and other LiteLLM models.** A new `litellm` provider slot passes any LiteLLM
+  model string through, so `--model litellm=ollama/llama3.2` scans a local Ollama model
+  with no API key, and OpenRouter, Azure or a vLLM server work the same way.
+- `promptbeacon providers` (and the MCP `providers` tool) show the model each provider
+  will use.
+- New docs page: [Models & local LLMs](https://yotambraun.github.io/promptbeacon/models/).
+- Python 3.14 support.
+
+### Changed
+- **Default models updated** (verified 2026-11-01 against the providers' model lists and
+  LiteLLM's price map): OpenAI `gpt-6-luna` (was `gpt-4o-mini`), Anthropic
+  `claude-haiku-5-5` (was `claude-haiku-4-5`), Google `gemini-3.5-flash-lite` (was
+  `gemini-2.0-flash`, which Google has shut down), Cohere `command-r7b-12-2024` (was the
+  deprecated `command-r`). Mistral (`mistral-small-latest`) and Perplexity (`sonar`) are
+  unchanged. Scores from the new defaults are not directly comparable with earlier
+  scans; pin `--model` to keep a trend on one model.
+- All defaults now come from one table, `promptbeacon.core.config.DEFAULT_MODELS`, used
+  by the live, demo and web-grounded clients.
+- `temperature` is never sent to Claude models, which reject non-default values.
+- **Faster start.** LiteLLM is imported on the first live request instead of at import
+  time, and uses its bundled price map unless `LITELLM_LOCAL_MODEL_COST_MAP` is set (no
+  network fetch or warning at startup). Measured on Python 3.12 with an installed wheel:
+  `import promptbeacon` went from about 2.0 s to 0.2 s, and `promptbeacon demo` from
+  about 2.1 s to 0.25 s.
+- A scan in which no provider query succeeded now raises `ScanError` naming the first
+  error and its type (for example `AuthenticationError: ...`), instead of returning a
+  zero score built from failed answers. Provider errors on individual answers are
+  recorded as `ExceptionType: message`.
+- Dependencies: `litellm>=1.106.0` (the first release that knows the new default
+  models; this also excludes the compromised 1.82.7 and 1.82.8 releases); `rich` up to
+  15.x and `duckdb` up to 2.x are allowed. The `cli` extra is empty (its packages are
+  core dependencies) and kept for compatibility.
+- The docs no longer publish per-model price tables; cost estimates come from LiteLLM.
+
+### Fixed
+- **Scans failed under `-W error` / `filterwarnings = error` on Python 3.12+.**
+  `datetime.utcnow()` raised a `DeprecationWarning` inside every provider query, which
+  was swallowed and reported as "All provider queries failed. Check API keys and
+  network." Timestamps now come from `datetime.now(timezone.utc)` (stored as naive UTC,
+  as before).
+- Errors in PromptBeacon's own code are no longer reported as provider failures; they
+  propagate with their original type.
+- `GEMINI_API_KEY` is accepted for Google (`GOOGLE_API_KEY` still wins when both are set).
+- Perplexity grounded results also read cited URLs from `search_results` when a response
+  has no `citations` list.
+
+### Internal
+- CI tests Python 3.10-3.14 with the matrix interpreter (the committed `.python-version`
+  previously made every job run 3.11), runs pytest with warnings as errors, type-checks
+  with mypy, and builds the docs with `--strict`. Actions and pre-commit hooks updated to
+  current versions.
+- Tests never see real provider keys, even when a local `.env` defines them.
+- README and docs images are regenerated from real demo runs by
+  `scripts/render_assets.py`.
+
+## [1.3.0] - 2026-10-04
 
 A release about the first result being right, and about results you can share.
 
@@ -76,7 +145,7 @@ A release about the first result being right, and about results you can share.
   prompts instead of the generic set (your own `with_prompts()` templates are never
   replaced). Scores from such scans are not comparable with earlier category-less runs.
 
-## [1.2.0] - 2026-06-20
+## [1.2.0] - 2026-06-19
 
 ### Added
 - **Funnel LLM mode**: the glass-box funnel can now use an **LLM planner + LLM-judge
@@ -243,7 +312,7 @@ real monitoring pipeline needs.
 - `ScoringWeights` class now has a detailed docstring explaining the rationale for each default weight
 - Neutral sentiment scoring documented: counts as 50% positive because being mentioned neutrally is still better than not being mentioned
 
-## [0.1.1] - unreleased
+## [0.1.1] - Never released
 
 Never published to PyPI. These changes were made after 0.1.0 and first shipped in
 **0.2.0** (2026-02-06); the entry is kept for history.
