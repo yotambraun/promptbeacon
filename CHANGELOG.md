@@ -10,9 +10,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Set a repository up in one command, cap what a scan may spend, share a rank badge and a
 score trend, scan crates and Hugging Face models; choose the model for each provider,
 including local models, with current defaults, a faster start, and fixes for Python
-3.12+. The AI Recommendation Index is built but not yet run.
+3.12+. Use all of it from seven AI assistants through the MCP server. The AI
+Recommendation Index is built but not yet run.
 
 ### Added
+- **Use from your AI assistant.** A new setup page,
+  [Use from AI assistants](https://yotambraun.github.io/promptbeacon/mcp/), with a
+  tested snippet for Claude Code (plugin, `claude mcp add`, `.mcp.json`), Claude
+  Desktop, Cursor (install link), VS Code with GitHub Copilot (install links, `code
+  --add-mcp`, `.vscode/mcp.json` with a key prompt), Windsurf / Devin Desktop, Codex CLI
+  (`config.toml`) and Gemini CLI (`settings.json`, and the Antigravity CLI), and how to
+  pass keys and models in each. A test parses every snippet and decodes the install
+  links.
+- **MCP tools: `estimate`, `compare`, `recommendations`, `history`, `funnel` and
+  `init_preview`,** thin wrappers over existing code: `estimate` prices a scan without
+  sending anything; `compare` puts each brand side by side; `recommendations` returns
+  the rule-based recommendations and explanations (or LLM-written ones with `smart:
+  true`, one more request); `history` returns saved scans, the trend, the change since
+  the previous scan and the existing significance check; `funnel` uses Tavily with
+  `TAVILY_API_KEY` and the offline mock backend without it; `init_preview` shows what
+  `promptbeacon init` would write, and the command to apply it, without writing
+  anything.
+- **Measure once, analyse for free:** `scan` and `project_scan` take `save_report`, and
+  `compare`, `recommendations` and `share_assets` take `report_path` to read that report
+  instead of scanning.
+- **`ai-visibility-review` skill** in the plugin: a full review that checks the keys,
+  prices the scan and asks before spending, scans once, then compares, checks sources,
+  history and significance, and ends with evidence and next steps. It is a plain
+  `SKILL.md`, usable by other agents.
+- New docs page: [Python API](https://yotambraun.github.io/promptbeacon/python/), whose
+  examples run offline and are tested.
 - **`promptbeacon init`.** Reads `pyproject.toml`, `package.json` or `Cargo.toml`, the
   README and the git remote (no network), proposes a category with its basis (confirm or
   change it in a terminal; `--category` / `--competitor` skip the questions), and writes
@@ -80,6 +107,14 @@ including local models, with current defaults, a faster start, and fixes for Pyt
 - Python 3.14 support.
 
 ### Changed
+- MCP tools describe every argument in their schema, say what they cost, and carry
+  read-only and open-world hints. Real scans made by the MCP `scan` and `project_scan`
+  tools are saved to the local history, as CLI scans are (`save_history: false` skips
+  it).
+- The docs lead with three entry points (terminal, AI assistant, CI), and the
+  navigation runs from getting started through assistants, CI, the Python API, models,
+  sharing and the Index to the reference. "Claude Code & MCP" is now "Use from AI
+  assistants".
 - **Default models updated** (verified 2026-11-01 against the providers' model lists and
   LiteLLM's price map): OpenAI `gpt-6-luna` (was `gpt-4o-mini`), Anthropic
   `claude-haiku-5-5` (was `claude-haiku-4-5`), Google `gemini-3.5-flash-lite` (was
