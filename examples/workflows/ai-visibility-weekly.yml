@@ -26,7 +26,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Measure AI visibility
         id: beacon
@@ -37,7 +37,10 @@ jobs:
           competitors: |
             Competitor One
             Competitor Two
-          providers: "openai"
+          # Pin the model so the tracked number does not move when
+          # PromptBeacon's defaults change (one provider=model_id per line).
+          models: |
+            openai=gpt-6-luna
           badge-path: .promptbeacon/badge.svg
           badge-endpoint-path: .promptbeacon/badge.json
           card-path: .promptbeacon/card.svg

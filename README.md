@@ -6,65 +6,72 @@
 </p>
 
 <p align="center">
-  <b>Does AI recommend your product?</b><br>
-  Measure, track and CI-test how often ChatGPT, Claude, Gemini and other assistants
-  mention you, for brands and open-source projects alike. <code>pip install</code>, no keys needed to start.
+  <b>Does AI recommend your library or dev product?</b><br>
+  PromptBeacon asks ChatGPT, Claude, Gemini or a local model the questions your users ask,
+  and turns the answers into a number you can gate in CI and show as a README badge.
 </p>
 
 <p align="center">
-  <a href="https://yotambraun.github.io/promptbeacon/"><img src="https://img.shields.io/badge/docs-online-6366f1?logo=readthedocs&logoColor=white" alt="Documentation"></a>
   <a href="https://pypi.org/project/promptbeacon/"><img src="https://badge.fury.io/py/promptbeacon.svg" alt="PyPI version"></a>
-  <a href="https://pepy.tech/project/promptbeacon"><img src="https://static.pepy.tech/badge/promptbeacon" alt="Downloads"></a>
   <a href="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml"><img src="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python 3.10+"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10%E2%80%933.14-blue.svg" alt="Python 3.10-3.14"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
-  <a href="https://codecov.io/gh/yotambraun/promptbeacon"><img src="https://codecov.io/gh/yotambraun/promptbeacon/branch/main/graph/badge.svg" alt="codecov"></a>
+  <a href="https://yotambraun.github.io/promptbeacon/"><img src="https://img.shields.io/badge/docs-online-6366f1?logo=readthedocs&logoColor=white" alt="Documentation"></a>
 </p>
 
 <p align="center">
-  <b><a href="https://yotambraun.github.io/promptbeacon/">Documentation</a></b>
-  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/quickstart/">Quickstart</a>
-  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/projects/">Open-source projects</a>
-  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/share/">Badges &amp; cards</a>
-  &nbsp;·&nbsp; <a href="https://yotambraun.github.io/promptbeacon/mcp/">Claude Code &amp; MCP</a>
+  Use it from:
+  <a href="#try-it-in-10-seconds-no-api-key">CLI</a> ·
+  <a href="#in-python">Python</a> ·
+  <a href="#in-ci-pytest-and-the-github-action">pytest</a> ·
+  <a href="#in-ci-pytest-and-the-github-action">GitHub Action</a> ·
+  <a href="#from-claude-code-or-any-mcp-client">MCP / Claude Code</a>
 </p>
 
 ---
-
-People used to search "best running shoes" or "best Python HTTP client" and click a link.
-Now they ask an assistant and get one answer. If it doesn't mention you, you're not in the
-running. **PromptBeacon measures whether it does**, with the repeat-and-measure rigor that
-probabilistic answers need, from your terminal, your Python code, or your CI.
 
 ## Try it in 10 seconds, no API key
 
 ```bash
 pip install promptbeacon
-promptbeacon demo "Nike" --category "running shoes" -c Adidas -c "New Balance" -c Hoka
+promptbeacon demo httpx --category "python http client" -c requests -c aiohttp
 ```
 
-<p align="center">
-  <img src="assets/cli-demo.svg" alt="promptbeacon demo output: visibility score, share of voice and a brand table for running shoes" width="760">
-</p>
+Real output (excerpt; the full report adds a score breakdown, cited domains and a
+competitor table):
 
-The demo runs against an offline mock built from your inputs, so you see exactly what a
-real scan produces without spending anything. Results are always labelled
-`measurement: demo`. Add an API key and drop `--demo` for a real measurement.
+```text
+Running in DEMO mode — canned data, no API calls.
 
-Measuring an open-source project? Point it at the package or repository and PromptBeacon
-reads the public metadata to pick the category and competitors:
+╭────────────────────────── Visibility Score: httpx ───────────────────────────╮
+│ 79.0 / 100                                                                   │
+╰─────────────────────── Generated: 2026-11-01 20:05:52 ───────────────────────╯
+measurement: demo — Demo data — canned responses, not a real measurement.
+prompts: 10 · category: python http client
+...
 
-```bash
-promptbeacon scan --pypi httpx --demo          # or --repo encode/httpx, --npm express
+Share of Voice: 33% (rank 2, 60% of prompts)
+                   Share of Voice                    
+┏━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Brand    ┃ Appears In ┃ Presence ┃ Share of Voice ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ requests │ 8/10       │ 80%      │ 44%            │
+│ httpx    │ 6/10       │ 60%      │ 33%            │
+│ aiohttp  │ 4/10       │ 40%      │ 22%            │
+└──────────┴────────────┴──────────┴────────────────┘
 ```
 
-## Share the result
+`demo` runs the whole pipeline on canned answers built from your inputs, costs nothing,
+and labels every result `measurement: demo`. For a real measurement, set an API key and
+run `promptbeacon scan` with the same arguments.
 
-One scan feeds a README badge and a 1200×630 card in light and dark (SVG, plus PNG for
-networks that don't accept SVG):
+## Put the result in your README
+
+One scan produces a badge and a 1200×630 share card (SVG in light and dark, PNG for
+networks that need it):
 
 ```bash
-promptbeacon scan "Nike" -t "running shoes" -c Adidas -f json > report.json
+promptbeacon scan httpx -t "python http client" -c requests -c aiohttp -f json > report.json
 promptbeacon badge --report report.json --endpoint .promptbeacon/badge.json
 promptbeacon card  --report report.json --theme both --png card.png
 ```
@@ -76,13 +83,63 @@ promptbeacon card  --report report.json --theme both --png card.png
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/card-dark.svg">
-    <img src="assets/card-light.svg" alt="Card: which running shoes AI recommends, with mentions per brand (demo data)" width="640">
+    <img src="assets/card-light.svg" alt="Share card: which python http client AI recommends, with mentions per project (demo data)" width="640">
   </picture>
 </p>
 
-Both images above are real `promptbeacon` output from demo data, and say so. A
-[weekly workflow template](examples/workflows/ai-visibility-weekly.yml) keeps a badge
-current; see [Badges & share cards](https://yotambraun.github.io/promptbeacon/share/).
+Both images are unedited output of the demo command above, and say so. The
+[weekly workflow template](examples/workflows/ai-visibility-weekly.yml) re-scans and
+commits a fresh badge; see [Badges & share cards](https://yotambraun.github.io/promptbeacon/share/).
+
+> **Which tool?**
+> **PromptBeacon** is for developers and open-source maintainers: does AI recommend your
+> library or dev product — a number in CI and a README badge.
+> **[Saylent](https://github.com/yotambraun/saylent)** (npm `saylent`) is for brand and
+> website teams: an audit of what AI assistants say about your site, with the answers and
+> cited pages as receipts, plus fixes for your site.
+
+## Real scans: keys and models
+
+```bash
+export OPENAI_API_KEY="sk-..."      # or ANTHROPIC_API_KEY, GEMINI_API_KEY, ...
+promptbeacon providers              # which keys are set, and which model each provider uses
+promptbeacon scan httpx -t "python http client" -c requests -c aiohttp -p openai -p anthropic
+```
+
+Keys are read from the environment or a `.env` file. Each provider has a low-cost default
+model; choose another per provider with `--model provider=model_id` (repeatable), with
+`PROMPTBEACON_<PROVIDER>_MODEL`, or with `Beacon.with_models()` in Python:
+
+```bash
+promptbeacon scan httpx -t "python http client" -m anthropic=claude-sonnet-5-5 -m openai=gpt-6-sol
+```
+
+| Provider (`-p`) | Default model | API key variable |
+|-----------------|---------------|------------------|
+| `openai` | `gpt-6-luna` | `OPENAI_API_KEY` |
+| `anthropic` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
+| `google` | `gemini-3.5-flash-lite` | `GOOGLE_API_KEY` or `GEMINI_API_KEY` |
+| `mistral` | `mistral-small-latest` | `MISTRAL_API_KEY` |
+| `cohere` | `command-r7b-12-2024` | `COHERE_API_KEY` |
+| `perplexity` | `sonar` | `PERPLEXITY_API_KEY` |
+| `litellm` | none: any [LiteLLM model](https://docs.litellm.ai/docs/providers) you set | read by LiteLLM |
+
+Providers you name with `--model` are the ones queried when you don't pass `-p`. Defaults
+change between releases, so pin `--model` (or a [protocol](https://yotambraun.github.io/promptbeacon/advanced/)) when
+you track a trend. Costs are estimated from LiteLLM's price map.
+
+### Local models (Ollama)
+
+The `litellm` slot takes any LiteLLM model string, so a local model needs no API key:
+
+```bash
+ollama pull llama3.2
+promptbeacon scan httpx -t "python http client" -c requests --model litellm=ollama/llama3.2
+```
+
+OpenRouter, Azure, Bedrock or a vLLM server work the same way, for example
+`--model litellm=openrouter/<model>` with `OPENROUTER_API_KEY` set. See
+[Models & local LLMs](https://yotambraun.github.io/promptbeacon/models/).
 
 ## In Python
 
@@ -90,9 +147,9 @@ current; see [Badges & share cards](https://yotambraun.github.io/promptbeacon/sh
 from promptbeacon import Beacon
 
 report = (
-    Beacon("Nike")
-    .with_category("running shoes")
-    .with_competitors("Adidas", "Puma")
+    Beacon("httpx")
+    .with_category("python http client")
+    .with_competitors("requests", "aiohttp")
     .demo()  # keyless; remove for a real scan
     .scan()
 )
@@ -102,106 +159,27 @@ print(f"Share of voice: {report.share_of_voice.target_share:.0%}")
 print(f"Rank:           {report.share_of_voice.target_rank}")
 ```
 
-The category is what makes a scan meaningful: prompts become real buyer questions such as
-"What are the best running shoes?". Without one, PromptBeacon asks "alternatives to
+For a real scan, drop `.demo()` and optionally choose models:
+`.with_models({"anthropic": "claude-sonnet-5-5"})` or `.with_models(litellm="ollama/llama3.2")`.
+
+The category is what makes a scan meaningful: prompts become real questions such as
+"Which python http client would you recommend?". Without one, PromptBeacon asks "alternatives to
 &lt;competitor&gt;" questions when you give competitors, and otherwise warns you.
-`.with_category_inference()` (CLI: `--infer-category`) can name the category with one
-model call.
+`.with_category_inference()` (CLI: `--infer-category`) can name it with one model call.
 
-## Why PromptBeacon
-
-The AI-visibility (GEO / AEO) space is mostly **$29–490/month dashboards** built for
-marketers to look at. PromptBeacon is an open-source measurement engine for developers to
-build on: script it, schedule it, embed it, or gate a deploy on it.
-
-|                          | SaaS dashboards            | **PromptBeacon**                          |
-| ------------------------ | -------------------------- | ----------------------------------------- |
-| Price                    | $29–490+/mo, per seat      | **Free, Apache-2.0**                      |
-| Where your data lives    | Their cloud                | **Your machine** (local-first)            |
-| Try without paying       | Trial / credit card        | **`pip install` → keyless demo**          |
-| Programmable             | Limited API                | **A Python library, CLI and MCP server**  |
-| Reproducibility          | One number                 | **Confidence intervals + stability**      |
-| CI / regression testing  | Rare                       | **pytest plugin + GitHub Action**         |
-| Providers in one run     | Tier-gated                 | **6, queried concurrently**               |
-| Measures live AI search  | Opaque / varies            | **Web-grounded, with real citations**     |
-| Open-source projects     | Not a focus                | **`--repo` / `--pypi` / `--npm`**         |
-
-### Who it's for
-
-- **Maintainers and developer-tool teams**: "does ChatGPT recommend *my* library?", tracked over time.
-- **Indie devs and technical founders**: your product's AI visibility, answered in code.
-- **GEO/SEO agencies and consultants**: one engine for every client, your own dashboards on top.
-- **AI and eval engineers**: brand visibility as a CI check next to your other evals.
-
-## Measuring it properly
-
-### Share of Voice
-
-Of all the brand presence across your prompts (you plus competitors), what fraction is yours?
-
-```python
-report = (
-    Beacon("Nike")
-    .with_category("running shoes")
-    .with_competitors("Adidas", "Puma")
-    .demo()
-    .scan()
-)
-sov = report.share_of_voice
-print(sov.target_share)  # 0.5  -> 50% share of voice
-print(sov.target_presence_rate)  # 0.9  -> mentioned in 90% of answers
-print(sov.target_rank)  # 1    -> rank by appearances
-```
-
-### Stability: don't trust a single answer
-
-Answers vary from one run to the next. PromptBeacon repeats each prompt N times and tells
-you how much to trust the number: a 0–100 stability score, a confidence interval, and which
-prompts flip-flop.
-
-```python
-report = (
-    Beacon("Nike")
-    .with_category("running shoes")
-    .demo()
-    .with_stability(5)
-    .scan_stability()
-)
-s = report.stability
-print(s.stability_score)  # 67.3 (higher = more trustworthy)
-print(s.score_confidence_interval)  # (67.1, 75.9)
-print(s.flip_flop_count)  # 7 prompts appeared in some runs but not others
-```
-
-### In CI: gate deploys on AI visibility
-
-```python
-Beacon("Nike").with_category("running shoes").scan().assert_visibility(
-    min_score=50, min_share_of_voice=0.3
-)
-```
-
-```python
-# pytest plugin (auto-registers; skips cleanly without keys)
-import pytest
-
-
-@pytest.mark.visibility(
-    brand="Nike", categories=["running shoes"], competitors=["Adidas"], min_score=40
-)
-def test_brand_is_visible(): ...
-```
+## In CI: pytest and the GitHub Action
 
 ```yaml
-# GitHub Action: outputs, a job summary, and an optional sticky PR comment
 - uses: yotambraun/promptbeacon@v1
   id: beacon
   with:
-    brand: "Nike"
-    category: "running shoes"
+    brand: "httpx"
+    category: "python http client"
     competitors: |
-      Adidas
-      Puma
+      requests
+      aiohttp
+    models: |
+      openai=gpt-6-luna
     min-share-of-voice: "0.3"
     comment-on-pr: "true"   # needs permissions: pull-requests: write
   env:
@@ -210,9 +188,45 @@ def test_brand_is_visible(): ...
 ```
 
 The Action exposes `score`, `share-of-voice`, `rank`, `presence`, `stability`, `tier`,
-`passed` and `report-path` outputs, writes a Markdown job summary, and applies the
-thresholds last, so a failing check still reports its numbers. Outside GitHub,
+`passed` and `report-path`, writes a job summary, and applies the thresholds last, so a
+failing check still reports its numbers. Outside GitHub,
 `promptbeacon ci --report report.json --min-score 50` does the same.
+
+```python
+# pytest plugin: auto-registers, and skips cleanly when no key is configured
+import pytest
+
+
+@pytest.mark.visibility(
+    brand="httpx",
+    categories=["python http client"],
+    competitors=["requests"],
+    models={"openai": "gpt-6-luna"},
+    min_score=40,
+)
+def test_httpx_is_visible(): ...
+```
+
+Or in plain code: `report.assert_visibility(min_score=50, min_share_of_voice=0.3)`.
+
+## From Claude Code or any MCP client
+
+```bash
+claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]' promptbeacon mcp
+```
+
+Or install the plugin, which adds the server and three skills (`ai-visibility`,
+`share-card`, `visibility-ci`):
+
+```text
+/plugin marketplace add yotambraun/promptbeacon
+/plugin install promptbeacon@promptbeacon
+```
+
+Then ask: *"Does AI recommend this project? Compare it with its main alternatives."* The
+tools (`scan`, `project_scan`, `sources`, `share_assets`, `providers`) return JSON and
+accept an optional `models` argument. With no key configured they use the demo and say
+so. See [Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/).
 
 ## Open-source projects
 
@@ -222,243 +236,84 @@ promptbeacon scan --pypi httpx               # PyPI
 promptbeacon scan --npm express              # npm
 ```
 
-PromptBeacon reads the project's public description, topics/keywords and README, guesses a
-buyer-style category ("python http client") and the projects the README compares itself
-to, prints both with where they came from, and runs a scan with developer-oriented prompts.
-`--category` and `--competitor` always win. Set `GITHUB_TOKEN` to lift GitHub's 60
-requests/hour limit. In Python: `Beacon.from_project("pypi:httpx")`.
+PromptBeacon reads the project's public description, topics and README, guesses a category
+("python http client") and the projects the README compares itself to, prints both with
+where they came from, and scans with developer-oriented prompts. `--category` and
+`--competitor` always win. In Python: `Beacon.from_project("pypi:httpx")`.
 
-## Use it from Claude Code or any MCP client
+## Measuring it properly
 
-```bash
-pip install 'promptbeacon[mcp]'
-claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]' promptbeacon mcp
-```
-
-Or install the plugin, which adds the server plus three skills (`ai-visibility`,
-`share-card`, `visibility-ci`):
-
-```text
-/plugin marketplace add yotambraun/promptbeacon
-/plugin install promptbeacon@promptbeacon
-```
-
-Then ask: *"Does AI recommend this project? Compare it with its main alternatives."* The
-server's tools (`scan`, `project_scan`, `sources`, `share_assets`, `providers`) return
-plain JSON. With no provider key configured they use the demo and say so. See
-[Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/).
-
-## Measure what users actually see, not just model memory
-
-A plain LLM call reflects the model's *training memory*. Real users often get
-**web-grounded** answers: the engine searches the live web and cites sources.
-
-```bash
-promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --grounded -p openai -p anthropic
-```
-
-`--grounded` uses each provider's **native web search** through its official SDK
-(OpenAI, Anthropic, Gemini and Perplexity) and captures the real citations; Mistral and
-Cohere fall back to base completion. Every report carries an honest `measurement_tier`
-(`demo` / `base_model` / `api_grounded`), and grounded scans include a cost estimate from
-token usage and search fees, marked partial when a fee can't be priced. Install with
-`pip install 'promptbeacon[grounded]'`.
-
-### Which sites feed your visibility
-
-```bash
-promptbeacon sources "Nike" -t "running shoes" -c "Adidas" --demo
-```
-
-Ranks the domains AI answers cite for your category and flags which cite *you*: the
-practical lever ("get mentioned on these sites").
-
-### Where you drop out of AI search
-
-Agentic search fans a question into sub-queries, retrieves, reranks, then cites. The
-funnel command runs an observable model of that pipeline and shows **where your brand
-drops out**:
-
-```bash
-promptbeacon funnel "Nike" --category "running shoes" --demo
-```
-
-```text
-Coverage (brand retrieved):   88%
-Rerank survival:              86%
-Retrieval → citation:         29%     ← retrieved often, cited rarely
-Dominant drop-off stage:      citation
-```
-
-For live web search, set `TAVILY_API_KEY` ([tavily.com](https://tavily.com)) and drop
-`--demo`; add `--smart` for an LLM planner and LLM-judge reranker.
-
-## Shareable dashboard
-
-```bash
-promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --demo
-```
-
-<p align="center">
-  <img src="assets/dashboard-preview.svg" alt="PromptBeacon HTML dashboard" width="720">
-</p>
-
-A single self-contained HTML file (share of voice, score breakdown, sentiment, stability)
-you can hand to a stakeholder. ([sample](assets/sample-dashboard.html))
-
-## Real scans (with keys)
-
-```bash
-export OPENAI_API_KEY="sk-..."          # https://platform.openai.com/api-keys
-export ANTHROPIC_API_KEY="sk-ant-..."   # https://console.anthropic.com/settings/keys
-promptbeacon providers                   # check what's configured
-```
-
-Keys can live in your environment or a `.env` file in the project (auto-loaded).
-`TAVILY_API_KEY` powers `promptbeacon funnel`'s live web search.
-
-```python
-from promptbeacon import Beacon, Provider
-
-report = (
-    Beacon("Nike")
-    .with_category("running shoes")
-    .with_aliases("Nike Inc", "Nike Corporation")  # count all name variants
-    .with_competitors("Adidas", "Puma", "New Balance")
-    .with_providers(Provider.OPENAI, Provider.ANTHROPIC)  # queried concurrently
-    .with_cache()  # skip duplicate queries
-    .with_storage("~/.promptbeacon/nike.db")  # track history over time
-    .scan()
-)
-
-print(
-    f"Score: {report.visibility_score}/100  |  SoV: {report.share_of_voice.target_share:.0%}"
-)
-for name, score in report.competitor_comparison.items():
-    print(f"  {name}: {score.visibility_score:.1f}")
-```
-
-The CLI saves every real scan to `~/.promptbeacon/data.db` (or `$PROMPTBEACON_HOME`), so
-`promptbeacon history "Nike"` shows the trend; pass `--no-save` to skip.
-
-### Smart mode: LLM extraction and recommendations
-
-Regex extraction is fast and offline, but heuristic. `--smart` (or
-`.with_smart_extraction()`) uses a cheap model with structured output to read each
-response, and `.with_smart_recommendations()` turns the scan's own data into specific
-guidance. Opt-in (one extra LLM call each); falls back to the rule-based path on any error.
-
-## BeaconGuard: real-time brand safety
-
-Shipping a customer-facing chatbot? `BeaconGuard` flags when an LLM output recommends a
-competitor or criticises your brand, locally and without API calls.
-
-```python
-from promptbeacon import BeaconGuard
-
-guard = BeaconGuard("Nike", competitors=["Adidas", "Puma"])
-result = guard.analyze(
-    "Avoid Nike. I would recommend Adidas instead, Nike quality is poor."
-)
-print(result.risk_level)  # "high"
-```
-
-Works as middleware in any pipeline, or with LangChain (`pip install 'promptbeacon[langchain]'`).
-See [Advanced Usage](docs/advanced.md#real-time-brand-safety).
+- **Share of voice**: of all mentions of you and your competitors, how many are yours, and
+  your rank.
+- **Stability**: answers vary between runs. `--stability 5` repeats each prompt and
+  reports a 0–100 stability score, a confidence interval and the prompts that flip-flop.
+- **Web-grounded answers**: a plain model call reflects training memory. `--grounded`
+  uses each provider's own web search (OpenAI, Anthropic, Gemini, Perplexity) and records
+  the pages it cites (`pip install 'promptbeacon[grounded]'`).
+- **Sources**: `promptbeacon sources` ranks the domains AI answers cite for your category
+  and flags which ones cite you.
+- **Funnel**: `promptbeacon funnel` models agentic search (fan-out, retrieve, rerank,
+  cite) and shows the stage where you drop out.
+- **Honest labels**: every report says how it was measured (`demo`, `base_model` or
+  `api_grounded`), which models answered, and how complete its cost estimate is.
 
 ## CLI
 
 ```bash
-promptbeacon demo "Nike" -t "running shoes"                # keyless, instant
-promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -p openai -p anthropic
-promptbeacon scan --repo encode/httpx                      # an open-source project
-promptbeacon scan "Nike" -t "running shoes" --grounded     # web-grounded scan
-promptbeacon scan "Nike" -t "running shoes" --stability 5  # stability score
-promptbeacon scan "Nike" -t "running shoes" --assert-min-score 50   # CI gate
-promptbeacon scan --protocol nike.json                     # pinned, reproducible run
-promptbeacon badge "Nike" -t "running shoes" --demo        # README badge
-promptbeacon card "Nike" -t "running shoes" --demo --png card.png   # share card
-promptbeacon ci --report report.json --min-sov 0.3         # summary + gate for any CI
-promptbeacon sources "Nike" -t "running shoes" --demo      # which domains AI cites
-promptbeacon funnel "Nike" -t "running shoes" --demo       # where you drop out
-promptbeacon dashboard "Nike" -t "running shoes" --demo    # shareable HTML
-promptbeacon compare "Nike" -t "running shoes" --against "Adidas"
-promptbeacon history "Nike" --days 30
-promptbeacon providers
-promptbeacon mcp                                           # MCP server (stdio)
+promptbeacon demo httpx -t "python http client"              # keyless, instant
+promptbeacon scan httpx -t "python http client" -c requests -p openai -p anthropic
+promptbeacon scan httpx -t "python http client" -m litellm=ollama/llama3.2   # local model
+promptbeacon scan --repo encode/httpx                        # an open-source project
+promptbeacon scan httpx -t "python http client" --grounded   # web-grounded answers
+promptbeacon scan httpx -t "python http client" --stability 5
+promptbeacon scan httpx -t "python http client" --assert-min-score 50   # CI gate
+promptbeacon scan --protocol protocol.json                   # pinned, reproducible run
+promptbeacon badge httpx -t "python http client" --demo      # README badge
+promptbeacon card httpx -t "python http client" --demo --png card.png
+promptbeacon ci --report report.json --min-sov 0.3           # summary + gate, any CI
+# also: sources, funnel, dashboard, compare, history, providers, mcp
 ```
 
-`--format` accepts `text`, `json`, `markdown`, `csv` and `html`. Machine formats are written
-to stdout as clean documents; progress and notices go to stderr, so
-`promptbeacon scan ... -f json | jq` just works.
+`--format` accepts `text`, `json`, `markdown`, `csv` and `html`. Machine formats go to
+stdout and notices to stderr, so `promptbeacon scan ... -f json | jq` works. Real CLI scans
+are saved to a local DuckDB file (`~/.promptbeacon/data.db`) for `promptbeacon history`;
+nothing leaves your machine except the model requests.
 
-## Features
+Also included: an HTML [dashboard](assets/sample-dashboard.html), smart LLM-based
+extraction (`--smart`), and `BeaconGuard`, which flags chatbot replies that recommend a
+competitor ([Advanced](https://yotambraun.github.io/promptbeacon/advanced/)).
 
-| Feature | Description |
-|---------|-------------|
-| **Keyless demo mode** | `pip install` → realistic scan built from your brand, category and competitors |
-| **Category-aware prompts** | Buyer questions about your category; optional one-call inference |
-| **Open-source projects** | `--repo`, `--pypi`, `--npm`: category and competitors from public metadata |
-| **Share of Voice** | Presence-based SoV vs competitors, per provider and overall, with rank |
-| **Stability scoring** | Repeat-N trust score, confidence intervals, flip-flop detection |
-| **Web-grounded scanning** | `--grounded`: provider web search plus the actual cited sources, with cost estimates |
-| **Source attribution** | Rank the domains AI cites for your category, and which cite you |
-| **Glass-box funnel** | See where your brand drops out of the agentic search funnel |
-| **Measurement tiers** | Honest `demo` / `base_model` / `api_grounded` label on every scan |
-| **Badges & share cards** | SVG badge, shields.io endpoint JSON, 1200×630 cards (SVG/PNG, light/dark) |
-| **CI-native** | `assert_visibility()`, pytest plugin, GitHub Action with outputs and PR comments |
-| **MCP server & plugin** | Use it from Claude Code, Cursor or any MCP client |
-| **Reproducible protocols** | Pin a scan in JSON for comparable runs (`scan --protocol`) |
-| **6 LLM providers** | OpenAI, Anthropic, Google, Mistral, Cohere, Perplexity, queried concurrently |
-| **History** | DuckDB-backed local history; the CLI saves real scans by default |
-| **Export formats** | JSON, CSV, Markdown, HTML (CLI and library), pandas DataFrame (library) |
-| **Smart mode** | LLM extraction and evidence-linked recommendations (opt-in) |
-| **BeaconGuard** | Real-time brand-safety guard for LLM outputs |
-| **Local-first** | Your data stays on your machine; no account, no subscription |
+## Who it's for
 
-## Supported providers
+- **Open-source maintainers and developer-tool teams**: does ChatGPT recommend *your*
+  library, and is that changing?
+- **Indie developers and technical founders**: your product's AI visibility, in code and CI.
+- **AI and eval engineers**: brand visibility as a check next to your other evals.
 
-| Provider | Default model | Env variable |
-|----------|---------------|--------------|
-| OpenAI | gpt-4o-mini | `OPENAI_API_KEY` |
-| Anthropic | claude-haiku-4-5 | `ANTHROPIC_API_KEY` |
-| Google | gemini-2.0-flash | `GOOGLE_API_KEY` |
-| Mistral | mistral-small-latest | `MISTRAL_API_KEY` |
-| Cohere | command-r | `COHERE_API_KEY` |
-| Perplexity | sonar | `PERPLEXITY_API_KEY` |
+Brand, marketing and website teams auditing what assistants say about a site are better
+served by [Saylent](https://github.com/yotambraun/saylent).
 
 ## Documentation
 
-**[Full documentation →](https://yotambraun.github.io/promptbeacon/)**
-
-- [Quickstart](https://yotambraun.github.io/promptbeacon/quickstart/): up and running in five minutes, keyless
-- [Open-source projects](https://yotambraun.github.io/promptbeacon/projects/) · [Badges & share cards](https://yotambraun.github.io/promptbeacon/share/) · [Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/)
-- [CI, pytest and the GitHub Action](https://yotambraun.github.io/promptbeacon/examples/)
-- [API reference](https://yotambraun.github.io/promptbeacon/api-reference/) · [Providers](https://yotambraun.github.io/promptbeacon/providers/) · [Storage](https://yotambraun.github.io/promptbeacon/storage/)
-
-## Development
-
-```bash
-git clone https://github.com/yotambraun/promptbeacon
-cd promptbeacon
-uv sync --all-extras
-
-uv run pytest           # tests
-uv run ruff check .     # lint
-uv run ruff format .    # format
-uv run mypy src         # types
-```
+**[yotambraun.github.io/promptbeacon](https://yotambraun.github.io/promptbeacon/)**:
+[Quickstart](https://yotambraun.github.io/promptbeacon/quickstart/) ·
+[Models & local LLMs](https://yotambraun.github.io/promptbeacon/models/) ·
+[CLI](https://yotambraun.github.io/promptbeacon/cli/) ·
+[Open-source projects](https://yotambraun.github.io/promptbeacon/projects/) ·
+[Badges & cards](https://yotambraun.github.io/promptbeacon/share/) ·
+[CI & examples](https://yotambraun.github.io/promptbeacon/examples/) ·
+[Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/) ·
+[API reference](https://yotambraun.github.io/promptbeacon/api-reference/)
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to get set up, and
-[TODO.md](TODO.md) for ideas.
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup
+(`uv sync --all-extras`), tests, lint and types; [TODO.md](TODO.md) lists ideas. See
+[CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-
-## Acknowledgements
 
 Built with [LiteLLM](https://github.com/BerriAI/litellm), [Pydantic](https://docs.pydantic.dev/),
 [DuckDB](https://duckdb.org/), [Typer](https://typer.tiangolo.com/), [Rich](https://rich.readthedocs.io/)

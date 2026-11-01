@@ -56,7 +56,8 @@ comment up to date, and applies your thresholds last.
 | `category` | | Category the prompts ask about; spaces allowed (`running shoes`) |
 | `categories` | | Several categories, one per line |
 | `competitors` | | Competitors, one per line |
-| `providers` | `openai` | Space-separated providers |
+| `providers` | | Space-separated providers: `openai anthropic google mistral cohere perplexity litellm`. Empty means `openai`, or the providers named in `models` |
+| `models` | | Model per provider as `provider=model_id`, one per line (e.g. `anthropic=claude-sonnet-5-5`). Empty uses each provider's default ([Models & local LLMs](models.md)) |
 | `prompts` | `10` | Prompts per category |
 | `min-score` | `0` | Fail below this visibility score (0 = no gate) |
 | `min-share-of-voice` | `0` | Fail below this share of voice, 0-1 (0 = no gate) |
@@ -69,7 +70,7 @@ comment up to date, and applies your thresholds last.
 | `card-path` | | Write a 1200x630 SVG card here |
 | `comment-on-pr` | `false` | Keep one sticky comment on the pull request |
 | `github-token` | `${{ github.token }}` | Token for the PR comment |
-| `version` | `promptbeacon` | Package spec to install, e.g. `promptbeacon==1.3.0` |
+| `version` | `promptbeacon` | Package spec to install, e.g. `promptbeacon==1.4.0` |
 
 For backward compatibility, a single-line `categories` or `competitors` value is split
 on spaces; use one item per line for multi-word names.

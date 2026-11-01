@@ -14,7 +14,7 @@ or with [uv](https://github.com/astral-sh/uv):
 uv add promptbeacon
 ```
 
-Python 3.10 or newer. Optional extras: `promptbeacon[grounded]` (web-grounded scans),
+Python 3.10 to 3.14. Optional extras: `promptbeacon[grounded]` (web-grounded scans),
 `promptbeacon[share]` (PNG share cards), `promptbeacon[mcp]` (MCP server),
 `promptbeacon[pandas]`, `promptbeacon[langchain]`.
 
@@ -34,6 +34,11 @@ The demo answers are canned but generated from your inputs, so the report has th
 same shape as a real one. It is labelled `measurement: demo` and costs nothing. If you
 leave out `-c`, the demo compares against two clearly named placeholders,
 "Competitor A" and "Competitor B".
+
+??? example "Full output of the demo command for httpx"
+    ![Terminal output of the demo command: score, metrics, share of voice, score breakdown, insights, cited domains and competitor comparison, all labelled as demo data](https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/cli-demo.svg)
+
+    Generated from a real run by `scripts/render_assets.py`.
 
 The same in Python:
 
@@ -78,8 +83,18 @@ export ANTHROPIC_API_KEY="sk-ant-..."   # https://console.anthropic.com/settings
 promptbeacon providers                   # shows which providers are configured
 ```
 
-Google, Mistral, Cohere and Perplexity are also supported; see
-[Providers](providers.md). Empty values count as not configured.
+Google (`GOOGLE_API_KEY` or `GEMINI_API_KEY`), Mistral, Cohere and Perplexity are also
+supported; see [Providers](providers.md). Empty values count as not configured.
+
+Each provider uses a low-cost default model. To choose another, or a local model with
+no key at all, pass `--model`:
+
+```bash
+promptbeacon scan "Nike" -t "running shoes" -m anthropic=claude-sonnet-5-5
+promptbeacon scan "Nike" -t "running shoes" -m litellm=ollama/llama3.2   # local Ollama
+```
+
+See [Models & local LLMs](models.md).
 
 ---
 
@@ -244,6 +259,7 @@ Beacon(brand)
 .with_competitors(*brands)
 .with_aliases(*names)
 .with_providers(*providers)
+.with_models({"anthropic": "claude-sonnet-5-5"})  # or litellm="ollama/llama3.2"
 .with_prompt_count(n)  # any n; extended deterministically past the templates
 .with_industry(name)  # ecommerce, saas, finance, healthcare, travel, food, tech, developer-tools
 .with_grounding()  # web-grounded scan
@@ -257,7 +273,7 @@ report.assert_visibility(min_score=40, min_share_of_voice=0.2)
 
 ```bash
 promptbeacon demo "Brand" -t "category" -c "Rival"
-promptbeacon scan "Brand" -t "category" -c "Rival" [-p openai] [--grounded] [--stability 5]
+promptbeacon scan "Brand" -t "category" -c "Rival" [-p openai] [-m openai=gpt-6-sol] [--grounded] [--stability 5]
 promptbeacon scan --repo owner/name | --pypi pkg | --npm pkg
 promptbeacon badge | card | ci | history | sources | funnel | dashboard | mcp
 ```

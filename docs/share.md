@@ -22,7 +22,7 @@ promptbeacon card --report report.json -o .promptbeacon/card.svg --theme both
 ```
 
 `badge` and `card` can also run the scan themselves, with the same options as `scan`
-(including `--repo`, `--pypi`, `--npm` and `--demo`):
+(including `--repo`, `--pypi`, `--npm`, `--model` and `--demo`):
 
 ```bash
 promptbeacon card "Nike" -t "running shoes" -c "Adidas" -c "Hoka" --demo

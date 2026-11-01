@@ -48,7 +48,8 @@ Or in a client's JSON configuration:
       "args": ["--from", "promptbeacon[mcp]", "promptbeacon", "mcp"],
       "env": {
         "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
-        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY:-}"
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY:-}",
+        "GEMINI_API_KEY": "${GEMINI_API_KEY:-}"
       }
     }
   }
@@ -62,11 +63,16 @@ responses).
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
-| `providers` | none | Which providers and Tavily are configured (`true`/`false`, never the key values) and the default mode |
-| `scan` | `brand`, `category`, `competitors`, `providers`, `prompts`, `demo`, `grounded` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, top recommendations, `measurement_tier` |
-| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`), `category`, `competitors`, `providers`, `prompts`, `demo`, `infer_category` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
-| `sources` | `brand`, `category`, `competitors`, `providers`, `demo`, `grounded` (default `true`) | The domains AI answers cite and whether each cites the brand |
-| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `demo`, `output_dir`, `png` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
+| `providers` | none | Which providers and Tavily are configured (`true`/`false`, never the key values), the model each provider will use, and the default mode |
+| `scan` | `brand`, `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `grounded` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, top recommendations, `measurement_tier` |
+| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
+| `sources` | `brand`, `category`, `competitors`, `providers`, `models`, `demo`, `grounded` (default `true`) | The domains AI answers cite and whether each cites the brand |
+| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
+
+`models` is an object mapping providers to model IDs, for example
+`{"anthropic": "claude-sonnet-5-5"}`, or `{"litellm": "ollama/llama3.2"}` for a local
+Ollama model; when `providers` is not given, the providers named in `models` are queried.
+See [Models & local LLMs](models.md).
 
 A scan without a category returns a `warning` explaining that the prompts were generic.
 
@@ -76,7 +82,8 @@ Provider keys reach the server through its environment: the variables in your sh
 or the `env` block of the client configuration (the plugin maps each supported key
 explicitly). Empty values count as not configured.
 
-- With **no key** configured, tools default to the keyless demo and the result
+- With **no key** configured (and no local model set through `models` or
+  `PROMPTBEACON_LITELLM_MODEL`), tools default to the keyless demo and the result
   includes a `note` that says so. Nothing is billed.
 - With keys, scans are real and billed to those keys; results include an estimated
   cost.

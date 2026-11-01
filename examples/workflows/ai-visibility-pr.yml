@@ -24,6 +24,8 @@ jobs:
           competitors: |
             Competitor One
             Competitor Two
+          models: |
+            openai=gpt-6-luna
           min-share-of-voice: "0.2"
           comment-on-pr: "true"
         env:

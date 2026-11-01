@@ -140,6 +140,42 @@ beacon = (
 
 ---
 
+#### `with_models(models=None, **by_provider) -> Beacon`
+
+Choose the model for each provider. Without it, each provider uses
+`PROMPTBEACON_<PROVIDER>_MODEL` if set, otherwise its default
+([Models & local LLMs](models.md)). Later calls add to or replace earlier entries.
+
+**Parameters:**
+- `models` (Mapping[str | Provider, str], optional): `{provider: model_id}`
+- `**by_provider` (str): the same, as keyword arguments (`openai="gpt-6-sol"`)
+
+**Returns:** Self for chaining
+
+**Raises:** `ValueError` for an unknown provider name or an empty model ID.
+
+If you have not called `with_providers()`, the providers named here are the ones
+queried. The `litellm` key takes any LiteLLM model string, such as a local Ollama model.
+
+**Example:**
+```python
+from promptbeacon import Beacon
+
+beacon = (
+    Beacon("httpx")
+    .with_category("python http client")
+    .with_models({"anthropic": "claude-sonnet-5-5"}, openai="gpt-6-sol")
+)
+
+local = (
+    Beacon("httpx")
+    .with_category("python http client")
+    .with_models(litellm="ollama/llama3.2")
+)
+```
+
+---
+
 #### `with_category(category: str) -> Beacon`
 
 Set the category the prompts ask about, phrased the way a buyer would ("running
@@ -536,7 +572,7 @@ Run a synchronous visibility scan.
 
 **Raises:**
 - `ConfigurationError`: No API keys found or invalid configuration (not raised in demo mode)
-- `ScanError`: All provider queries failed
+- `ScanError`: No provider query succeeded (the message names the first error and its type)
 
 **Example:**
 ```python
@@ -556,7 +592,7 @@ Run an asynchronous visibility scan (recommended for better performance).
 
 **Raises:**
 - `ConfigurationError`: No API keys found or invalid configuration
-- `ScanError`: All provider queries failed
+- `ScanError`: No provider query succeeded (the message names the first error and its type)
 
 **Example:**
 ```python
@@ -583,7 +619,7 @@ Run a synchronous stability scan. Requires `.with_stability(n)` to be called fir
 
 **Raises:**
 - `ConfigurationError`: Storage not configured or no API keys
-- `ScanError`: All provider queries failed
+- `ScanError`: No provider query succeeded (the message names the first error and its type)
 
 **Example:**
 ```python
@@ -934,20 +970,20 @@ Enum of supported LLM providers.
 - `Provider.MISTRAL` - Mistral AI
 - `Provider.COHERE` - Cohere
 - `Provider.PERPLEXITY` - Perplexity AI
+- `Provider.LITELLM` - any LiteLLM model string you set (e.g. `ollama/llama3.2`); it has no
+  default model and is only used when a model is set for it
 
-**Default Models:**
-| Provider | Model |
-|----------|-------|
-| OPENAI | gpt-4o-mini |
-| ANTHROPIC | claude-haiku-4-5 |
-| GOOGLE | gemini-2.0-flash |
-| MISTRAL | mistral-small-latest |
-| COHERE | command-r |
-| PERPLEXITY | sonar |
+`Provider.all()` returns the six hosted providers (not `LITELLM`).
+`Provider.parse("OpenAI")` parses a name case-insensitively.
+
+**Default models** are defined once in `promptbeacon.core.config.DEFAULT_MODELS` and listed
+on [Models & local LLMs](models.md#default-models). `resolve_model(provider, overrides)`
+returns the model a scan will use: an explicit override, then
+`PROMPTBEACON_<PROVIDER>_MODEL`, then the default.
 
 **Example:**
 ```python
-from promptbeacon import Provider
+from promptbeacon import Beacon, Provider
 
 # Use all providers
 beacon = Beacon("Nike").with_category("running shoes").with_providers(*Provider.all())
@@ -1786,7 +1822,10 @@ Raised when mention extraction fails.
 
 #### `ScanError`
 
-Raised when scan execution fails.
+Raised when no provider query in a scan succeeded. The message names the first error
+with its exception type (for example `AuthenticationError: ...` or `NotFoundError: ...`
+for a mistyped model ID). Errors in PromptBeacon's own code are not wrapped in
+`ScanError`; they propagate unchanged.
 
 ---
 

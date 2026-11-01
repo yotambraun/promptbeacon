@@ -156,6 +156,7 @@ beacon = (
     .with_category("your category, e.g. crm software")
     .with_competitors("Competitor1", "Competitor2")
     .with_providers(Provider.OPENAI, Provider.ANTHROPIC)
+    .with_models({"anthropic": "claude-sonnet-5-5"})  # optional; defaults are low-cost
     .with_prompt_count(20)
 )
 
@@ -163,15 +164,18 @@ report = beacon.scan()
 print(f"Visibility: {report.visibility_score}/100")
 ```
 
+To try a local model instead of a hosted one (no API key), run Ollama and use
+`.with_models(litellm="ollama/llama3.2")`, or `--model litellm=ollama/llama3.2` on the
+CLI. See [Models & local LLMs](https://yotambraun.github.io/promptbeacon/models/).
+
 ## Output Directory
 
-The `output/` directory contains sample outputs demonstrating what PromptBeacon produces:
+The `output/` directory contains recorded sample outputs:
 
 ```
 output/
-├── sample_output.txt              # Basic scan output
-├── competitor_analysis_output.txt # Competitor analysis output
-├── report.json                    # JSON export example
-├── report.csv                     # CSV export example
-└── report.md                      # Markdown export example
+├── sample_output.txt              # Basic scan output (recorded with PromptBeacon 1.0)
+└── competitor_analysis_output.txt # Competitor analysis output (recorded with 1.0)
 ```
+
+`export_formats.py` writes `report.json`, `report.csv` and `report.md` there when you run it.

@@ -99,7 +99,8 @@ and `--competitor`. See [Open-source projects](projects.md).
 
 | Option | Short | Description |
 | --- | --- | --- |
-| `--provider` | `-p` | `openai` (default), `anthropic`, `google`, `mistral`, `cohere`, `perplexity` (repeatable). Providers are queried in parallel |
+| `--provider` | `-p` | `openai` (default), `anthropic`, `google`, `mistral`, `cohere`, `perplexity`, `litellm` (repeatable). Providers are queried in parallel |
+| `--model PROVIDER=MODEL` | `-m` | Model for a provider (repeatable), e.g. `anthropic=claude-sonnet-5-5`, or `litellm=ollama/llama3.2` for a local model. Without `--provider`, the providers named here are queried. See [Models & local LLMs](models.md) |
 | `--demo` | | Keyless demo mode |
 | `--grounded` | | Use each provider's web search and capture real citations (OpenAI, Anthropic, Gemini, Perplexity; needs `promptbeacon[grounded]`) |
 | `--smart` | | LLM-based extraction and recommendations (more calls) |
@@ -124,6 +125,10 @@ and `--competitor`. See [Open-source projects](projects.md).
 ### Examples
 
 ```bash
+# Choose models, or use a local model through LiteLLM
+promptbeacon scan httpx -t "python http client" -m anthropic=claude-sonnet-5-5 -m openai=gpt-6-sol
+promptbeacon scan httpx -t "python http client" -m litellm=ollama/llama3.2
+
 # Real scan, two providers
 promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -c "New Balance" -p openai -p anthropic
 
@@ -157,6 +162,7 @@ Pin everything in a JSON file so each run asks exactly the same questions:
   "brand": "Nike",
   "competitors": ["Adidas", "Puma"],
   "providers": ["openai", "anthropic"],
+  "models": {"openai": "gpt-6-luna", "anthropic": "claude-haiku-5-5"},
   "prompts": [
     "What are the best running shoes?",
     "Which running shoe brand is most recommended?"
@@ -171,7 +177,8 @@ promptbeacon scan --protocol nike-protocol.json
 ```
 
 Pinned prompts are always used in full. `categories` and `prompt_count` are also
-accepted instead of `prompts`.
+accepted instead of `prompts`. Pin `models` too: defaults change between releases, and a
+different model gives a different score.
 
 ---
 
@@ -204,6 +211,7 @@ promptbeacon compare "Nike" -t "running shoes" --against "Adidas" -a "Puma"
 | `--against` | `-a` | Competitors (repeatable, required) |
 | `--category` | `-t` | Category |
 | `--provider` | `-p` | Providers |
+| `--model` | `-m` | Model per provider, as for `scan` |
 | `--demo` | | Keyless demo mode |
 | `--format` | `-f` | Output format |
 
@@ -224,6 +232,7 @@ promptbeacon sources "Nike" -t "running shoes" --demo -f json
 | `--category` | `-t` | Category |
 | `--competitor` | `-c` | Competitors |
 | `--provider` | `-p` | Providers |
+| `--model` | `-m` | Model per provider, as for `scan` |
 | `--prompts` | `-n` | Prompts per category |
 | `--grounded` | | Web-grounded measurement with real citations |
 | `--demo` | | Keyless demo mode |
@@ -286,6 +295,7 @@ promptbeacon dashboard "Nike" -t "running shoes" -c "Adidas" --no-open
 | `--category` | `-t` | Category |
 | `--competitor` | `-c` | Competitors |
 | `--provider` | `-p` | Providers |
+| `--model` | `-m` | Model per provider, as for `scan` |
 | `--output` | `-o` | Output file (default `promptbeacon-report.html`) |
 | `--open` / `--no-open` | | Open in a browser (default: open) |
 | `--demo` | | Keyless demo mode |
@@ -327,7 +337,7 @@ promptbeacon badge --pypi httpx --metric sov
 | --- | --- |
 | `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved `scan -f json` report instead of scanning |
-| `--category`, `--competitor`, `--provider`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-badge.svg`) |
 | `--endpoint PATH` | Also write a shields.io endpoint JSON |
 | `--label TEXT` | Left-hand text (default `AI visibility`) |
@@ -351,7 +361,7 @@ promptbeacon card --report report.json --theme both --png card.png
 | --- | --- |
 | `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved report |
-| `--category`, `--competitor`, `--provider`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-card.svg`) |
 | `--png PATH` | Also write a PNG (needs `pip install 'promptbeacon[share]'`) |
 | `--theme` | `light` (default), `dark`, or `both` (adds a `-dark` file next to each output) |
@@ -396,8 +406,9 @@ See [Claude Code & MCP](mcp.md).
 
 ## `providers`
 
-List providers and the Tavily search backend, and whether each key is configured. Key
-values are never printed.
+List providers and the Tavily search backend, whether each key is configured, and the
+model each provider will use (with the variable that overrides it). Key values are never
+printed.
 
 ```bash
 promptbeacon providers
@@ -409,7 +420,9 @@ promptbeacon providers
 
 | Variable | Used for |
 | --- | --- |
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `COHERE_API_KEY`, `PERPLEXITY_API_KEY` | Provider keys for real scans. Empty values count as not set |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY` (or `GEMINI_API_KEY`), `MISTRAL_API_KEY`, `COHERE_API_KEY`, `PERPLEXITY_API_KEY` | Provider keys for real scans. Empty values count as not set |
+| `PROMPTBEACON_<PROVIDER>_MODEL` | Model for a provider when `--model` is not given, e.g. `PROMPTBEACON_OPENAI_MODEL`, `PROMPTBEACON_LITELLM_MODEL` |
+| `LITELLM_LOCAL_MODEL_COST_MAP` | PromptBeacon sets it to `True` (use LiteLLM's bundled price map) unless you set it; `False` fetches LiteLLM's latest prices |
 | `TAVILY_API_KEY` | Live web search for `funnel` |
 | `GITHUB_TOKEN` or `GH_TOKEN` | Higher GitHub API limit for `--repo` (60 requests/hour without a token) |
 | `PROMPTBEACON_HOME` | Data directory (history and caches); default `~/.promptbeacon` |

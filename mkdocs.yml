@@ -1,5 +1,5 @@
 site_name: PromptBeacon
-site_description: Measure whether AI assistants recommend your product or open-source project, compare share of voice, and track it in CI.
+site_description: Does AI recommend your library or dev product? Measure it across ChatGPT, Claude, Gemini and local models, gate it in CI, and show it as a README badge.
 site_url: https://yotambraun.github.io/promptbeacon/
 repo_url: https://github.com/yotambraun/promptbeacon
 repo_name: yotambraun/promptbeacon
@@ -40,12 +40,14 @@ nav:
   - Badges & share cards: share.md
   - CI & examples: examples.md
   - Claude Code & MCP: mcp.md
+  - Models & local LLMs: models.md
   - Providers: providers.md
   - Storage & history: storage.md
   - Advanced: advanced.md
   - API Reference: api-reference.md
 
-not_in_nav: |
+# Internal planning notes stay in the repository but are not published.
+exclude_docs: |
   ROADMAP-next.md
 
 markdown_extensions:
@@ -53,6 +55,8 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
   - tables
   - toc:
       permalink: true
