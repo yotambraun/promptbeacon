@@ -40,7 +40,7 @@ nav:
   - Badges & share cards: share.md
   - AI Recommendation Index: recommendation-index.md
   - CI & examples: examples.md
-  - Claude Code & MCP: mcp.md
+  - Use from AI assistants: mcp.md
   - Models & local LLMs: models.md
   - Providers: providers.md
   - Storage & history: storage.md
@@ -53,6 +53,11 @@ exclude_docs: |
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.details
