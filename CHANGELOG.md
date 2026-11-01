@@ -54,6 +54,9 @@ including local models, with current defaults, a faster start, and fixes for Pyt
   optional), and `max-cost`, `rank-badge-path` and `trend-path` inputs.
 - `promptbeacon.analysis.statistics.proportion_interval()`: a Wilson score interval for
   rates such as "mentioned in 12 of 90 answers".
+- `promptbeacon --version`; `promptbeacon demo` ends with the next step (the matching
+  `scan ... --estimate` command and `promptbeacon init`).
+- `Database.connection`, the DuckDB connection the storage docs use for custom SQL.
 - **AI Recommendation Index (not launched):** a generator in the repository's `index/`
   folder with 30 pinned category protocols, mention-rate ranking with confidence
   intervals, a static site with methodology and rank badges, a labelled demo build with
@@ -125,6 +128,11 @@ including local models, with current defaults, a faster start, and fixes for Pyt
 - Perplexity grounded results also read cited URLs from `search_results` when a response
   has no `citations` list.
 - Smart-extraction calls (`--smart`) are now included in a scan's cost.
+- `Database("~/...")` expands the home directory instead of creating a `~` folder.
+- CLI error messages no longer lose bracketed text such as `promptbeacon[mcp]` (it was
+  read as Rich markup), a keyless real scan suggests `--demo` or a local model, and
+  library warnings are shown once instead of twice.
+- The storage docs' SQL examples run on DuckDB (they used SQLite functions).
 - LiteLLM no longer prints its provider list to stdout when pricing an unknown model, so
   `-f json` output stays valid.
 
