@@ -14,6 +14,37 @@ show as a README badge.
     website teams: an audit of what AI assistants say about your site, with the answers
     and cited pages as receipts, plus fixes for your site.
 
+<div class="grid cards" markdown>
+
+-   :material-console:{ .lg .middle } **In your terminal**
+
+    ---
+
+    A keyless demo in ten seconds, then a real scan with your own keys or a local
+    model.
+
+    [:octicons-arrow-right-24: Quickstart](quickstart.md)
+
+-   :material-robot-outline:{ .lg .middle } **From your AI assistant**
+
+    ---
+
+    Claude Code, Claude Desktop, Cursor, VS Code, Windsurf, Codex CLI or Gemini CLI
+    runs the measurement and reasons about it with you.
+
+    [:octicons-arrow-right-24: Set up your assistant](mcp.md)
+
+-   :material-github:{ .lg .middle } **In CI**
+
+    ---
+
+    A weekly GitHub Action that keeps a README badge current, or a check on pull
+    requests. `promptbeacon init` writes the workflow.
+
+    [:octicons-arrow-right-24: CI & examples](examples.md)
+
+</div>
+
 ## Try it in ten seconds
 
 ```bash
@@ -75,8 +106,8 @@ memory) or `api_grounded` (provider web search) — and what the prompts asked a
 | Cap the cost | `--max-cost 0.05`, or `--estimate` to price a scan first ([Providers](providers.md#estimating-and-capping-cost)) |
 | Gate CI or track weekly | GitHub Action, pytest plugin, `promptbeacon ci` ([CI & examples](examples.md)) |
 | Choose models, run locally | `--model anthropic=claude-sonnet-5-5`, `--model litellm=ollama/llama3.2` ([Models & local LLMs](models.md)) |
-| Ask from your editor or agent | `promptbeacon mcp` and the Claude Code plugin ([Claude Code & MCP](mcp.md)) |
-| Build on it | The Python API ([API reference](api-reference.md)) |
+| Ask from your AI assistant | `promptbeacon mcp` in seven assistants, and the Claude Code plugin ([Use from AI assistants](mcp.md)) |
+| Build on it | `Beacon` in your own code ([Python API](python.md), [API reference](api-reference.md)) |
 
 ## Providers and models
 
@@ -96,6 +127,8 @@ Results stay on your machine. Real CLI scans are saved to a local DuckDB file
 ## Next steps
 
 - [Quickstart](quickstart.md) — demo, first real scan, first project scan
+- [Use from AI assistants](mcp.md) — setup for seven assistants, the tools, cost
+- [Python API](python.md) — scans, cost, async, JSON and history in your own code
 - [Models & local LLMs](models.md) — default models, `--model`, Ollama
 - [CLI reference](cli.md) — every command and option
 - [Badges & share cards](share.md) — put the result in a README or a post

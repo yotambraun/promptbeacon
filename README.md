@@ -22,10 +22,10 @@
 <p align="center">
   Use it from:
   <a href="#try-it-in-10-seconds-no-api-key">CLI</a> ·
-  <a href="#in-python">Python</a> ·
-  <a href="#in-ci-pytest-and-the-github-action">pytest</a> ·
+  <a href="https://yotambraun.github.io/promptbeacon/mcp/">your AI assistant</a> (Claude Code, Cursor, VS Code and more) ·
   <a href="#in-ci-pytest-and-the-github-action">GitHub Action</a> ·
-  <a href="#from-claude-code-or-any-mcp-client">MCP / Claude Code</a>
+  <a href="#in-ci-pytest-and-the-github-action">pytest</a> ·
+  <a href="https://yotambraun.github.io/promptbeacon/python/">Python</a>
 </p>
 
 ---
@@ -175,6 +175,8 @@ The category is what makes a scan meaningful: prompts become real questions such
 &lt;competitor&gt;" questions when you give competitors, and otherwise warns you.
 `.with_category_inference()` (CLI: `--infer-category`) can name it with one model call.
 
+Cost estimates, async scans, JSON, history and a CI script: [Python API](https://yotambraun.github.io/promptbeacon/python/).
+
 ## In CI: pytest and the GitHub Action
 
 ```yaml
@@ -217,24 +219,30 @@ def test_httpx_is_visible(): ...
 
 Or in plain code: `report.assert_visibility(min_score=50, min_share_of_voice=0.3)`.
 
-## From Claude Code or any MCP client
+## From your AI assistant
+
+PromptBeacon measures; your assistant reasons about the result. Add the MCP server to
+Claude Code, Claude Desktop, Cursor, VS Code (GitHub Copilot), Windsurf, Codex CLI or
+Gemini CLI; [the setup page](https://yotambraun.github.io/promptbeacon/mcp/) has a
+tested snippet for each, and install links for Cursor and VS Code. In Claude Code:
 
 ```bash
-claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]' promptbeacon mcp
+claude mcp add --transport stdio --scope user promptbeacon -- uvx --from "promptbeacon[mcp]>=1.4.0" promptbeacon mcp
 ```
 
-Or install the plugin, which adds the server and three skills (`ai-visibility`,
-`share-card`, `visibility-ci`):
+or install the plugin, which adds the server and four skills, including a full
+`ai-visibility-review`:
 
 ```text
 /plugin marketplace add yotambraun/promptbeacon
 /plugin install promptbeacon@promptbeacon
 ```
 
-Then ask: *"Does AI recommend this project? Compare it with its main alternatives."* The
-tools (`scan`, `project_scan`, `sources`, `share_assets`, `providers`) return JSON and
-accept an optional `models` argument. With no key configured they use the demo and say
-so. See [Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/).
+Then ask: *"Does AI recommend this project? Compare it with its main alternatives, and
+keep it under 5 cents."* The tools (`providers`, `estimate`, `scan`, `project_scan`,
+`sources`, `compare`, `recommendations`, `history`, `funnel`, `init_preview`,
+`share_assets`) return JSON, say what they cost, and accept `models` and `max_cost`.
+With no key configured they use the demo and say so.
 
 ## Open-source projects
 
@@ -312,12 +320,13 @@ served by [Saylent](https://github.com/yotambraun/saylent).
 
 **[yotambraun.github.io/promptbeacon](https://yotambraun.github.io/promptbeacon/)**:
 [Quickstart](https://yotambraun.github.io/promptbeacon/quickstart/) ·
+[Use from AI assistants](https://yotambraun.github.io/promptbeacon/mcp/) ·
+[Python API](https://yotambraun.github.io/promptbeacon/python/) ·
 [Models & local LLMs](https://yotambraun.github.io/promptbeacon/models/) ·
 [CLI](https://yotambraun.github.io/promptbeacon/cli/) ·
 [Open-source projects](https://yotambraun.github.io/promptbeacon/projects/) ·
 [Badges & cards](https://yotambraun.github.io/promptbeacon/share/) ·
 [CI & examples](https://yotambraun.github.io/promptbeacon/examples/) ·
-[Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/) ·
 [API reference](https://yotambraun.github.io/promptbeacon/api-reference/)
 
 ## Contributing

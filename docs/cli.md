@@ -475,14 +475,18 @@ summary to stdout. See [CI & examples](examples.md).
 
 ## `mcp`
 
-Run the MCP server over stdio, for Claude Code, Cursor and other MCP clients. Needs
-`pip install 'promptbeacon[mcp]'`.
+Run the MCP server over stdio, for Claude Code, Claude Desktop, Cursor, VS Code,
+Windsurf, Codex CLI, Gemini CLI and other MCP clients. Needs
+`pip install 'promptbeacon[mcp]'`; clients usually start it with
+`uvx --from "promptbeacon[mcp]>=1.4.0" promptbeacon mcp`.
 
 ```bash
 promptbeacon mcp
 ```
 
-See [Claude Code & MCP](mcp.md).
+Tools: `providers`, `estimate`, `scan`, `project_scan`, `sources`, `compare`,
+`recommendations`, `history`, `funnel`, `init_preview` and `share_assets`. Setup for
+each client: [Use from AI assistants](mcp.md).
 
 ---
 

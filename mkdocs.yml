@@ -34,18 +34,22 @@ theme:
 
 nav:
   - Home: index.md
-  - Quickstart: quickstart.md
-  - CLI: cli.md
-  - Open-source projects: projects.md
+  - Getting started:
+      - Quickstart: quickstart.md
+      - Open-source projects: projects.md
+  - Use from AI assistants: mcp.md
+  - CI & examples: examples.md
+  - Python API: python.md
+  - Models & providers:
+      - Models & local LLMs: models.md
+      - Providers & cost: providers.md
   - Badges & share cards: share.md
   - AI Recommendation Index: recommendation-index.md
-  - CI & examples: examples.md
-  - Use from AI assistants: mcp.md
-  - Models & local LLMs: models.md
-  - Providers: providers.md
-  - Storage & history: storage.md
-  - Advanced: advanced.md
-  - API Reference: api-reference.md
+  - Reference:
+      - CLI: cli.md
+      - API reference: api-reference.md
+      - Storage & history: storage.md
+      - Advanced: advanced.md
 
 # Internal planning notes stay in the repository but are not published.
 exclude_docs: |
