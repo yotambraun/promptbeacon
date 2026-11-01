@@ -1,5 +1,5 @@
 name: "PromptBeacon GEO Check"
-description: "Measure and gate your brand's AI visibility (ChatGPT, Claude, Gemini) in CI."
+description: "Measure and gate whether AI assistants (ChatGPT, Claude, Gemini or a model you choose) recommend your project, in CI."
 branding:
   icon: "radio"
   color: "purple"
