@@ -11,13 +11,16 @@ cd promptbeacon
 uv sync --all-extras
 ```
 
+PromptBeacon supports Python 3.10 to 3.14, and CI tests all five. To work on a specific
+version, pass it to uv, for example `uv sync --all-extras --python 3.14`.
+
 Everything below runs without API keys: the test suite uses the keyless demo client and
 mocked HTTP.
 
 ## Before you open a pull request
 
 ```bash
-uv run pytest                 # tests
+uv run pytest                 # tests (warnings are errors)
 uv run ruff check .           # lint
 uv run ruff format --check .  # formatting (also formats code blocks in Markdown)
 uv run mypy src               # types
