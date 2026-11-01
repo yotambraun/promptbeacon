@@ -107,6 +107,27 @@ DEFAULT_PROMPTS = [
 ]
 
 
+def _describe_error(error: BaseException) -> str:
+    """``"ExceptionType: message"`` — the type is often the useful part."""
+    message = str(error).strip()
+    name = type(error).__name__
+    return f"{name}: {message}" if message else name
+
+
+def _raise_if_all_failed(results: list[ProviderResult]) -> None:
+    """Raise a ScanError naming the first error when no query succeeded."""
+    if any(r.success for r in results):
+        return
+    if not results:
+        raise ScanError("No provider queries were run.")
+    first = results[0]  # every result failed, so every result has an error
+    raise ScanError(
+        f"All {len(results)} provider queries failed. First error "
+        f"({first.provider}/{first.model}): {first.error}. "
+        "Check API keys, model names and network access."
+    )
+
+
 class Beacon:
     """Main class for LLM brand visibility monitoring.
 
@@ -763,8 +784,7 @@ class Beacon:
         await self._prepare_categories()
         results, total_cost = await self._collect_results()
         total_cost += self._extra_cost
-        if not results:
-            raise ScanError("All provider queries failed. Check API keys and network.")
+        _raise_if_all_failed(results)
         report = self._build_report(results, total_cost, start_time)
         await self._apply_smart_recommendations(report)
 
@@ -799,15 +819,17 @@ class Beacon:
 
         await self._prepare_categories()
         all_runs: list[list[ProviderResult]] = []
+        last_results: list[ProviderResult] = []
         total_cost = self._extra_cost
         for i in range(runs):
             results, cost = await self._collect_results(variation=i, use_cache=False)
-            if results:
+            if any(r.success for r in results):
                 all_runs.append(results)
                 total_cost += cost
+            last_results = results
 
         if not all_runs:
-            raise ScanError("All provider queries failed. Check API keys and network.")
+            _raise_if_all_failed(last_results)
 
         report = self._build_report(all_runs[0], total_cost, start_time)
         report.stability = aggregate_stability(
@@ -864,6 +886,7 @@ class Beacon:
         )
 
         results: list[ProviderResult] = []
+        internal_errors: list[BaseException] = []
         total_cost = 0.0
         for provider_results in per_provider:  # provider order is preserved
             for result in provider_results:
@@ -872,7 +895,21 @@ class Beacon:
                     if result.cost_usd:
                         total_cost += result.cost_usd
                 elif isinstance(result, BaseException):
-                    logger.warning("Provider query failed: %s", result)
+                    internal_errors.append(result)
+
+        # Provider/API failures are recorded on each ProviderResult. Anything
+        # that escaped _query_provider is a bug or an environment problem
+        # (e.g. a warning promoted to an error), so surface it instead of
+        # reporting it as a failed provider query.
+        if internal_errors:
+            first = internal_errors[0]
+            if len(internal_errors) > 1:
+                logger.error(
+                    "%d queries raised unexpected errors; re-raising the first: %s",
+                    len(internal_errors),
+                    _describe_error(first),
+                )
+            raise first
 
         return results, total_cost
 
@@ -1122,83 +1159,83 @@ class Beacon:
                         e,
                     )
 
-        try:
-            # Check cache first (bypassed during stability scans)
-            cached_content: str | None = None
-            if use_cache and self._cache:
-                cached_content = self._cache.get(
-                    prompt, client.provider_name, client.model
-                )
+        # Check cache first (bypassed during stability scans)
+        cached_content: str | None = None
+        if use_cache and self._cache:
+            cached_content = self._cache.get(prompt, client.provider_name, client.model)
 
-            if cached_content is not None:
-                response_content = cached_content
-                latency_ms = 0.0
-                cost_usd = None
-                provider_name = client.provider_name
-                model_name = client.model
-            else:
+        if cached_content is not None:
+            response_content = cached_content
+            latency_ms = 0.0
+            cost_usd = None
+            provider_name = client.provider_name
+            model_name = client.model
+        else:
+            # Only the provider call itself is a "provider failure". Errors in
+            # our own code below (extraction, scoring inputs) propagate so they
+            # are not misreported as an API or network problem.
+            try:
                 response = await client.complete(
                     prompt=prompt,
                     temperature=self._config.temperature,
                     max_tokens=self._config.max_tokens,
                 )
-                response_content = response.content
-                latency_ms = response.latency_ms
-                cost_usd = response.cost_usd
-                provider_name = response.provider
-                model_name = response.model
+            except Exception as e:  # noqa: BLE001 — recorded on the result
+                return ProviderResult(
+                    provider=client.provider_name,
+                    model=client.model,
+                    prompt=prompt,
+                    response="",
+                    mentions=[],
+                    latency_ms=0,
+                    cost_usd=None,
+                    error=_describe_error(e),
+                    timestamp=utc_now(),
+                )
+            response_content = response.content
+            latency_ms = response.latency_ms
+            cost_usd = response.cost_usd
+            provider_name = response.provider
+            model_name = response.model
 
-                # Store in cache (skipped during stability scans)
-                if use_cache and self._cache:
-                    self._cache.set(
-                        prompt, client.provider_name, client.model, response_content
-                    )
+            # Store in cache (skipped during stability scans)
+            if use_cache and self._cache:
+                self._cache.set(
+                    prompt, client.provider_name, client.model, response_content
+                )
 
-            # Extract mentions from response (LLM smart mode or regex)
-            extraction = await self._extract(client, response_content)
+        # Extract mentions from response (LLM smart mode or regex)
+        extraction = await self._extract(client, response_content)
 
-            # Extract citations
-            all_brands = (
-                [self._config.brand]
-                + (self._config.brand_aliases or [])
-                + (self._config.competitors or [])
-            )
-            citation_result = extract_citations(response_content, brands=all_brands)
+        # Extract citations
+        all_brands = (
+            [self._config.brand]
+            + (self._config.brand_aliases or [])
+            + (self._config.competitors or [])
+        )
+        citation_result = extract_citations(response_content, brands=all_brands)
 
-            return ProviderResult(
-                provider=provider_name,
-                model=model_name,
-                prompt=prompt,
-                response=response_content,
-                mentions=extraction.mentions,
-                citations=[
-                    Citation(
-                        url=c.url,
-                        source_name=c.source_name,
-                        context=c.context,
-                        brand_associated=c.brand_associated,
-                        query=prompt,
-                    )
-                    for c in citation_result.citations
-                ],
-                latency_ms=latency_ms,
-                cost_usd=cost_usd,
-                cached=cached_content is not None,
-                timestamp=utc_now(),
-            )
-
-        except Exception as e:
-            return ProviderResult(
-                provider=client.provider_name,
-                model=client.model,
-                prompt=prompt,
-                response="",
-                mentions=[],
-                latency_ms=0,
-                cost_usd=None,
-                error=str(e),
-                timestamp=utc_now(),
-            )
+        return ProviderResult(
+            provider=provider_name,
+            model=model_name,
+            prompt=prompt,
+            response=response_content,
+            mentions=extraction.mentions,
+            citations=[
+                Citation(
+                    url=c.url,
+                    source_name=c.source_name,
+                    context=c.context,
+                    brand_associated=c.brand_associated,
+                    query=prompt,
+                )
+                for c in citation_result.citations
+            ],
+            latency_ms=latency_ms,
+            cost_usd=cost_usd,
+            cached=cached_content is not None,
+            timestamp=utc_now(),
+        )
 
     def get_history(self, days: int = 30) -> HistoryReport:
         """Get historical visibility data.
