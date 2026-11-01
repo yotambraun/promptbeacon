@@ -2432,14 +2432,16 @@ def init(
 
 @app.command("mcp", rich_help_panel="Integrations")
 def mcp_server() -> None:
-    """Run the MCP server over stdio (for Claude Code, Cursor and other clients).
+    """Run the MCP server over stdio, for Claude Code, Cursor, VS Code and others.
 
-    Needs the extra: pip install 'promptbeacon[mcp]'. Tools: providers, scan,
-    project_scan, sources, share_assets. Without provider keys, scans use the
-    keyless demo and say so.
+    Needs the extra: pip install 'promptbeacon[mcp]'. Tools: providers,
+    estimate, scan, project_scan, sources, compare, recommendations, history,
+    funnel, init_preview, share_assets. Without provider keys, scans use the
+    keyless demo and say so. Setup for each client:
+    https://yotambraun.github.io/promptbeacon/mcp/
 
     Example:
-        claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]' promptbeacon mcp
+        claude mcp add promptbeacon -- uvx --from 'promptbeacon[mcp]>=1.4.0' promptbeacon mcp
     """
     try:
         from promptbeacon.mcp_server import create_server

@@ -110,7 +110,19 @@ def test_server_registers_the_tools():
     server = mcp_server.create_server()
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
-    assert names == {"providers", "scan", "project_scan", "sources", "share_assets"}
+    assert names == {
+        "providers",
+        "estimate",
+        "scan",
+        "project_scan",
+        "sources",
+        "compare",
+        "recommendations",
+        "history",
+        "funnel",
+        "init_preview",
+        "share_assets",
+    }
 
 
 @pytest.mark.integration
@@ -137,6 +149,6 @@ def test_stdio_round_trip(tmp_path):
             return [t.name for t in tools.tools], result
 
     names, result = asyncio.run(run())
-    assert "scan" in names and "project_scan" in names
+    assert set(names) == set(mcp_server.TOOLS)
     assert not result.is_error
     assert result.structured_content["measurement_tier"] == "demo"
