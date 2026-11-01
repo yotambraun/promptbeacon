@@ -38,6 +38,7 @@ nav:
   - CLI: cli.md
   - Open-source projects: projects.md
   - Badges & share cards: share.md
+  - AI Recommendation Index: recommendation-index.md
   - CI & examples: examples.md
   - Claude Code & MCP: mcp.md
   - Models & local LLMs: models.md

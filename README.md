@@ -295,6 +295,9 @@ Also included: an HTML [dashboard](assets/sample-dashboard.html), smart LLM-base
 extraction (`--smart`), and `BeaconGuard`, which flags chatbot replies that recommend a
 competitor ([Advanced](https://yotambraun.github.io/promptbeacon/advanced/)).
 
+Coming next: an [AI Recommendation Index](https://yotambraun.github.io/promptbeacon/recommendation-index/)
+of which open-source projects AI assistants recommend, in 30 developer categories.
+
 ## Who it's for
 
 - **Open-source maintainers and developer-tool teams**: does ChatGPT recommend *your*
