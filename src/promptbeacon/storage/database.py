@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import duckdb
 
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.exceptions import StorageError
 from promptbeacon.core.schemas import (
     HistoricalDataPoint,
@@ -213,7 +214,7 @@ class Database:
             HistoryReport with historical data points.
         """
         conn = self._get_connection()
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = utc_now() - timedelta(days=days)
 
         try:
             result = conn.execute(GET_HISTORY_QUERY, [brand, start_date]).fetchall()
@@ -397,7 +398,7 @@ class Database:
             Number of scans deleted.
         """
         conn = self._get_connection()
-        cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff_date = utc_now() - timedelta(days=older_than_days)
 
         try:
             # First delete related records

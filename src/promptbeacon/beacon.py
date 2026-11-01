@@ -7,7 +7,6 @@ import logging
 import time
 import warnings
 from collections.abc import Callable
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -42,6 +41,7 @@ from promptbeacon.analysis.scorer import (
 from promptbeacon.analysis.sources import aggregate_source_attribution
 from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import calculate_confidence_interval
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.config import BeaconConfig, Provider
 from promptbeacon.core.exceptions import ConfigurationError, ScanError
 from promptbeacon.core.schemas import (
@@ -966,7 +966,7 @@ class Beacon:
             share_of_voice=share_of_voice,
             source_attribution=source_attribution,
             measurement_tier=self._measurement_tier(results),
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
             scan_duration_seconds=round(scan_duration, 2),
             total_cost_usd=round(total_cost, 6) if total_cost > 0 else None,
             cost_status=self._cost_status(results, total_cost),
@@ -1089,7 +1089,7 @@ class Beacon:
             grounded=True,
             search_count=resp.search_count,
             search_fees_included=resp.search_fees_included,
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
     async def _query_provider(
@@ -1184,7 +1184,7 @@ class Beacon:
                 latency_ms=latency_ms,
                 cost_usd=cost_usd,
                 cached=cached_content is not None,
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
             )
 
         except Exception as e:
@@ -1197,7 +1197,7 @@ class Beacon:
                 latency_ms=0,
                 cost_usd=None,
                 error=str(e),
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
             )
 
     def get_history(self, days: int = 30) -> HistoryReport:

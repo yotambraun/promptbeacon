@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.schemas import (
     BrandMention,
     CompetitorScore,
@@ -47,7 +48,7 @@ def sample_provider_result(sample_mention):
         mentions=[sample_mention],
         latency_ms=150.0,
         cost_usd=0.001,
-        timestamp=datetime.utcnow(),
+        timestamp=utc_now(),
     )
 
 

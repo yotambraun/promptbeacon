@@ -1,9 +1,8 @@
 """Tests for storage module."""
 
-from datetime import datetime
-
 import pytest
 
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.schemas import (
     BrandMention,
     ProviderResult,
@@ -56,7 +55,7 @@ def sample_report():
             visibility_score=75.0,
             mention_count=10,
         ),
-        timestamp=datetime.utcnow(),
+        timestamp=utc_now(),
         scan_duration_seconds=5.0,
         total_cost_usd=0.01,
     )

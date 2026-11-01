@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.exceptions import VisibilityAssertionError
 
 
@@ -157,7 +158,7 @@ class ProviderResult(BaseModel):
         description="False when web-search fees could not be priced and are not "
         "included in cost_usd",
     )
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -506,7 +507,7 @@ class Report(BaseModel):
         "'api_grounded' (provider web search — approximates, but does NOT equal, "
         "the consumer product).",
     )
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
     scan_duration_seconds: float = Field(default=0.0, ge=0)
     total_cost_usd: float | None = Field(default=None, ge=0)
     cost_status: Literal["complete", "partial", "unknown", "none"] | None = Field(

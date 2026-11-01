@@ -29,7 +29,8 @@ class _SlowClient(BaseLLMClient):
     def is_available(self) -> bool:
         return True
 
-    async def complete(self, _prompt: str, **_kwargs: Any) -> LLMResponse:
+    async def complete(self, prompt: str, **_kwargs: Any) -> LLMResponse:
+        del prompt  # the Beacon passes prompt= by keyword, like the real clients
         await asyncio.sleep(DELAY)
         return LLMResponse(
             content="Nike is a great choice.",
@@ -61,6 +62,7 @@ def test_providers_run_concurrently_and_keep_order(monkeypatch):
     # Sequential would take 3 x DELAY; concurrent takes ~1 x DELAY.
     assert elapsed < 2 * DELAY, f"providers ran sequentially ({elapsed:.2f}s)"
     assert [r.provider for r in report.provider_results] == [p.value for p in providers]
+    assert all(r.success for r in report.provider_results)
 
 
 def test_empty_api_key_is_treated_as_unset(monkeypatch):

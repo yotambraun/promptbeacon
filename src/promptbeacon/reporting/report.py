@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING
 
+from promptbeacon.core.clock import utc_now
 from promptbeacon.core.schemas import Report
 from promptbeacon.reporting.formats import describe_cost
 
@@ -184,7 +184,7 @@ def merge_reports(reports: list[Report]) -> Report | None:
         metrics=base.metrics,
         explanations=all_explanations,
         recommendations=all_recommendations,
-        timestamp=datetime.utcnow(),
+        timestamp=utc_now(),
         scan_duration_seconds=sum(r.scan_duration_seconds for r in reports),
         total_cost_usd=sum(r.total_cost_usd or 0 for r in reports) or None,
     )
