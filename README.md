@@ -51,7 +51,7 @@ prompts: 10 · category: python http client
 ...
 
 Share of Voice: 33% (rank 2, 60% of prompts)
-                   Share of Voice                    
+                   Share of Voice
 ┏━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
 ┃ Brand    ┃ Appears In ┃ Presence ┃ Share of Voice ┃
 ┡━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
@@ -67,8 +67,8 @@ run `promptbeacon scan` with the same arguments.
 
 ## Put the result in your README
 
-One scan produces a badge and a 1200×630 share card (SVG in light and dark, PNG for
-networks that need it):
+One scan produces a badge and a 1200×630 share card (SVG in light and dark, and PNG for
+networks that need it, with `pip install 'promptbeacon[share]'`):
 
 ```bash
 promptbeacon scan httpx -t "python http client" -c requests -c aiohttp -f json > report.json
