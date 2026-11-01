@@ -16,6 +16,8 @@ does **not** equal the consumer product (ChatGPT.com etc.).
 
 from __future__ import annotations
 
+import contextlib
+import io
 import logging
 import time
 from dataclasses import dataclass
@@ -56,10 +58,15 @@ _LITELLM_PROVIDER = {
 }
 
 
-def _token_cost(
+def token_cost(
     provider: Provider, model: str, input_tokens: int, output_tokens: int
 ) -> float | None:
-    """Token cost from litellm's price map, trying the common key spellings."""
+    """Token cost in USD from LiteLLM's price map (``None`` if the model is unknown).
+
+    Tries the common key spellings (``model``, ``<provider>/model``). Works
+    offline: LiteLLM's bundled price map is used unless
+    ``LITELLM_LOCAL_MODEL_COST_MAP`` is set otherwise.
+    """
     try:
         litellm = load_litellm()
     except ImportError:  # pragma: no cover - litellm is a core dependency
@@ -71,16 +78,43 @@ def _token_cost(
     attempts += [(model, None)]
     for name, llm_provider in attempts:
         try:
-            prompt_cost, completion_cost = litellm.cost_per_token(
-                model=name,
-                prompt_tokens=input_tokens,
-                completion_tokens=output_tokens,
-                custom_llm_provider=llm_provider,
-            )
+            # LiteLLM prints a provider list to stdout for unmapped models;
+            # keep stdout clean for JSON output.
+            with contextlib.redirect_stdout(io.StringIO()):
+                prompt_cost, completion_cost = litellm.cost_per_token(
+                    model=name,
+                    prompt_tokens=input_tokens,
+                    completion_tokens=output_tokens,
+                    custom_llm_provider=llm_provider,
+                )
         except Exception:  # noqa: BLE001 — try the next spelling
             continue
         return float(prompt_cost) + float(completion_cost)
     return None
+
+
+_token_cost = token_cost  # backward-compatible private name
+
+
+def search_fee(provider: Provider, model: str) -> float | None:
+    """Per-search (or per-request) fee in USD for a model, if known.
+
+    Anthropic's web search is a documented $10 per 1,000 searches; other
+    providers' fees come from ``search_context_cost_per_query`` in LiteLLM's
+    price map (medium context), e.g. OpenAI web search and Perplexity Sonar.
+    """
+    if provider == Provider.ANTHROPIC:
+        return ANTHROPIC_WEB_SEARCH_USD_PER_SEARCH
+    try:
+        litellm = load_litellm()
+        info = litellm.model_cost.get(model) or litellm.model_cost.get(
+            f"{_LITELLM_PROVIDER.get(provider)}/{model}", {}
+        )
+        ctx = info.get("search_context_cost_per_query") or {}
+        value = ctx.get("search_context_size_medium")
+        return float(value) if value is not None else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def estimate_grounded_cost(
@@ -104,26 +138,13 @@ def estimate_grounded_cost(
     """
     if input_tokens is None and output_tokens is None:
         return None, False
-    cost = _token_cost(provider, model, int(input_tokens or 0), int(output_tokens or 0))
+    cost = token_cost(provider, model, int(input_tokens or 0), int(output_tokens or 0))
     if cost is None:
         return None, False
 
     if search_count <= 0:
         return cost, True
-    per_search: float | None = None
-    if provider == Provider.ANTHROPIC:
-        per_search = ANTHROPIC_WEB_SEARCH_USD_PER_SEARCH
-    else:
-        try:
-            litellm = load_litellm()
-            info = litellm.model_cost.get(model) or litellm.model_cost.get(
-                f"{_LITELLM_PROVIDER.get(provider)}/{model}", {}
-            )
-            ctx = info.get("search_context_cost_per_query") or {}
-            value = ctx.get("search_context_size_medium")
-            per_search = float(value) if value is not None else None
-        except Exception:  # noqa: BLE001
-            per_search = None
+    per_search = search_fee(provider, model)
     if per_search is None:
         return cost, False
     return cost + per_search * search_count, True

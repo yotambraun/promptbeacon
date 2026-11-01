@@ -130,6 +130,7 @@ async def scan(
     prompts: int | None = None,
     demo: bool | None = None,
     grounded: bool = False,
+    max_cost: float | None = None,
 ) -> dict[str, Any]:
     """Measure how often AI assistants mention and recommend a brand.
 
@@ -145,6 +146,10 @@ async def scan(
         prompts: Prompts per category (default 10).
         demo: True for keyless demo data; default is demo only when no keys exist.
         grounded: Measure web-grounded answers (provider web search; costs more).
+        max_cost: Spending cap in US dollars, e.g. 0.05. The cost is estimated
+            first and the scan refuses to start above the cap; during the scan
+            no new request starts once it is reached, and the result has
+            partial=true. Unpriced (e.g. local) models count as $0.
     """
     use_demo, note = _resolve_demo(demo, models)
     beacon = configure_beacon(
@@ -156,6 +161,7 @@ async def scan(
         prompt_count=prompts,
         demo=use_demo,
         grounded=grounded,
+        max_cost=max_cost,
     )
     return await _scan(beacon, note)
 
@@ -169,6 +175,7 @@ async def project_scan(
     prompts: int | None = None,
     demo: bool | None = None,
     infer_category: bool = False,
+    max_cost: float | None = None,
 ) -> dict[str, Any]:
     """Does AI recommend this open-source project or package?
 
@@ -188,6 +195,10 @@ async def project_scan(
         prompts: Prompts per category (default 10).
         demo: True for keyless demo data; default is demo only when no keys exist.
         infer_category: Refine the category with one LLM call (live mode only).
+        max_cost: Spending cap in US dollars, e.g. 0.05. The cost is estimated
+            first and the scan refuses to start above the cap; during the scan
+            no new request starts once it is reached, and the result has
+            partial=true. Unpriced (e.g. local) models count as $0.
     """
     import anyio
 
@@ -204,6 +215,7 @@ async def project_scan(
             prompt_count=prompts,
             demo=use_demo,
             infer_category=infer_category,
+            max_cost=max_cost,
         )
 
     with _stdout_to_stderr():
@@ -221,6 +233,7 @@ async def sources(
     models: dict[str, str] | None = None,
     demo: bool | None = None,
     grounded: bool = True,
+    max_cost: float | None = None,
 ) -> dict[str, Any]:
     """Which websites AI answers cite for this category, and which cite the brand.
 
@@ -235,6 +248,10 @@ async def sources(
             the providers tool.
         demo: True for keyless demo data; default is demo only when no keys exist.
         grounded: Use provider web search (needed for real citations).
+        max_cost: Spending cap in US dollars, e.g. 0.05. The cost is estimated
+            first and the scan refuses to start above the cap; during the scan
+            no new request starts once it is reached, and the result has
+            partial=true. Unpriced (e.g. local) models count as $0.
     """
     result = await scan(
         brand,
@@ -244,8 +261,18 @@ async def sources(
         models=models,
         demo=demo,
         grounded=grounded,
+        max_cost=max_cost,
     )
-    keep = ("brand", "categories", "measurement_tier", "top_sources", "note", "cost")
+    keep = (
+        "brand",
+        "categories",
+        "measurement_tier",
+        "top_sources",
+        "note",
+        "cost",
+        "partial",
+        "budget",
+    )
     return {k: v for k, v in result.items() if k in keep}
 
 
@@ -259,6 +286,7 @@ async def share_assets(
     demo: bool | None = None,
     output_dir: str = ".promptbeacon",
     png: bool = False,
+    max_cost: float | None = None,
 ) -> dict[str, Any]:
     """Scan once and write a README badge, shields.io JSON and share cards.
 
@@ -276,6 +304,10 @@ async def share_assets(
         demo: True for keyless demo data; default is demo only when no keys exist.
         output_dir: Directory for badge.svg, badge.json, card.svg, card-dark.svg.
         png: Also write card.png (needs the 'promptbeacon[share]' extra).
+        max_cost: Spending cap in US dollars, e.g. 0.05. The cost is estimated
+            first and the scan refuses to start above the cap; during the scan
+            no new request starts once it is reached, and the result has
+            partial=true. Unpriced (e.g. local) models count as $0.
     """
     import json
     import warnings
@@ -307,6 +339,7 @@ async def share_assets(
             models=models,
             categories=[category] if category else None,
             demo=use_demo,
+            max_cost=max_cost,
         )
 
     with _stdout_to_stderr():

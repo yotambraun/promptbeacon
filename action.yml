@@ -56,6 +56,10 @@ inputs:
     description: "Measure web-grounded answers (provider web search) instead of base-model memory"
     required: false
     default: "false"
+  max-cost:
+    description: "Spending cap in US dollars (e.g. '0.05'). The scan is estimated first and does not start above the cap; it stops issuing requests once the cap is reached and the result is marked partial. Empty = no cap"
+    required: false
+    default: ""
   badge-path:
     description: "Write an SVG badge here (e.g. .promptbeacon/badge.svg)"
     required: false
@@ -103,6 +107,9 @@ outputs:
   passed:
     description: "'true' if every threshold passed"
     value: ${{ steps.check.outputs.passed }}
+  partial:
+    description: "'true' if max-cost stopped the scan before every answer was collected"
+    value: ${{ steps.check.outputs.partial }}
   report-path:
     description: "Path to the full JSON report"
     value: ${{ steps.scan.outputs.report-path }}
@@ -135,6 +142,7 @@ runs:
         PB_STABILITY: ${{ inputs.stability }}
         PB_DEMO: ${{ inputs.demo }}
         PB_GROUNDED: ${{ inputs.grounded }}
+        PB_MAX_COST: ${{ inputs.max-cost }}
       run: |
         # Lists: one item per line (YAML `|` blocks); a value without a newline
         # is split on spaces for backward compatibility. Globbing is disabled.
@@ -153,6 +161,7 @@ runs:
         if [ "$PB_DEMO" = "true" ]; then args+=(--demo); fi
         if [ "$PB_GROUNDED" = "true" ]; then args+=(--grounded); fi
         if [ "${PB_STABILITY:-0}" -gt 0 ]; then args+=(--stability "$PB_STABILITY"); fi
+        if [ -n "$PB_MAX_COST" ]; then args+=(--max-cost "$PB_MAX_COST"); fi
         report="$RUNNER_TEMP/promptbeacon-report.json"
         promptbeacon "${args[@]}" > "$report"
         echo "report-path=$report" >> "$GITHUB_OUTPUT"

@@ -8,7 +8,7 @@ systems.
 from __future__ import annotations
 
 from promptbeacon.core.schemas import Report
-from promptbeacon.reporting.formats import describe_cost
+from promptbeacon.reporting.formats import describe_budget, describe_cost
 
 # Hidden marker that identifies PromptBeacon's sticky PR comment.
 COMMENT_MARKER = "<!-- promptbeacon-report -->"
@@ -52,6 +52,7 @@ def ci_outputs(report: Report, passed: bool | None = None) -> dict[str, str]:
         "tier": report.measurement_tier,
         "category": ", ".join(report.categories),
         "cost-usd": f"{report.total_cost_usd:.6f}" if report.total_cost_usd else "",
+        "partial": "true" if report.partial else "false",
     }
     if passed is not None:
         outputs["passed"] = "true" if passed else "false"
@@ -74,6 +75,9 @@ def summary_markdown(
     topic = f" · {_md(', '.join(report.categories))}" if report.categories else ""
     lines.append(f"### AI visibility: {_md(report.brand)}{topic}")
     lines.append("")
+    if report.partial:
+        lines.append(f"> **{_md(describe_budget(report) or 'Partial result')}.**")
+        lines.append("")
 
     sov = report.share_of_voice
     parts = [f"**{report.visibility_score:.0f}/100** visibility score"]
@@ -139,6 +143,8 @@ def summary_markdown(
     cost = describe_cost(report)
     if cost:
         meta.append(f"cost {cost}")
+    if report.budget and not report.partial:
+        meta.append(_md(describe_budget(report) or ""))
     lines.append("<sub>" + " · ".join(meta) + " · measured with "
                  "[PromptBeacon](https://github.com/yotambraun/promptbeacon)</sub>")  # fmt: skip
     return "\n".join(lines) + "\n"
@@ -193,6 +199,8 @@ def report_summary(report: Report, *, max_brands: int = 10) -> dict:
         "models": sorted({f"{r.provider}/{r.model}" for r in report.provider_results}),
         "prompts": len({r.prompt for r in report.provider_results}),
         "cost": describe_cost(report),
+        "partial": report.partial,
+        "budget": report.budget.model_dump() if report.budget else None,
         "recommendations": [r.action for r in report.recommendations[:3]],
         "timestamp": report.timestamp.isoformat(),
     }

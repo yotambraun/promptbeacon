@@ -41,10 +41,18 @@ from promptbeacon.analysis.scorer import (
 from promptbeacon.analysis.sources import aggregate_source_attribution
 from promptbeacon.analysis.stability import aggregate_stability
 from promptbeacon.analysis.statistics import calculate_confidence_interval
+from promptbeacon.budget import (
+    BudgetExceededError,
+    BudgetTracker,
+    CostEstimate,
+    estimate_cost,
+    validate_max_cost,
+)
 from promptbeacon.core.clock import utc_now
 from promptbeacon.core.config import BeaconConfig, Provider, parse_model_overrides
 from promptbeacon.core.exceptions import ConfigurationError, ScanError
 from promptbeacon.core.schemas import (
+    BudgetReport,
     Citation,
     CitationSummary,
     HistoryReport,
@@ -179,6 +187,10 @@ class Beacon:
         self._smart_recommendations: bool = False
         self._providers_set: bool = False
         self._warned_unused_models: bool = False
+        self._max_cost: float | None = None
+        self._budget: BudgetTracker | None = None
+        self._estimate: CostEstimate | None = None
+        self._call_estimates: dict[str, float] = {}
 
     @property
     def brand(self) -> str:
@@ -592,6 +604,104 @@ class Beacon:
         self._smart_recommendations = True
         return self
 
+    def with_max_cost(self, usd: float | None) -> Self:
+        """Cap what a scan may spend, in US dollars (``None`` removes the cap).
+
+        Before the scan, its cost is estimated from LiteLLM's price map (see
+        :meth:`estimate_cost`); if the estimate is above the cap, the scan
+        raises :class:`~promptbeacon.budget.BudgetExceededError` without sending
+        anything. During the scan, no new request starts once the spend so far
+        plus the requests in flight reaches the cap; the report is then built
+        from the answers collected and ``report.partial`` is ``True``
+        (details in ``report.budget``). Models with no known price (e.g. a
+        local Ollama model) count as $0. Demo mode is always $0.
+
+        Args:
+            usd: The cap, e.g. ``0.05``.
+
+        Returns:
+            Self for chaining.
+        """
+        self._max_cost = validate_max_cost(usd)
+        return self
+
+    def _models_to_query(
+        self, *, requested: bool = False
+    ) -> list[tuple[Provider, str]]:
+        """``(provider, model)`` pairs a live scan would query (no key errors).
+
+        With ``requested``, every configured provider counts, even one whose
+        key is not set yet (cost estimates err high rather than low).
+        """
+        providers: list[Provider]
+        if requested:
+            providers = self._configured_providers()
+        else:
+            try:
+                providers = self._resolve_providers()
+            except ConfigurationError:
+                providers = self._configured_providers()
+        pairs = []
+        for provider in providers:
+            model = self._config.get_model_for_provider(provider)
+            if model:
+                pairs.append((provider, model))
+        return pairs
+
+    def estimate_cost(self, runs: int | None = None) -> CostEstimate:
+        """Estimate what :meth:`scan` (or :meth:`scan_stability`) will cost.
+
+        Sends no request: prices come from LiteLLM's bundled price map, with
+        about 500 output tokens per answer (``upper_usd`` assumes every answer
+        uses ``max_tokens``). Demo mode is $0.
+
+        Args:
+            runs: Runs to price (default: the stability runs set with
+                :meth:`with_stability`, else 1).
+        """
+        prompts, _ = self._prompt_plan()
+        return estimate_cost(
+            self._models_to_query(requested=True),
+            prompts,
+            runs=runs or self._stability_runs or 1,
+            max_tokens=self._config.max_tokens,
+            grounded=self._grounded,
+            smart_extraction=self._smart_extraction,
+            smart_recommendations=self._smart_recommendations,
+            infer_category=self._infer_category and not self._categories_set,
+            demo=self._demo_mode,
+        )
+
+    def _start_budget(self, runs: int = 1) -> None:
+        """Check the estimate against the cap and arm the tracker (if capped)."""
+        self._budget = None
+        self._estimate = None
+        self._call_estimates = {}
+        if self._max_cost is None:
+            return
+        estimate = self.estimate_cost(runs)
+        self._estimate = estimate
+        if estimate.total_usd > self._max_cost:
+            raise BudgetExceededError(estimate, self._max_cost)
+        for line in estimate.lines:
+            per_answer = line.usd / line.requests if line.requests else 0.0
+            self._call_estimates[line.provider] = per_answer
+        self._budget = BudgetTracker(self._max_cost)
+
+    def _budget_report(self, planned: int) -> BudgetReport | None:
+        if self._budget is None or self._max_cost is None:
+            return None
+        estimate = self._estimate
+        return BudgetReport(
+            max_cost_usd=self._max_cost,
+            estimated_cost_usd=round(estimate.total_usd, 6) if estimate else 0.0,
+            spent_usd=round(self._budget.spent, 6),
+            planned_answers=planned,
+            completed_answers=self._budget.completed,
+            skipped_answers=self._budget.skipped,
+            unpriced_models=list(estimate.unpriced) if estimate else [],
+        )
+
     def _make_client(self, provider: Provider, variation: int = 0) -> BaseLLMClient:
         """Create the LLM client for a provider (real or demo mock)."""
         model = self._config.get_model_for_provider(provider)
@@ -768,6 +878,8 @@ class Beacon:
             )
             if resp.cost_usd:
                 self._extra_cost += resp.cost_usd
+                if self._budget is not None:
+                    self._budget.add(resp.cost_usd)
             category, competitors = parse_profile(resp.content, self._config.brand)
         except Exception as e:  # noqa: BLE001 — inference is best-effort
             logger.warning("Category inference failed: %s", e)
@@ -858,11 +970,13 @@ class Beacon:
             Report with visibility analysis.
         """
         start_time = time.time()
+        self._start_budget()
         await self._prepare_categories()
         results, total_cost = await self._collect_results()
         total_cost += self._extra_cost
-        _raise_if_all_failed(results)
+        self._raise_if_nothing_ran(results)
         report = self._build_report(results, total_cost, start_time)
+        report.budget = self._budget_report(self._planned_answers())
         await self._apply_smart_recommendations(report)
 
         db = self._get_database()
@@ -894,24 +1008,39 @@ class Beacon:
         runs = self._stability_runs or 5
         start_time = time.time()
 
+        self._start_budget(runs)
         await self._prepare_categories()
         all_runs: list[list[ProviderResult]] = []
+        partial_run: list[ProviderResult] | None = None
         last_results: list[ProviderResult] = []
-        total_cost = self._extra_cost
+        total_cost = 0.0
         for i in range(runs):
+            skipped_before = self._budget.skipped if self._budget else 0
             results, cost = await self._collect_results(variation=i, use_cache=False)
+            total_cost += cost
+            last_results = results
+            cut_short = bool(self._budget and self._budget.skipped > skipped_before)
+            if cut_short:
+                # A run stopped by the budget asked fewer prompts; it is only
+                # used when no complete run exists.
+                if any(r.success for r in results) and not all_runs:
+                    partial_run = results
+                break
             if any(r.success for r in results):
                 all_runs.append(results)
-                total_cost += cost
-            last_results = results
+        total_cost += self._extra_cost
 
+        if not all_runs and partial_run is not None:
+            all_runs = [partial_run]
         if not all_runs:
+            self._raise_if_nothing_ran(last_results)
             _raise_if_all_failed(last_results)
 
         report = self._build_report(all_runs[0], total_cost, start_time)
         report.stability = aggregate_stability(
             all_runs, self._config.brand, weights=self._scoring_weights
         )
+        report.budget = self._budget_report(self._planned_answers(runs))
         await self._apply_smart_recommendations(report)
 
         db = self._get_database()
@@ -919,6 +1048,18 @@ class Beacon:
             db.save_report(report)
 
         return report
+
+    def _planned_answers(self, runs: int = 1) -> int:
+        return len(self._prompt_plan()[0]) * len(self._models_to_query()) * runs
+
+    def _raise_if_nothing_ran(self, results: list[ProviderResult]) -> None:
+        if results or self._budget is None or not self._budget.skipped:
+            _raise_if_all_failed(results)
+            return
+        raise ScanError(
+            f"The {self._budget.max_cost} USD budget was used up before any "
+            "answer was collected. Raise --max-cost / with_max_cost()."
+        )
 
     async def _collect_results(
         self, variation: int = 0, use_cache: bool = True
@@ -942,16 +1083,16 @@ class Beacon:
 
         async def run_provider(
             provider: Provider,
-        ) -> list[ProviderResult | BaseException]:
+        ) -> list[ProviderResult | BaseException | None]:
             client = self._make_client(provider, variation=variation)
             # Each provider gets its own concurrency limit, so providers run in
             # parallel without exceeding any single provider's rate limit.
             semaphore = asyncio.Semaphore(self._config.concurrent_requests)
 
-            async def query(prompt: str) -> ProviderResult:
+            async def query(prompt: str) -> ProviderResult | None:
                 async with semaphore:
-                    return await self._query_provider(
-                        client, prompt, use_cache=use_cache
+                    return await self._query_budgeted(
+                        client, provider, prompt, use_cache=use_cache
                     )
 
             return await asyncio.gather(
@@ -1149,12 +1290,18 @@ class Beacon:
                     self._config.competitors,
                     self._config.brand_aliases or None,
                 )
+                if self._budget is not None and self._budget.exhausted:
+                    raise RuntimeError("budget reached; using regex extraction")
                 resp = await client.complete(
                     prompt=prompt,
                     model=self._extraction_model,
                     temperature=0.0,
                     max_tokens=800,
                 )
+                if resp.cost_usd:
+                    self._extra_cost += resp.cost_usd
+                    if self._budget is not None:
+                        self._budget.add(resp.cost_usd)
                 return parse_llm_extraction(
                     resp.content,
                     response_content,
@@ -1171,6 +1318,29 @@ class Beacon:
             self._config.competitors,
             aliases=self._config.brand_aliases or None,
         )
+
+    async def _query_budgeted(
+        self,
+        client: BaseLLMClient,
+        provider: Provider,
+        prompt: str,
+        use_cache: bool = True,
+    ) -> ProviderResult | None:
+        """Query unless the budget is used up (``None`` means skipped)."""
+        budget = self._budget
+        if budget is None:
+            return await self._query_provider(client, prompt, use_cache=use_cache)
+        estimate = self._call_estimates.get(provider.value)
+        if estimate is None:
+            estimate = 0.0
+        if not budget.reserve(estimate):
+            return None
+        result: ProviderResult | None = None
+        try:
+            result = await self._query_provider(client, prompt, use_cache=use_cache)
+            return result
+        finally:
+            budget.settle(estimate, result.cost_usd if result else None)
 
     async def _query_provider_grounded(
         self, gclient: GroundedClient, prompt: str

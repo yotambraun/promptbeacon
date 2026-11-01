@@ -55,6 +55,31 @@ def describe_cost(report: Report) -> str | None:
     return None
 
 
+def describe_budget(report: Report) -> str | None:
+    """One line about a cost cap: within budget, or a partial result.
+
+    Returns ``None`` when the scan had no cap.
+    """
+    budget = getattr(report, "budget", None)
+    if budget is None:
+        return None
+    from promptbeacon.budget import format_usd
+
+    cap = format_usd(budget.max_cost_usd)
+    if budget.stopped_early:
+        return (
+            f"PARTIAL: the {cap} budget was reached after "
+            f"{budget.completed_answers} of {budget.planned_answers} answers; "
+            "the numbers cover only those answers"
+        )
+    text = (
+        f"within the {cap} budget (estimated {format_usd(budget.estimated_cost_usd)})"
+    )
+    if budget.unpriced_models:
+        text += "; counted as $0: " + ", ".join(budget.unpriced_models)
+    return text
+
+
 def to_json(report: Report, indent: int = 2) -> str:
     """Export report to JSON string.
 
@@ -333,6 +358,9 @@ def to_markdown(report: Report) -> str:
     cost_text = describe_cost(report)
     if cost_text:
         lines.append(f"\n*Estimated Cost: {cost_text}*")
+    budget_text = describe_budget(report)
+    if budget_text:
+        lines.append(f"\n*Budget: {budget_text}*")
 
     return "\n".join(lines)
 
@@ -447,6 +475,7 @@ def to_html(report: Report) -> str:
         Scan Duration: {report.scan_duration_seconds:.1f}s |
         Providers: {", ".join(report.providers_used)}
         {f" | Estimated Cost: {_esc(describe_cost(report) or '')}" if describe_cost(report) else ""}
+        {f" | Budget: {_esc(describe_budget(report) or '')}" if describe_budget(report) else ""}
     </p>
 </body>
 </html>"""

@@ -108,6 +108,13 @@ and `--competitor`. See [Open-source projects](projects.md).
 | `--smart` | | LLM-based extraction and recommendations (more calls) |
 | `--stability N` | `-r` | Repeat the whole scan N times and report stability (multiplies cost) |
 
+**Cost**
+
+| Option | Description |
+| --- | --- |
+| `--max-cost USD` | Spending cap, e.g. `0.05`. The scan is priced first (LiteLLM's price map, no request sent) and does not start if the estimate is above the cap; during the scan no new request starts once the spend reaches the cap, and the report is marked `PARTIAL` (`report.partial`, `report.budget`). Models with no known price, such as a local Ollama model, count as $0 and are listed. Also on `compare`, `sources`, `dashboard`, `badge` and `card` |
+| `--estimate` | Print the estimated cost (per model, with an upper bound) and exit without sending anything. With `--max-cost`, says whether the scan would start. `-f json` for machines |
+
 **History**
 
 | Option | Short | Description |
@@ -143,6 +150,10 @@ promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --grounded -p openai
 # An open-source project
 promptbeacon scan --pypi httpx
 promptbeacon scan --repo fastapi/fastapi -t "python web framework"
+
+# Price a scan before running it, then cap it
+promptbeacon scan httpx -t "python http client" -p openai -p anthropic --estimate
+promptbeacon scan httpx -t "python http client" -p openai -p anthropic --max-cost 0.05
 
 # Stability and a CI gate
 promptbeacon scan "Nike" -t "running shoes" --stability 5 --assert-min-stability 60
@@ -214,6 +225,7 @@ promptbeacon compare "Nike" -t "running shoes" --against "Adidas" -a "Puma"
 | `--category` | `-t` | Category |
 | `--provider` | `-p` | Providers |
 | `--model` | `-m` | Model per provider, as for `scan` |
+| `--max-cost USD` | | Spending cap, as for `scan` |
 | `--demo` | | Keyless demo mode |
 | `--format` | `-f` | Output format |
 
@@ -236,6 +248,7 @@ promptbeacon sources "Nike" -t "running shoes" --demo -f json
 | `--provider` | `-p` | Providers |
 | `--model` | `-m` | Model per provider, as for `scan` |
 | `--prompts` | `-n` | Prompts per category |
+| `--max-cost USD` | | Spending cap, as for `scan` |
 | `--grounded` | | Web-grounded measurement with real citations |
 | `--demo` | | Keyless demo mode |
 | `--format` | `-f` | `text` or `json` |
@@ -339,7 +352,7 @@ promptbeacon badge --pypi httpx --metric sov
 | --- | --- |
 | `BRAND` or `--repo/--pypi/--npm/--crate/--hf/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved `scan -f json` report instead of scanning |
-| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--max-cost`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-badge.svg`) |
 | `--endpoint PATH` | Also write a shields.io endpoint JSON |
 | `--label TEXT` | Left-hand text (default `AI visibility`) |
@@ -363,7 +376,7 @@ promptbeacon card --report report.json --theme both --png card.png
 | --- | --- |
 | `BRAND` or `--repo/--pypi/--npm/--crate/--hf/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved report |
-| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
+| `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--max-cost`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-card.svg`) |
 | `--png PATH` | Also write a PNG (needs `pip install 'promptbeacon[share]'`) |
 | `--theme` | `light` (default), `dark`, or `both` (adds a `-dark` file next to each output) |
@@ -384,11 +397,12 @@ promptbeacon ci --report report.json --min-score 50 --min-sov 0.2 --comment-file
 | --- | --- |
 | `--report PATH` | Report from `scan -f json` (required) |
 | `--min-score`, `--min-sov`, `--min-presence`, `--min-stability`, `--max-rank` | Thresholds; exit 1 if any is missed |
+| `--max-cost USD` | Exit 1 if the report's estimated cost is above this. A report that its own `--max-cost` cut short is flagged `PARTIAL` in the summary either way |
 | `--comment-file PATH` | Write a Markdown PR-comment body that starts with a hidden marker, for a sticky comment |
 
 On GitHub Actions it appends step outputs to `$GITHUB_OUTPUT` (`score`,
 `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`,
-`passed`) and a Markdown summary to `$GITHUB_STEP_SUMMARY`. Elsewhere it prints the
+`partial`, `passed`) and a Markdown summary to `$GITHUB_STEP_SUMMARY`. Elsewhere it prints the
 summary to stdout. See [CI & examples](examples.md).
 
 ---

@@ -65,6 +65,7 @@ comment up to date, and applies your thresholds last.
 | `min-stability` | `0` | Fail below this stability score (needs `stability`) |
 | `demo` | `false` | Keyless demo mode, for smoke tests |
 | `grounded` | `false` | Web-grounded scan (provider web search) |
+| `max-cost` | | Spending cap in US dollars, e.g. `"0.05"`. The scan is estimated first and does not start above the cap; it stops issuing requests once the cap is reached, and the summary and the `partial` output say so. Empty = no cap |
 | `badge-path` | | Write an SVG badge here, e.g. `.promptbeacon/badge.svg` |
 | `badge-endpoint-path` | | Write a shields.io endpoint JSON here |
 | `card-path` | | Write a 1200x630 SVG card here |
@@ -86,6 +87,7 @@ on spaces; use one item per line for multi-word names.
 | `stability` | Stability score, when `stability` > 0 |
 | `tier` | `demo`, `base_model` or `api_grounded` |
 | `passed` | `true` if every threshold passed |
+| `partial` | `true` if `max-cost` stopped the scan before every answer was collected |
 | `report-path` | Path to the full JSON report |
 
 ### Job summary
@@ -131,7 +133,8 @@ jobs:
 - [ai-visibility-pr.yml](https://github.com/yotambraun/promptbeacon/blob/main/examples/workflows/ai-visibility-pr.yml)
   — pull-request check with a sticky comment.
 
-Each real run is billed to the key in your secrets. `demo: "true"` gives a free dry run.
+Each real run is billed to the key in your secrets. Set `max-cost` to cap what one run
+may spend; `demo: "true"` gives a free dry run.
 
 ---
 

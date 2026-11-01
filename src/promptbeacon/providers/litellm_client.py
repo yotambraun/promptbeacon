@@ -54,6 +54,8 @@ def load_litellm() -> ModuleType:
         import litellm
 
         litellm.drop_params = True  # drop params a model does not support
+        # No "Provider List" banners on stdout (it carries JSON output).
+        litellm.suppress_debug_info = True
         _litellm_module = litellm
     return _litellm_module
 

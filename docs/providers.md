@@ -169,6 +169,44 @@ report = Beacon("httpx").with_category("python http client").with_prompt_count(1
 print(report.total_cost_usd, report.cost_status)
 ```
 
+### Estimating and capping cost
+
+`--estimate` prices a scan before you run it: per model, from LiteLLM's bundled price
+map, assuming about 500 output tokens per answer, with an upper bound at `max_tokens`.
+Nothing is sent.
+
+```bash
+promptbeacon scan httpx -t "python http client" -p openai -p anthropic --estimate
+```
+
+`--max-cost USD` (Python: `.with_max_cost(0.05)`, Action: `max-cost`, MCP: `max_cost`)
+caps a scan:
+
+1. **Before the scan**, the estimate is compared with the cap. Above it, the scan does
+   not start, and the error shows the estimate and how to lower it (fewer prompts,
+   providers or stability runs, or a cheaper model).
+2. **During the scan**, no new request starts once the money spent plus the requests in
+   flight reaches the cap. Requests already running finish, so the overshoot is at most
+   one batch of concurrent requests.
+3. **The result** is built from the answers collected. `report.partial` is `True`,
+   `report.budget` records the cap, the estimate, the spend and how many answers were
+   skipped, and every output (text, JSON, Markdown, the CI summary, the badge and the
+   card) says it is partial.
+
+Models with no price in LiteLLM's map, such as a local Ollama model, count as $0 and
+are listed by name. Perplexity Sonar's per-request fee and grounded search fees are
+included where the price map knows them. Demo mode is always $0.
+
+```python
+from promptbeacon import Beacon
+
+beacon = Beacon("httpx").with_category("python http client").with_max_cost(0.05)
+print(beacon.estimate_cost().summary())  # about $0.0025 (at most $0.0051) for 10 answers
+report = beacon.scan()
+if report.partial:
+    print(report.budget.completed_answers, "of", report.budget.planned_answers)
+```
+
 Ways to keep costs down:
 
 1. Explore in demo mode first; it never calls a provider.

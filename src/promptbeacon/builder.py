@@ -34,6 +34,7 @@ def configure_beacon(
     demo: bool = False,
     grounded: bool = False,
     infer_category: bool = False,
+    max_cost: float | None = None,
 ) -> Beacon:
     """Build a Beacon from plain options.
 
@@ -55,6 +56,7 @@ def configure_beacon(
         grounded: Web-grounded scan.
         infer_category: Opt-in single LLM call to name the category (and
             competitors) when none is given. Ignored in demo mode.
+        max_cost: Spending cap in US dollars (see :meth:`Beacon.with_max_cost`).
 
     Raises:
         ValueError: If neither brand nor project is given, or a provider or
@@ -93,4 +95,6 @@ def configure_beacon(
         beacon = beacon.demo()
     if grounded:
         beacon = beacon.with_grounding()
+    if max_cost is not None:
+        beacon = beacon.with_max_cost(max_cost)
     return beacon

@@ -439,6 +439,33 @@ class StabilityReport(BaseModel):
         return sum(1 for p in self.prompt_stability if p.flip_flopped)
 
 
+class BudgetReport(BaseModel):
+    """How a scan with a cost cap (``max_cost``) went."""
+
+    max_cost_usd: float = Field(..., gt=0, description="The cap, in US dollars")
+    estimated_cost_usd: float = Field(
+        default=0.0, ge=0, description="Estimate made before the scan started"
+    )
+    spent_usd: float = Field(
+        default=0.0, ge=0, description="Estimated spend of the requests that ran"
+    )
+    planned_answers: int = Field(default=0, ge=0)
+    completed_answers: int = Field(default=0, ge=0)
+    skipped_answers: int = Field(
+        default=0, ge=0, description="Requests not sent because the cap was reached"
+    )
+    unpriced_models: list[str] = Field(
+        default_factory=list,
+        description="Models with no known price, counted as $0 (e.g. local models)",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def stopped_early(self) -> bool:
+        """True when the cap was reached and some answers were not collected."""
+        return self.skipped_answers > 0
+
+
 class Report(BaseModel):
     """Complete visibility report for a brand scan."""
 
@@ -517,6 +544,17 @@ class Report(BaseModel):
         "the real bill is higher), 'unknown' (no pricing data), 'none' (no paid "
         "API calls, e.g. demo or fully cached).",
     )
+    budget: BudgetReport | None = Field(
+        default=None,
+        description="Set when the scan had a cost cap (max_cost); "
+        "budget.stopped_early marks a partial result",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def partial(self) -> bool:
+        """True when a cost cap stopped the scan before every answer was collected."""
+        return bool(self.budget and self.budget.stopped_early)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

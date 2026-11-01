@@ -455,6 +455,30 @@ beacon = Beacon("Nike").with_prompts(custom_prompts)
 
 ---
 
+#### `with_max_cost(usd: float | None) -> Beacon`
+
+Cap what a scan may spend, in US dollars (`None` removes the cap). Before the scan, its
+cost is estimated from LiteLLM's price map; above the cap, `scan()` raises
+`promptbeacon.budget.BudgetExceededError` (a `ConfigurationError`) and sends nothing.
+During the scan, no new request starts once the spend plus the requests in flight
+reaches the cap; the report is built from the answers collected, `report.partial` is
+`True` and `report.budget` has the details. Unpriced models (e.g. local Ollama) count as
+$0. CLI: `--max-cost`.
+
+#### `estimate_cost(runs: int | None = None) -> CostEstimate`
+
+Price the scan without sending anything. `CostEstimate` has `total_usd` (about 500
+output tokens per answer), `upper_usd` (every answer at `max_tokens`), `requests`,
+`answers`, per-model `lines`, `unpriced` model names, `assumptions`, `summary()` and
+`as_dict()`. CLI: `scan --estimate`.
+
+```python
+beacon = Beacon("httpx").with_category("python http client").with_max_cost(0.05)
+print(beacon.estimate_cost().summary())
+```
+
+---
+
 #### `with_stability(runs: int) -> Beacon`
 
 Configure stability scanning. When set, `.scan_stability()` runs the full scan `runs` times and computes a `StabilityReport` measuring how consistently AI mentions your brand.
@@ -839,7 +863,7 @@ print(guess_category(meta))
 
 | Function | Returns |
 | --- | --- |
-| `ci_outputs(report, passed=None)` | dict of string outputs (`score`, `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`, `passed`) |
+| `ci_outputs(report, passed=None)` | dict of string outputs (`score`, `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`, `partial`, `passed`) |
 | `summary_markdown(report, *, failures=None, thresholds=None, marker=False)` | Markdown summary; with `marker=True` it starts with the hidden sticky-comment marker |
 | `report_summary(report)` | Compact JSON-serialisable dict (what the MCP tools return) |
 
@@ -1030,6 +1054,7 @@ Main report object containing scan results.
 | `scan_duration_seconds` | float | Duration in seconds |
 | `total_cost_usd` | float \| None | Estimated API cost (never a misleading 0: unpriced calls leave it `None`) |
 | `cost_status` | str \| None | `complete`, `partial` (real bill is higher), `unknown` or `none` (demo / fully cached) |
+| `budget` | BudgetReport \| None | With a cost cap: `max_cost_usd`, `estimated_cost_usd`, `spent_usd`, `planned_answers`, `completed_answers`, `skipped_answers`, `unpriced_models`, `stopped_early` |
 
 **Measurement tier** — `demo` (canned data), `base_model` (LLM completion, no web search — training memory), or `api_grounded` (provider web search; approximates but does not equal the consumer product). Surfaced in the CLI banner and JSON.
 
@@ -1037,6 +1062,7 @@ Main report object containing scan results.
 
 - `providers_used` (list[str]): List of providers used
 - `success_rate` (float): Rate of successful queries
+- `partial` (bool): `True` when a cost cap stopped the scan before every answer was collected
 
 **Example:**
 ```python

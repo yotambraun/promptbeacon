@@ -64,10 +64,10 @@ responses).
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `providers` | none | Which providers and Tavily are configured (`true`/`false`, never the key values), the model each provider will use, and the default mode |
-| `scan` | `brand`, `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `grounded` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, top recommendations, `measurement_tier` |
-| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`, `crates:name`, `hf:owner/name`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
-| `sources` | `brand`, `category`, `competitors`, `providers`, `models`, `demo`, `grounded` (default `true`) | The domains AI answers cite and whether each cites the brand |
-| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
+| `scan` | `brand`, `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `grounded`, `max_cost` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, `partial` and `budget`, top recommendations, `measurement_tier` |
+| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`, `crates:name`, `hf:owner/name`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category`, `max_cost` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
+| `sources` | `brand`, `category`, `competitors`, `providers`, `models`, `demo`, `grounded` (default `true`), `max_cost` | The domains AI answers cite and whether each cites the brand |
+| `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png`, `max_cost` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
 
 `models` is an object mapping providers to model IDs, for example
 `{"anthropic": "claude-sonnet-5-5"}`, or `{"litellm": "ollama/llama3.2"}` for a local
@@ -86,7 +86,9 @@ explicitly). Empty values count as not configured.
   `PROMPTBEACON_LITELLM_MODEL`), tools default to the keyless demo and the result
   includes a `note` that says so. Nothing is billed.
 - With keys, scans are real and billed to those keys; results include an estimated
-  cost.
+  cost. Pass `max_cost` (US dollars) to cap a scan: it is estimated first and refused
+  above the cap, stops issuing requests once the cap is reached, and the result then
+  has `partial: true`.
 - Passing `demo: false` without any key is an error rather than a silent fallback.
 
 The server writes nothing to stdout except the protocol. Under the plugin, PromptBeacon's

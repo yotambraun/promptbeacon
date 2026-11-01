@@ -186,3 +186,17 @@ def test_action_models_input_selects_providers_and_models(tmp_path):
     )
     models = {(r["provider"], r["model"]) for r in report["provider_results"]}
     assert models == {("anthropic", "claude-sonnet-5-5"), ("openai", "gpt-6-sol")}
+
+
+def test_action_max_cost_input_caps_the_scan(tmp_path):
+    result = run_action(
+        tmp_path,
+        {"brand": "httpx", "category": "python http client", "demo": "true",
+         "max-cost": "0.05"},
+    )  # fmt: skip
+    assert result["exit"] == 0
+    out = result["outputs"]
+    assert out["partial"] == "false"
+    report = json.loads(Path(out["report-path"]).read_text(encoding="utf-8"))
+    assert report["budget"]["max_cost_usd"] == 0.05
+    assert "within the $0.050 budget" in result["summary"]

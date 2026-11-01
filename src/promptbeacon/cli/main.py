@@ -28,6 +28,7 @@ from promptbeacon.core.config import (
 )
 from promptbeacon.core.exceptions import VisibilityAssertionError
 from promptbeacon.reporting.formats import (
+    describe_budget,
     describe_cost,
     to_csv,
     to_dashboard_html,
@@ -112,6 +113,15 @@ MODEL_HELP = (
 )
 _ModelsOption = Annotated[
     list[str] | None, typer.Option("--model", "-m", help=MODEL_HELP)
+]
+MAX_COST_HELP = (
+    "Spending cap in US dollars, e.g. 0.05. The cost is estimated first (from "
+    "LiteLLM's price map) and the scan refuses to start above the cap; during "
+    "the scan no new request starts once the cap is reached, and the result is "
+    "marked partial. Models with no known price (e.g. local) count as $0"
+)
+_MaxCostOption = Annotated[
+    float | None, typer.Option("--max-cost", help=MAX_COST_HELP, min=0.000001)
 ]
 
 
@@ -250,6 +260,14 @@ def scan(
         typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
+    estimate: Annotated[
+        bool,
+        typer.Option(
+            "--estimate",
+            help="Print the estimated cost of this scan and exit (sends nothing)",
+        ),
+    ] = False,
     categories: Annotated[
         list[str] | None,
         typer.Option(
@@ -364,6 +382,10 @@ def scan(
         promptbeacon scan "httpx" -t "python http client" -m openai=gpt-6-sol
 
         promptbeacon scan "httpx" -t "python http client" -m litellm=ollama/llama3.2
+
+        promptbeacon scan "httpx" -t "python http client" --max-cost 0.05
+
+        promptbeacon scan "httpx" -t "python http client" -p openai --estimate
     """
     # Build beacon configuration — from a pinned protocol, or from CLI flags.
     if protocol is not None:
@@ -411,6 +433,12 @@ def scan(
             beacon = beacon.with_stability(stability)
 
         run_stability = stability > 0
+
+    if max_cost is not None:
+        beacon = beacon.with_max_cost(max_cost)
+    if estimate:
+        _print_estimate(beacon, output_format, stability=run_stability)
+        return
 
     # Real scans are saved to the default history file unless --no-save, so
     # `promptbeacon history` works out of the box. Demo data is only saved with
@@ -540,6 +568,7 @@ def dashboard(
         typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
@@ -567,6 +596,7 @@ def dashboard(
         models=models,
         categories=categories,
         demo=demo,
+        max_cost=max_cost,
     )
     report = _run_scan(beacon, f"Building dashboard for {brand}...")
 
@@ -589,6 +619,7 @@ def compare(
         typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help='Category, e.g. "running shoes"'),
@@ -614,6 +645,7 @@ def compare(
         models=models,
         categories=categories,
         demo=demo,
+        max_cost=max_cost,
     )
 
     report = _run_scan(beacon, f"Comparing {brand} with competitors...")
@@ -633,6 +665,7 @@ def sources(
         typer.Option("--provider", "-p", help=PROVIDER_HELP),
     ] = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
     categories: Annotated[
         list[str] | None,
         typer.Option("--category", "-t", help="Categories/topics to analyze"),
@@ -678,6 +711,7 @@ def sources(
         prompt_count=prompt_count,
         demo=demo,
         grounded=grounded,
+        max_cost=max_cost,
     )
     report = _run_scan(beacon, f"Finding sources for {brand}...")
 
@@ -961,6 +995,58 @@ def _print_tier_banner(report) -> None:
     if note:
         console.print(f"[{color}]measurement: {tier}[/{color}] — {note}")
     _print_prompt_line(report)
+    budget_text = describe_budget(report)
+    if budget_text:
+        style = "bold yellow" if report.partial else "dim"
+        console.print(f"[{style}]budget: {budget_text}[/{style}]", highlight=False)
+
+
+def _print_estimate(beacon: Beacon, output_format: OutputFormat, *, stability: bool):
+    """``scan --estimate``: price the scan without sending anything."""
+    from promptbeacon.budget import format_usd
+
+    runs = (beacon._stability_runs or 5) if stability else 1
+    try:
+        est = beacon.estimate_cost(runs)
+    except Exception as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+    if output_format == OutputFormat.json:
+        data = est.as_dict()
+        data["max_cost_usd"] = beacon._max_cost
+        data["within_budget"] = (
+            None if beacon._max_cost is None else est.total_usd <= beacon._max_cost
+        )
+        _emit(json.dumps(data, indent=2))
+        return
+    _text_only_notice(output_format, "scan --estimate")
+    table = Table(title=f"Estimated cost: {beacon.brand}")
+    table.add_column("Model", style="cyan")
+    table.add_column("Requests", justify="right")
+    table.add_column("Estimate", justify="right")
+    table.add_column("At most", justify="right")
+    table.add_column("Note", style="dim")
+    for line in est.lines:
+        table.add_row(
+            f"{line.provider}/{line.model}"
+            if line.provider != "litellm"
+            else line.model,
+            str(line.requests),
+            format_usd(line.usd) if line.priced else "$0 (no price)",
+            format_usd(line.upper_usd) if line.priced else "–",
+            line.note,
+        )
+    console.print(table)
+    console.print(f"Total: [bold]{est.summary()}[/bold]", highlight=False)
+    console.print(f"[dim]Assumes {est.assumptions}. Nothing was sent.[/dim]")
+    if beacon._max_cost is not None:
+        cap = format_usd(beacon._max_cost)
+        if est.total_usd > beacon._max_cost:
+            console.print(
+                f"[red]Above the {cap} budget: this scan would not start.[/red]"
+            )
+        else:
+            console.print(f"[green]Within the {cap} budget.[/green]")
 
 
 _STRATEGY_LABELS = {
@@ -1342,6 +1428,7 @@ def _beacon_from_options(
     demo: bool = False,
     grounded: bool = False,
     infer_category: bool = False,
+    max_cost: float | None = None,
 ) -> Beacon:
     """CLI wrapper around :func:`promptbeacon.builder.configure_beacon`.
 
@@ -1371,6 +1458,7 @@ def _beacon_from_options(
                         demo=demo,
                         grounded=grounded,
                         infer_category=infer_category,
+                        max_cost=max_cost,
                     )
             except ProjectMetadataUnavailable as e:
                 if not demo:
@@ -1402,6 +1490,7 @@ def _beacon_from_options(
             demo=demo,
             grounded=grounded,
             infer_category=infer_category,
+            max_cost=max_cost,
         )
     except (ProjectMetadataError, ValueError) as e:
         err_console.print(f"[red]Error:[/red] {e}")
@@ -1544,6 +1633,7 @@ def badge(
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
     categories: _ShareCategories = None,
     prompt_count: _SharePrompts = None,
     demo: _ShareDemo = False,
@@ -1588,6 +1678,7 @@ def badge(
         prompt_count=prompt_count,
         demo=demo,
         grounded=grounded,
+        max_cost=max_cost,
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -1632,6 +1723,7 @@ def card(
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
     models: _ModelsOption = None,
+    max_cost: _MaxCostOption = None,
     categories: _ShareCategories = None,
     prompt_count: _SharePrompts = None,
     demo: _ShareDemo = False,
@@ -1677,6 +1769,7 @@ def card(
         prompt_count=prompt_count,
         demo=demo,
         grounded=grounded,
+        max_cost=max_cost,
     )
     themes = ["light", "dark"] if theme == ThemeOption.both else [theme.value]
 
@@ -1729,6 +1822,15 @@ def ci(
     max_rank: Annotated[
         int | None, typer.Option("--max-rank", help="Worst acceptable SoV rank")
     ] = None,
+    max_cost: Annotated[
+        float | None,
+        typer.Option(
+            "--max-cost",
+            help="Fail if the report's estimated cost (USD) is above this. A "
+            "report cut short by its own --max-cost is shown as partial",
+            min=0.000001,
+        ),
+    ] = None,
     comment_file: Annotated[
         Path | None,
         typer.Option(
@@ -1746,6 +1848,8 @@ def ci(
     Example:
         promptbeacon scan "Nike" -t "running shoes" -f json --no-save > report.json
         promptbeacon ci --report report.json --min-score 50 --min-sov 0.3
+
+        promptbeacon ci --report report.json --max-cost 0.10
     """
     import os
 
@@ -1766,6 +1870,7 @@ def ci(
             ("min presence", min_presence),
             ("min stability", min_stability),
             ("max rank", max_rank),
+            ("max cost", max_cost),
         )
         if value is not None
     }
@@ -1780,6 +1885,12 @@ def ci(
         )
     except VisibilityAssertionError as e:
         failures = list(e.failures)
+    if (
+        max_cost is not None
+        and report.total_cost_usd is not None
+        and report.total_cost_usd > max_cost
+    ):
+        failures.append(f"cost ${report.total_cost_usd:.4f} > ${max_cost:g}")
     passed = not failures
 
     output_file = os.environ.get("GITHUB_OUTPUT")
