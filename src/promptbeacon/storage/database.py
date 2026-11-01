@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -30,6 +30,7 @@ from promptbeacon.storage.queries import (
     GET_LATEST_SCAN_QUERY,
     GET_PREVIOUS_SCAN_QUERY,
     GET_SCAN_COUNT_QUERY,
+    GET_TREND_QUERY,
     GET_VISIBILITY_TREND_QUERY,
     GET_VOLATILITY_QUERY,
 )
@@ -110,8 +111,9 @@ class Database:
                 INSERT INTO scans (
                     id, brand, timestamp, visibility_score, mention_count,
                     sentiment_positive, sentiment_neutral, sentiment_negative,
-                    scan_duration_seconds, total_cost_usd, providers_used
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    scan_duration_seconds, total_cost_usd, providers_used,
+                    measurement_tier, categories
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     scan_id,
@@ -125,6 +127,8 @@ class Database:
                     report.scan_duration_seconds,
                     report.total_cost_usd,
                     report.providers_used,
+                    report.measurement_tier,
+                    "|".join(report.categories),
                 ],
             )
 
@@ -274,6 +278,29 @@ class Database:
         except Exception as e:
             logger.error("Failed to get history: %s", e)
             raise StorageError(f"Failed to get history: {e}") from e
+
+    def get_trend(
+        self,
+        brand: str,
+        measurement_tier: str,
+        categories: list[str] | None = None,
+        limit: int = 12,
+    ) -> list[tuple[datetime, float]]:
+        """``(timestamp, score)`` of the latest real scans, oldest first.
+
+        Only scans measured the same way (same tier and categories) count, and
+        never demo scans or rows saved before 1.4.0 (they do not record how
+        they were measured).
+        """
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                GET_TREND_QUERY,
+                [brand, measurement_tier, "|".join(categories or []), limit],
+            ).fetchall()
+        except Exception as e:
+            raise StorageError(f"Failed to read the trend: {e}") from e
+        return [(row[0], float(row[1])) for row in reversed(rows)]
 
     def get_latest_scan(self, brand: str) -> ScanRecord | None:
         """Get the most recent scan for a brand.

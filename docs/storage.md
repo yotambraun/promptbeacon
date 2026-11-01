@@ -124,14 +124,21 @@ Stores complete scan reports.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| id | INTEGER | Primary key |
-| brand | TEXT | Brand name |
-| visibility_score | REAL | Score (0-100) |
+| id | VARCHAR | Primary key (UUID) |
+| brand | VARCHAR | Brand name |
+| timestamp | TIMESTAMP | Scan time (UTC) |
+| visibility_score | DOUBLE | Score (0-100) |
 | mention_count | INTEGER | Total mentions |
-| timestamp | TIMESTAMP | Scan time |
-| scan_duration | REAL | Duration (seconds) |
-| total_cost | REAL | Cost (USD) |
-| data | JSON | Full report data |
+| sentiment_positive / _neutral / _negative | DOUBLE | Sentiment shares |
+| scan_duration_seconds | DOUBLE | Duration (seconds) |
+| total_cost_usd | DOUBLE | Estimated cost (USD), NULL when unknown |
+| providers_used | VARCHAR[] | Providers queried |
+| measurement_tier | VARCHAR | `demo`, `base_model` or `api_grounded` (since 1.4.0; NULL in older rows) |
+| categories | VARCHAR | Categories asked about, joined with a vertical bar (since 1.4.0) |
+
+Opening an older file adds the two new columns automatically. Card trends
+(`promptbeacon card`) only use rows that record a non-demo tier, so scans saved before
+1.4.0 are left out of them.
 
 #### `provider_results`
 

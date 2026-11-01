@@ -9,11 +9,16 @@ The card answers one question — how often does each brand appear in AI
 answers for this category? — and is always labelled with how it was measured
 (demo data, base model, or web-grounded) so it can't be mistaken for more than
 it is.
+
+Given a trend (``trend=[...]``, the visibility scores of at least three real
+scans measured the same way; see :mod:`promptbeacon.share.trend`), the header
+also shows a small sparkline. Without one, the card is unchanged.
 """
 
 from __future__ import annotations
 
 import io
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
@@ -105,10 +110,25 @@ class CardData:
     footer: str
     date: str
     models: list[str] = field(default_factory=list)
+    trend: list[float] = field(default_factory=list)
 
 
-def card_data(report: Report, max_rows: int = MAX_ROWS) -> CardData:
-    """Derive the card's content from a scan report."""
+MIN_TREND_POINTS = 3
+# The sparkline spans at least this many score points, so small run-to-run
+# noise is not drawn as a dramatic swing.
+TREND_MIN_SPAN = 10.0
+
+
+def card_data(
+    report: Report,
+    max_rows: int = MAX_ROWS,
+    trend: Sequence[float] | None = None,
+) -> CardData:
+    """Derive the card's content from a scan report.
+
+    ``trend`` (scores of real scans, oldest first) is kept only with at least
+    three points and never for demo data.
+    """
     sov = report.share_of_voice
     entries = list(sov.aggregate.values()) if sov and sov.aggregate else []
     entries.sort(
@@ -182,6 +202,13 @@ def card_data(report: Report, max_rows: int = MAX_ROWS) -> CardData:
         footer=footer,
         date=date,
         models=models,
+        trend=(
+            [max(0.0, min(100.0, float(v))) for v in trend]
+            if trend
+            and len(trend) >= MIN_TREND_POINTS
+            and report.measurement_tier != "demo"
+            else []
+        ),
     )
 
 
@@ -228,7 +255,29 @@ class Ring:
     fill: bool = False
 
 
-Shape = Rect | Text | Ring
+@dataclass
+class Line:
+    points: list[tuple[float, float]]
+    color: str
+    width: float
+
+
+Shape = Rect | Text | Ring | Line
+
+
+def _sparkline(
+    values: list[float], x: float, y: float, w: float, h: float
+) -> list[tuple[float, float]]:
+    """Map scores (0-100) to points in a box; flat series draw a flat line."""
+    lo, hi = min(values), max(values)
+    if hi - lo < TREND_MIN_SPAN:
+        mid = (hi + lo) / 2
+        lo, hi = mid - TREND_MIN_SPAN / 2, mid + TREND_MIN_SPAN / 2
+    step = w / (len(values) - 1)
+    return [
+        (round(x + i * step, 1), round(y + h - (v - lo) / (hi - lo) * h, 1))
+        for i, v in enumerate(values)
+    ]
 
 
 def layout(
@@ -262,6 +311,21 @@ def layout(
     pill_w = text_width(label, 16, bold=True) + 32
     shapes.append(Rect(WIDTH - PAD - pill_w, cy - 18, pill_w, 36, bg, rx=18))
     shapes.append(Text(WIDTH - PAD - 16, cy + 6, label, 16, fg, 600, "end"))
+
+    # Score trend (real scans only): caption, sparkline and the latest score.
+    if len(data.trend) >= MIN_TREND_POINTS:
+        right = WIDTH - PAD - pill_w - 28
+        value = f"{round(data.trend[-1])}"
+        value_w = text_width(value, 18, bold=True)
+        line_w, line_h = 140.0, 30.0
+        line_x = right - value_w - 12 - line_w
+        points = _sparkline(data.trend, line_x, cy - line_h / 2, line_w, line_h)
+        caption = f"Score, last {len(data.trend)} scans"
+        shapes.append(Text(line_x - 14, cy + 5, caption, 15, p["muted"], 400, "end"))
+        shapes.append(Line(points, INDIGO if theme == "light" else "#A5B4FC", 2.5))
+        lx, ly = points[-1]
+        shapes.append(Ring(lx, ly, 4, 0, 1.0, fill=True))
+        shapes.append(Text(right, cy + 6, value, 18, p["text"], 700, "end"))
 
     # Title: shrink, then wrap to two lines, then truncate the second line.
     content_w = WIDTH - 2 * PAD
@@ -365,12 +429,25 @@ def _wrap(text: str, max_width: float, size: float, measure: Measure) -> list[st
 # --- SVG ---------------------------------------------------------------------
 
 
-def render_card_svg(report: Report, theme: Theme = "light") -> str:
-    """Render the share card as a self-contained SVG (system fonts, no scripts)."""
-    data = card_data(report)
+def render_card_svg(
+    report: Report, theme: Theme = "light", trend: Sequence[float] | None = None
+) -> str:
+    """Render the share card as a self-contained SVG (system fonts, no scripts).
+
+    ``trend``: visibility scores of earlier real scans, oldest first (see
+    :mod:`promptbeacon.share.trend`); drawn when there are at least three.
+    """
+    data = card_data(report, trend=trend)
     shapes = layout(data, theme)
     summary = "; ".join(f"{r.name} {r.appearances}/{r.total}" for r in data.rows)
-    alt = xml(f"{data.title} {summary}. {data.subtitle}.")
+    trend_alt = ""
+    if data.trend:
+        trend_alt = (
+            f" Visibility score over the last {len(data.trend)} scans: "
+            + ", ".join(str(round(v)) for v in data.trend)
+            + "."
+        )
+    alt = xml(f"{data.title} {summary}. {data.subtitle}.{trend_alt}")
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" '
         f'viewBox="0 0 {WIDTH} {HEIGHT}" role="img" aria-label="{alt}">',
@@ -389,6 +466,13 @@ def render_card_svg(report: Report, theme: Theme = "light") -> str:
             out.append(
                 f'<rect x="{s.x:.1f}" y="{s.y:.1f}" width="{s.w:.1f}" '
                 f'height="{s.h:.1f}" rx="{s.rx:.1f}" fill="{fill}"{stroke}/>'
+            )
+        elif isinstance(s, Line):
+            pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in s.points)
+            out.append(
+                f'<polyline class="pb-trend" points="{pts}" fill="none" '
+                f'stroke="{s.color}" stroke-width="{s.width}" '
+                'stroke-linecap="round" stroke-linejoin="round"/>'
             )
         elif isinstance(s, Ring):
             if s.fill:
@@ -495,10 +579,16 @@ def _mix(a: str, b: str, t: float) -> tuple[int, int, int]:
     )
 
 
-def render_card_png(report: Report, theme: Theme = "light", scale: int = 2) -> bytes:
+def render_card_png(
+    report: Report,
+    theme: Theme = "light",
+    scale: int = 2,
+    trend: Sequence[float] | None = None,
+) -> bytes:
     """Render the share card as PNG bytes (``scale=2`` gives a crisp 2400x1260).
 
-    Requires Pillow: ``pip install 'promptbeacon[share]'``.
+    Requires Pillow: ``pip install 'promptbeacon[share]'``. ``trend`` as for
+    :func:`render_card_svg`.
     """
     try:
         from PIL import Image, ImageDraw, ImageFont
@@ -532,7 +622,7 @@ def render_card_png(report: Report, theme: Theme = "light", scale: int = 2) -> b
     def measure(text: str, size: float, bold: bool = False) -> float:
         return float(font(size, bold, _script(text)).getlength(text)) / scale
 
-    data = card_data(report)
+    data = card_data(report, trend=trend)
     shapes = layout(data, theme, measure=measure)
     bg = _PALETTES[theme]["bg"]
     img = Image.new("RGB", (WIDTH * scale, HEIGHT * scale), _hex(bg))
@@ -576,6 +666,13 @@ def render_card_png(report: Report, theme: Theme = "light", scale: int = 2) -> b
                     )
                 continue
             draw.rounded_rectangle(box, radius=round(s.rx * scale), fill=_hex(s.fill))
+        elif isinstance(s, Line):
+            draw.line(
+                [(x * scale, y * scale) for x, y in s.points],
+                fill=_hex(s.color),
+                width=round(s.width * scale),
+                joint="curve",
+            )
         elif isinstance(s, Ring):
             color = _mix(bg, INDIGO, s.opacity)
             ring_box = [

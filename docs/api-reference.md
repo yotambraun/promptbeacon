@@ -852,13 +852,14 @@ print(guess_category(meta))
 
 | Function | Returns |
 | --- | --- |
+| `promptbeacon.share.trend`: `history_points(db_path, report)`, `load_trend_file(path)`, `update_trend_file(path, report)`, `trend_values(points, report)` | Comparable real scans from the history database or a trend file |
 | `render_badge_svg(report, *, label="AI visibility", metric="both")` | Self-contained SVG badge (`metric`: `both`, `score`, `sov`, `rank`) |
 | `report_rank(report) -> (rank, total, tied, category)` | Rank among the compared projects; raises `RankUnavailableError` without a category or with fewer than three projects |
 | `rank_badge_parts(rank, total, category, *, demo=False, tied=False)`, `rank_endpoint(...)` | Rank badge text, colour and shields.io JSON for any ranking (demo is grey) |
 | `badge_endpoint(report, *, label=..., metric=..., with_logo=True)` | shields.io endpoint JSON as a dict (`schemaVersion`, `label`, `message`, `color`, `labelColor`, `logoSvg`) |
 | `shields_url(raw_json_url, *, link=None)` | `https://img.shields.io/endpoint?url=...` |
-| `render_card_svg(report, theme="light")` | 1200x630 SVG card (`light` or `dark`) |
-| `render_card_png(report, theme="light", scale=2)` | PNG bytes; needs `promptbeacon[share]` |
+| `render_card_svg(report, theme="light", trend=None)` | 1200x630 SVG card (`light` or `dark`). `trend`: scores of earlier real scans, oldest first; a sparkline is drawn with 3 or more (never for demo data) |
+| `render_card_png(report, theme="light", scale=2, trend=None)` | PNG bytes; needs `promptbeacon[share]` |
 | `card_data(report)` | The card's content (title, rows, tier) for custom rendering |
 
 `promptbeacon.share.summary`:

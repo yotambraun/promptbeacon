@@ -136,6 +136,31 @@ README, a docs page or a browser.
 </picture>
 ```
 
+### Score trend
+
+Once there are at least three real scans of the same kind (same measurement tier and
+category), the card's header shows a small sparkline of the visibility score with the
+latest value: "Score, last 6 scans". Demo data never gets a trend, and with fewer than
+three points the card is simply drawn without it. The line spans at least 10 score
+points, so run-to-run noise is not drawn as a dramatic swing.
+
+The scores come from:
+
+- **your local history** (`~/.promptbeacon/data.db`), which real CLI scans write by
+  default (`--storage` to read another file); scans saved before 1.4.0 do not record how
+  they were measured and are left out;
+- **a trend file**, for CI, where nothing persists between runs: `--trend
+  .promptbeacon/trend.json` adds the report to that small JSON file and draws its scores.
+  Commit it next to the card (the Action's `trend-path` input does this for you).
+
+```bash
+promptbeacon card --report report.json -o .promptbeacon/card.svg \
+  --trend .promptbeacon/trend.json
+```
+
+`--no-trend` turns it off. In Python, pass the scores yourself:
+`render_card_svg(report, trend=[48, 55, 61])`.
+
 ### PNG for social networks
 
 X, LinkedIn, Slack and Discord do not accept SVG uploads or previews. Add `--png` for
@@ -173,6 +198,7 @@ and commits the badge, its JSON and the card back to the repository:
     badge-endpoint-path: .promptbeacon/badge.json
     rank-badge-path: .promptbeacon/rank.svg    # optional; needs 2+ competitors
     card-path: .promptbeacon/card.svg
+    trend-path: .promptbeacon/trend.json       # score sparkline on the card
   env:
     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```

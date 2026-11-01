@@ -381,6 +381,9 @@ promptbeacon card --report report.json --theme both --png card.png
 | `--output`, `-o` | SVG file (default `promptbeacon-card.svg`) |
 | `--png PATH` | Also write a PNG (needs `pip install 'promptbeacon[share]'`) |
 | `--theme` | `light` (default), `dark`, or `both` (adds a `-dark` file next to each output) |
+| `--trend PATH` | JSON trend file: this report is added to it (real scans only) and the scores are drawn as a sparkline once 3 comparable scans exist. For CI; default is the local history |
+| `--no-trend` | Never draw the sparkline |
+| `--storage PATH`, `-s` | History file to read the trend from (default `~/.promptbeacon/data.db`) |
 
 ---
 

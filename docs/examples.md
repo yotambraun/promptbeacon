@@ -70,6 +70,7 @@ comment up to date, and applies your thresholds last.
 | `badge-endpoint-path` | | Write a shields.io endpoint JSON here |
 | `rank-badge-path` | | Write a rank badge (`#2 of 4 · python http clients`) here, plus its endpoint JSON next to it (`.json`). Needs a category and 2+ competitors; otherwise the step warns |
 | `card-path` | | Write a 1200x630 SVG card here |
+| `trend-path` | | JSON trend file to keep, e.g. `.promptbeacon/trend.json`. Each real scan is added and the card shows a score sparkline once 3 comparable scans exist; commit it with the card |
 | `comment-on-pr` | `false` | Keep one sticky comment on the pull request |
 | `github-token` | `${{ github.token }}` | Token for the PR comment |
 | `version` | `promptbeacon` | Package spec to install, e.g. `promptbeacon==1.4.0` |

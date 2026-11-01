@@ -202,3 +202,16 @@ SELECT
 FROM score_changes
 WHERE prev_score IS NOT NULL
 """
+
+# Recent scores of real (non-demo) scans measured the same way, newest first.
+# Rows saved before 1.4.0 have no tier and are left out.
+GET_TREND_QUERY = """
+SELECT timestamp, visibility_score
+FROM scans
+WHERE brand = ?
+    AND measurement_tier = ?
+    AND measurement_tier <> 'demo'
+    AND coalesce(categories, '') = ?
+ORDER BY timestamp DESC
+LIMIT ?
+"""

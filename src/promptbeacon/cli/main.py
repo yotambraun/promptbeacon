@@ -23,6 +23,7 @@ from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import (
     Provider,
     get_default_storage_path,
+    get_promptbeacon_home,
     get_tavily_api_key,
     has_tavily_api_key,
 )
@@ -1772,13 +1773,44 @@ def card(
             "each file)",
         ),
     ] = ThemeOption.light,
+    trend_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--trend",
+            help="JSON trend file (e.g. .promptbeacon/trend.json): this report is "
+            "added to it (real scans only) and its scores drawn as a sparkline. "
+            "For CI, where no local history persists. Default: the local history",
+        ),
+    ] = None,
+    show_trend: Annotated[
+        bool,
+        typer.Option(
+            "--show-trend/--no-trend",
+            help="Draw a score sparkline when 3+ real scans measured the same way "
+            "exist",
+        ),
+    ] = True,
+    storage: Annotated[
+        Path | None,
+        typer.Option(
+            "--storage",
+            "-s",
+            help="History file to read the trend from (default "
+            "~/.promptbeacon/data.db)",
+        ),
+    ] = None,
 ) -> None:
     """Write a share-ready result card (1200x630 SVG, optional PNG).
+
+    With 3 or more real scans of the same kind in your history (or in a --trend
+    file), the card also shows a score sparkline. Demo data never does.
 
     Example:
         promptbeacon card "Nike" -t "running shoes" -c "Adidas" -c "Hoka" --demo
 
         promptbeacon card --report report.json --png card.png --theme both
+
+        promptbeacon card --report report.json --trend .promptbeacon/trend.json
     """
     from promptbeacon.share import render_card_png, render_card_svg
 
@@ -1796,6 +1828,7 @@ def card(
         grounded=grounded,
         max_cost=max_cost,
     )
+    trend = _card_trend(report, trend_file, storage) if show_trend else None
     themes = ["light", "dark"] if theme == ThemeOption.both else [theme.value]
 
     def themed(path: Path, name: str) -> Path:
@@ -1806,11 +1839,14 @@ def card(
     for name in themes:
         target = themed(output, name)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(render_card_svg(report, name), encoding="utf-8")  # type: ignore[arg-type]
+        target.write_text(
+            render_card_svg(report, name, trend=trend),  # type: ignore[arg-type]
+            encoding="utf-8",
+        )
         err_console.print(f"[green]Card written to[/green] {target}")
         if png is not None:
             try:
-                data = render_card_png(report, name)  # type: ignore[arg-type]
+                data = render_card_png(report, name, trend=trend)  # type: ignore[arg-type]
             except ImportError as e:
                 err_console.print(f"[red]Error:[/red] {e}")
                 raise typer.Exit(1) from None
@@ -1822,6 +1858,43 @@ def card(
         err_console.print(
             "[yellow]This card is from demo data and is labelled 'Demo data'.[/yellow]"
         )
+
+
+def _card_trend(report, trend_file: Path | None, storage: Path | None):
+    """Scores for the card's sparkline, or None (and say why on stderr)."""
+    from promptbeacon.share.trend import (
+        MIN_POINTS,
+        comparable,
+        history_points,
+        trend_values,
+        update_trend_file,
+    )
+
+    if report.measurement_tier == "demo":
+        return None
+    try:
+        if trend_file is not None:
+            points = update_trend_file(trend_file, report)
+            source = str(trend_file)
+        else:
+            path = storage or (get_promptbeacon_home() / "data.db")
+            points = history_points(Path(path).expanduser(), report)
+            source = "history"
+    except Exception as e:  # noqa: BLE001 — a trend is optional
+        err_console.print(f"[yellow]No trend on the card: {e}[/yellow]")
+        return None
+    values = trend_values(points, report)
+    if values:
+        err_console.print(
+            f"[dim]Trend: the last {len(values)} comparable real scans ({source}).[/dim]"
+        )
+    else:
+        have = len(comparable(points, report))
+        err_console.print(
+            f"[dim]No trend yet: it appears with {MIN_POINTS} real scans measured "
+            f"the same way (found {have}, including this one).[/dim]"
+        )
+    return values
 
 
 @app.command()

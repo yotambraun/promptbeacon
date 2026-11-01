@@ -76,6 +76,10 @@ inputs:
     description: "Write a 1200x630 SVG result card here (e.g. .promptbeacon/card.svg)"
     required: false
     default: ""
+  trend-path:
+    description: "JSON trend file to keep (e.g. .promptbeacon/trend.json). Each real scan is added, and the card shows a score sparkline once 3 comparable scans exist. Commit it with the card"
+    required: false
+    default: ""
   comment-on-pr:
     description: "On pull_request events, post or update one sticky PR comment (needs pull-requests: write)"
     required: false
@@ -199,6 +203,7 @@ runs:
         PB_ENDPOINT: ${{ inputs.badge-endpoint-path }}
         PB_RANK: ${{ inputs.rank-badge-path }}
         PB_CARD: ${{ inputs.card-path }}
+        PB_TREND: ${{ inputs.trend-path }}
       run: |
         if [ -n "$PB_BADGE" ] || [ -n "$PB_ENDPOINT" ]; then
           args=(badge --report "$PB_REPORT" --output "${PB_BADGE:-$RUNNER_TEMP/promptbeacon-badge.svg}")
@@ -212,7 +217,9 @@ runs:
             || echo "::warning::PromptBeacon could not write the rank badge (it needs a category and at least two competitors)."
         fi
         if [ -n "$PB_CARD" ]; then
-          promptbeacon card --report "$PB_REPORT" --output "$PB_CARD"
+          args=(card --report "$PB_REPORT" --output "$PB_CARD")
+          if [ -n "$PB_TREND" ]; then args+=(--trend "$PB_TREND"); fi
+          promptbeacon "${args[@]}"
         fi
 
     - name: Update PR comment

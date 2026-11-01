@@ -21,8 +21,15 @@ CREATE TABLE IF NOT EXISTS scans (
     scan_duration_seconds DOUBLE DEFAULT 0.0,
     total_cost_usd DOUBLE,
     providers_used VARCHAR[],
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    measurement_tier VARCHAR,
+    categories VARCHAR
 );
+
+-- Added in 1.4.0 (how a scan was measured, for trends of real scans only).
+-- Older files gain the columns; their existing rows stay NULL ("unknown").
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS measurement_tier VARCHAR;
+ALTER TABLE scans ADD COLUMN IF NOT EXISTS categories VARCHAR;
 
 -- Provider results table: stores individual LLM query results
 CREATE TABLE IF NOT EXISTS provider_results (
