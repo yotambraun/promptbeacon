@@ -231,6 +231,7 @@ def test_changed_file_needs_force_or_confirmation(tmp_path):
     assert "--force" in result.stdout
     assert (root / WORKFLOW).read_text(encoding="utf-8") == "name: mine\n"
 
+    assert "--yes --force" in result.stdout  # the next step says how
     forced = run(root, "--yes", "--force")
     assert forced.exit_code == 0, forced.output
     assert (root / WORKFLOW).read_text(encoding="utf-8").startswith(GENERATED_MARKER)

@@ -2422,6 +2422,8 @@ def init(
             )
         if not _is_interactive():
             command += " --yes"
+            if any(f.status == "update" for f in plan.files):
+                command += " --force  # replaces the changed file shown above"
         steps.insert(0, f"Write the files: {command.strip()}")
     say("\n[bold]Next steps[/bold]")
     for i, step in enumerate(steps, 1):
