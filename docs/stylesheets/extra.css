@@ -1,0 +1,71 @@
+/* Brand colours: the indigo-to-cyan gradient of the PromptBeacon logo. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #4f46e5;
+  --md-primary-fg-color--light: #6366f1;
+  --md-primary-fg-color--dark: #3730a3;
+  --md-accent-fg-color: #06b6d4;
+  --pb-gradient: linear-gradient(90deg, #6366f1 0%, #22d3ee 100%);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #6366f1;
+  --md-primary-fg-color--light: #818cf8;
+  --md-primary-fg-color--dark: #4338ca;
+  --md-accent-fg-color: #22d3ee;
+  --md-default-bg-color: #0f1117;
+}
+
+/* Header: brand gradient and a logo that is large enough to read. */
+.md-header,
+.md-tabs {
+  background: var(--pb-gradient, var(--md-primary-fg-color));
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background: linear-gradient(90deg, #312e81 0%, #155e75 100%);
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem;
+  width: auto;
+}
+
+/* Landing page hero: the real demo output and a share card side by side. */
+.pb-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+
+@media screen and (min-width: 60em) {
+  .pb-hero {
+    grid-template-columns: 1.25fr 1fr;
+    align-items: center;
+  }
+}
+
+.pb-hero img {
+  width: 100%;
+  border-radius: 0.6rem;
+  box-shadow: 0 0.4rem 1.6rem rgba(15, 23, 42, 0.18);
+}
+
+/* Three entry points in one row on wide screens instead of two plus one. */
+@media screen and (min-width: 60em) {
+  .md-typeset .grid.cards.pb-three {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.6rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 0.3rem 1.2rem rgba(79, 70, 229, 0.15);
+}

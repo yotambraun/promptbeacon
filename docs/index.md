@@ -6,6 +6,15 @@ or a local model the questions your users ask, measures how often you are mentio
 recommended next to your competitors, and turns that into a number you can gate in CI and
 show as a README badge.
 
+<div class="pb-hero" markdown>
+
+![A promptbeacon demo run in a terminal: visibility score, insights, cited sources and the competitor table](https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/cli-demo.svg)
+
+![A share card: which python http client AI recommends, with mentions per project (demo data)](https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/card-light.svg#only-light)
+![A share card: which python http client AI recommends, with mentions per project (demo data)](https://raw.githubusercontent.com/yotambraun/promptbeacon/main/assets/card-dark.svg#only-dark)
+
+</div>
+
 !!! info "Which tool?"
     **PromptBeacon** is for developers and open-source maintainers: does AI recommend
     your library or dev product — a number in CI and a README badge.
@@ -14,7 +23,7 @@ show as a README badge.
     website teams: an audit of what AI assistants say about your site, with the answers
     and cited pages as receipts, plus fixes for your site.
 
-<div class="grid cards" markdown>
+<div class="grid cards pb-three" markdown>
 
 -   :material-console:{ .lg .middle } **In your terminal**
 

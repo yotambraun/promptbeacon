@@ -12,15 +12,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -31,6 +31,9 @@ theme:
     - navigation.top
     - content.code.copy
     - search.suggest
+
+extra_css:
+  - stylesheets/extra.css
 
 nav:
   - Home: index.md
