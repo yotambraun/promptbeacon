@@ -201,7 +201,9 @@ included where the price map knows them. Demo mode is always $0.
 from promptbeacon import Beacon
 
 beacon = Beacon("httpx").with_category("python http client").with_max_cost(0.05)
-print(beacon.estimate_cost().summary())  # about $0.0025 (at most $0.0051) for 10 answers
+print(
+    beacon.estimate_cost().summary()
+)  # about $0.0025 (at most $0.0051) for 10 answers
 report = beacon.scan()
 if report.partial:
     print(report.budget.completed_answers, "of", report.budget.planned_answers)

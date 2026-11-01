@@ -855,9 +855,7 @@ def weekly_maintenance(db_path: str):
     print(f"Readable: {count} scans")
 
     # 4. Cleanup old data (optional)
-    db.connection.execute(
-        "DELETE FROM scans WHERE timestamp < now() - INTERVAL 90 DAY"
-    )
+    db.connection.execute("DELETE FROM scans WHERE timestamp < now() - INTERVAL 90 DAY")
 
     print(f"Maintenance completed: {datetime.now()}")
 
