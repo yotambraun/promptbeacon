@@ -9,7 +9,7 @@
     {
       "name": "promptbeacon",
       "source": "./plugins/promptbeacon",
-      "description": "Does AI recommend your product? Scan brands and GitHub/PyPI/npm projects, compare share of voice, and create README badges and share cards.",
+      "description": "Does AI recommend your product? Scan brands and GitHub, PyPI, npm, crates.io and Hugging Face projects, compare share of voice, review sources, history and recommendations, and create README badges and share cards.",
       "category": "productivity",
       "tags": ["ai-visibility", "geo", "seo", "mcp", "open-source"]
     }

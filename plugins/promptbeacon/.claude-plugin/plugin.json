@@ -2,7 +2,7 @@
   "name": "promptbeacon",
   "displayName": "PromptBeacon",
   "version": "1.4.0",
-  "description": "Measure whether AI assistants recommend your library, dev product or open-source project, compare share of voice with competitors, choose the models (including local ones), and create README badges and share cards.",
+  "description": "Measure whether AI assistants recommend your library, dev product or open-source project: price and run scans, compare share of voice with competitors, see cited sources, history and recommendations, choose the models (including local ones), and create README badges and share cards.",
   "author": {
     "name": "Yotam Braun",
     "url": "https://github.com/yotambraun"
