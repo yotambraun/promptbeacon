@@ -1,6 +1,7 @@
-"""PromptBeacon - LLM visibility monitoring for brands.
+"""PromptBeacon: does AI recommend your library or dev product?
 
-Track how your brand appears in AI-generated responses across ChatGPT, Claude, Gemini, and more.
+Measure how often ChatGPT, Claude, Gemini or a local model mention and recommend a
+brand or open-source project, gate it in CI, and show it as a README badge.
 
 Example:
     >>> from promptbeacon import Beacon

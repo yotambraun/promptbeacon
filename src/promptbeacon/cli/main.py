@@ -41,9 +41,10 @@ from promptbeacon.reporting.formats import (
 app = typer.Typer(
     name="promptbeacon",
     help=(
-        "Does AI recommend your brand? Measure, track, and CI-test your "
-        "visibility across ChatGPT, Claude, Gemini and more. Try keyless: "
-        'promptbeacon demo "Nike"'
+        "Does AI recommend your library or dev product? Measure it across "
+        "ChatGPT, Claude, Gemini and local models, gate it in CI and show it as a "
+        'README badge. Try it keyless: promptbeacon demo httpx -t "python http '
+        'client". Set up a repository: promptbeacon init'
     ),
     no_args_is_help=True,
 )
@@ -211,7 +212,7 @@ def provider_callback(value: list[str] | None) -> list[Provider] | None:
         raise typer.BadParameter(str(e)) from None
 
 
-@app.command()
+@app.command(rich_help_panel="Start here")
 def scan(
     brand: Annotated[
         str | None,
@@ -363,7 +364,7 @@ def scan(
         typer.Option("--format", "-f", help="Output format"),
     ] = OutputFormat.text,
 ) -> None:
-    """Scan LLM visibility for a brand.
+    """Measure whether AI assistants recommend a brand or project.
 
     Example:
         promptbeacon scan "Nike" --category "running shoes" -c "Adidas" -p openai
@@ -477,7 +478,7 @@ def scan(
             raise typer.Exit(1) from None
 
 
-@app.command()
+@app.command(rich_help_panel="Analyse")
 def quick(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     category: Annotated[
@@ -512,7 +513,7 @@ def quick(
     _output_report(report, output_format, _print_text_report)
 
 
-@app.command()
+@app.command(rich_help_panel="Start here")
 def demo(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")] = "Nike",
     competitors: Annotated[
@@ -557,7 +558,7 @@ def demo(
     _output_report(report, output_format, _print_comparison_report)
 
 
-@app.command()
+@app.command(rich_help_panel="Share and track")
 def dashboard(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     competitors: Annotated[
@@ -608,7 +609,7 @@ def dashboard(
             webbrowser.open(output.resolve().as_uri())
 
 
-@app.command()
+@app.command(rich_help_panel="Analyse")
 def compare(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     against: Annotated[
@@ -654,7 +655,7 @@ def compare(
     _output_report(report, output_format, _print_comparison_report)
 
 
-@app.command()
+@app.command(rich_help_panel="Analyse")
 def sources(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     competitors: Annotated[
@@ -742,7 +743,7 @@ def sources(
         )
 
 
-@app.command()
+@app.command(rich_help_panel="Analyse")
 def funnel(
     brand: Annotated[str, typer.Argument(help="The brand name to analyze")],
     prompt: Annotated[
@@ -865,7 +866,7 @@ def funnel(
         _print_funnel_report(report)
 
 
-@app.command()
+@app.command(rich_help_panel="Share and track")
 def history(
     brand: Annotated[str, typer.Argument(help="The brand name")],
     days: Annotated[
@@ -920,7 +921,7 @@ def history(
         _print_history_report(history_report)
 
 
-@app.command()
+@app.command(rich_help_panel="Start here")
 def providers() -> None:
     """List providers, their key status, and the model each one will use."""
     from promptbeacon.core.config import (
@@ -1622,7 +1623,7 @@ _ShareGrounded = Annotated[
 ]
 
 
-@app.command()
+@app.command(rich_help_panel="Share and track")
 def badge(
     brand: _ShareBrand = None,
     report_path: _ShareReport = None,
@@ -1736,7 +1737,7 @@ def badge(
         )
 
 
-@app.command()
+@app.command(rich_help_panel="Share and track")
 def card(
     brand: _ShareBrand = None,
     report_path: _ShareReport = None,
@@ -1897,7 +1898,7 @@ def _card_trend(report, trend_file: Path | None, storage: Path | None):
     return values
 
 
-@app.command()
+@app.command(rich_help_panel="Share and track")
 def ci(
     report_path: Annotated[
         Path,
@@ -2028,7 +2029,7 @@ def _is_interactive() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty()
 
 
-@app.command()
+@app.command(rich_help_panel="Start here")
 def init(
     path: Annotated[
         Path, typer.Argument(help="Project root (default: the current directory)")
@@ -2372,7 +2373,7 @@ def init(
         say(f"  {i}. {step}", highlight=False, soft_wrap=True)
 
 
-@app.command("mcp")
+@app.command("mcp", rich_help_panel="Integrations")
 def mcp_server() -> None:
     """Run the MCP server over stdio (for Claude Code, Cursor and other clients).
 
@@ -2398,7 +2399,7 @@ def mcp_server() -> None:
 
 @app.callback()
 def main() -> None:
-    """PromptBeacon - LLM visibility monitoring for brands."""
+    """PromptBeacon: does AI recommend your library or dev product?"""
     pass
 
 

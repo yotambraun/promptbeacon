@@ -43,7 +43,7 @@ print(f"Share of voice: {report.share_of_voice.target_share:.0%}")
 For an open-source project, point it at the package or repository:
 
 ```bash
-promptbeacon scan --pypi httpx --demo        # or --repo owner/name, --npm express
+promptbeacon scan --pypi httpx --demo        # or --repo, --npm, --crate, --hf
 ```
 
 ## What it measures
@@ -70,7 +70,9 @@ memory) or `api_grounded` (provider web search) — and what the prompts asked a
 | --- | --- |
 | Check a library or product | `promptbeacon scan "Acme" --category "crm software"` |
 | Check an open-source project | `promptbeacon scan --repo owner/name` ([Open-source projects](projects.md)) |
-| Show the result | `promptbeacon badge` and `promptbeacon card` ([Badges & share cards](share.md)) |
+| Set up a repository | `promptbeacon init`: weekly workflow, badge snippet, next steps ([CLI](cli.md#init)) |
+| Show the result | `promptbeacon badge` (score, or `--metric rank`) and `promptbeacon card` with a score trend ([Badges & share cards](share.md)) |
+| Cap the cost | `--max-cost 0.05`, or `--estimate` to price a scan first ([Providers](providers.md#estimating-and-capping-cost)) |
 | Gate CI or track weekly | GitHub Action, pytest plugin, `promptbeacon ci` ([CI & examples](examples.md)) |
 | Choose models, run locally | `--model anthropic=claude-sonnet-5-5`, `--model litellm=ollama/llama3.2` ([Models & local LLMs](models.md)) |
 | Ask from your editor or agent | `promptbeacon mcp` and the Claude Code plugin ([Claude Code & MCP](mcp.md)) |
