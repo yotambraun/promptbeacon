@@ -130,7 +130,11 @@ report = Beacon("httpx").with_category("python http client").demo().scan()
 
 Path("report.json").write_text(to_json(report), encoding="utf-8")  # the full report
 summary = report_summary(report)  # compact, JSON-safe dict
-print(json.dumps({k: summary[k] for k in ("brand", "visibility_score", "measurement_tier")}))
+print(
+    json.dumps(
+        {k: summary[k] for k in ("brand", "visibility_score", "measurement_tier")}
+    )
+)
 
 again = Report.model_validate_json(Path("report.json").read_text(encoding="utf-8"))
 print(again.visibility_score == report.visibility_score)
@@ -150,9 +154,12 @@ CLI, which saves only real ones). Read it back with `get_history()` and
 ```python
 from promptbeacon import Beacon
 
-with Beacon("httpx").with_category("python http client").with_storage(
-    "visibility.db"
-).demo() as beacon:
+with (
+    Beacon("httpx")
+    .with_category("python http client")
+    .with_storage("visibility.db")
+    .demo() as beacon
+):
     beacon.scan()
     beacon.scan()
     history = beacon.get_history(days=30)
