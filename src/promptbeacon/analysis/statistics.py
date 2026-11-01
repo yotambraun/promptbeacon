@@ -22,6 +22,7 @@ __all__ = [
     "calculate_volatility",
     "check_significance",
     "calculate_trend",
+    "proportion_interval",
 ]
 
 
@@ -132,6 +133,36 @@ def bootstrap_ci(
     lower = max(0.0, means[lo_idx])
     upper = min(100.0, means[hi_idx])
     return (round(lower, 2), round(upper, 2))
+
+
+def proportion_interval(
+    successes: int, trials: int, confidence_level: float = 0.95
+) -> tuple[float, float]:
+    """Wilson score interval for a proportion, e.g. a mention rate.
+
+    Better behaved than the normal approximation for small samples and for
+    rates near 0 or 1 (it never returns a zero-width interval for 0/n or n/n).
+    Treats the trials as independent; repeated answers to the same prompt are
+    correlated, so the true uncertainty is somewhat larger.
+
+    Args:
+        successes: Answers that mention the subject.
+        trials: Answers.
+        confidence_level: Two-sided level: 0.90, 0.95 (default) or 0.99.
+
+    Returns:
+        ``(lower, upper)`` as fractions in [0, 1]; ``(0.0, 1.0)`` with no trials.
+    """
+    if trials <= 0:
+        return (0.0, 1.0)
+    if not 0 <= successes <= trials:
+        raise ValueError("successes must be between 0 and trials")
+    z = {0.90: 1.645, 0.95: 1.96, 0.99: 2.576}.get(confidence_level, 1.96)
+    p = successes / trials
+    denom = 1 + z * z / trials
+    centre = (p + z * z / (2 * trials)) / denom
+    half = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / denom
+    return (round(max(0.0, centre - half), 4), round(min(1.0, centre + half), 4))
 
 
 def calculate_statistical_summary(scores: list[float]) -> StatisticalSummary:
