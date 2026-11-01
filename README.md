@@ -67,8 +67,16 @@ run `promptbeacon scan` with the same arguments.
 
 ## Put the result in your README
 
-One scan produces a badge and a 1200×630 share card (SVG in light and dark, and PNG for
-networks that need it, with `pip install 'promptbeacon[share]'`):
+In your project's repository, one command sets up a weekly check, previews the workflow
+and asks before writing anything; it works without API keys and prints the badge
+snippet and the next steps:
+
+```bash
+promptbeacon init --dry-run     # reads pyproject.toml / package.json / Cargo.toml and the git remote
+```
+
+Or by hand: one scan produces a badge and a 1200×630 share card (SVG in light and dark,
+and PNG for networks that need it, with `pip install 'promptbeacon[share]'`):
 
 ```bash
 promptbeacon scan httpx -t "python http client" -c requests -c aiohttp -f json > report.json
@@ -234,6 +242,8 @@ so. See [Claude Code & MCP](https://yotambraun.github.io/promptbeacon/mcp/).
 promptbeacon scan --repo encode/httpx        # GitHub
 promptbeacon scan --pypi httpx               # PyPI
 promptbeacon scan --npm express              # npm
+promptbeacon scan --crate serde               # crates.io
+promptbeacon scan --hf sentence-transformers/all-MiniLM-L6-v2   # Hugging Face
 ```
 
 PromptBeacon reads the project's public description, topics and README, guesses a category
@@ -268,6 +278,8 @@ promptbeacon scan httpx -t "python http client" --grounded   # web-grounded answ
 promptbeacon scan httpx -t "python http client" --stability 5
 promptbeacon scan httpx -t "python http client" --assert-min-score 50   # CI gate
 promptbeacon scan --protocol protocol.json                   # pinned, reproducible run
+promptbeacon init --dry-run                                  # set up a weekly workflow + badge
+promptbeacon scan httpx -t "python http client" --max-cost 0.05   # cap what a scan may spend
 promptbeacon badge httpx -t "python http client" --demo      # README badge
 promptbeacon card httpx -t "python http client" --demo --png card.png
 promptbeacon ci --report report.json --min-sov 0.3           # summary + gate, any CI

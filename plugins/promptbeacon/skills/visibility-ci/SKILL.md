@@ -9,6 +9,22 @@ argument-hint: "[weekly | pr]"
 
 Set up the `yotambraun/promptbeacon@v1` GitHub Action in the user's repository.
 
+For the **weekly** workflow, prefer the CLI, which detects the project and
+writes a filled-in workflow after showing it:
+
+- Run `promptbeacon init --dry-run --format json` (in the repository root) and
+  show the user the proposed category with its basis, the competitors, the
+  estimated cost per run and the workflow. Confirm the category and
+  competitors with the user.
+- Then write it with `promptbeacon init --yes -t "<category>" -c <competitor>
+  ...` (add `--protocol` to pin the prompts and models). It never replaces a
+  changed file unless `--force` is added; do not add `--force` unless the user
+  asks after seeing the diff.
+- Relay the `next_steps` (the `gh secret set` command, committing, running the
+  workflow once) and the README badge snippet from the result.
+
+If the CLI is not available, or for the **pr** workflow, do it by hand:
+
 1. Ask which workflow they want:
    - **weekly**: scheduled scan that commits `.promptbeacon/badge.svg`,
      `.promptbeacon/badge.json` and `.promptbeacon/card.svg`. Needs
@@ -33,5 +49,9 @@ Set up the `yotambraun/promptbeacon@v1` GitHub Action in the user's repository.
 5. For the badge, show both options: the committed SVG
    (`![AI visibility](.promptbeacon/badge.svg)`) or shields.io via
    `https://img.shields.io/endpoint?url=<url-encoded raw URL of badge.json>`.
+6. Suggest `max-cost` (e.g. `"0.10"`) so one run cannot spend more than that,
+   `trend-path: .promptbeacon/trend.json` for a score sparkline on the card,
+   and, with two or more competitors, `rank-badge-path` for an
+   "AI rank: #2 of 4" badge.
 
 $ARGUMENTS

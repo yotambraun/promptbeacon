@@ -6,8 +6,13 @@ branding:
 
 inputs:
   brand:
-    description: "Brand to measure"
-    required: true
+    description: "Brand to measure (required unless protocol is set)"
+    required: false
+    default: ""
+  protocol:
+    description: "Path to a pinned scan protocol JSON (e.g. .promptbeacon/protocol.json, written by `promptbeacon init --protocol`). It fixes brand, prompts, providers and models; category, competitors, providers, models and prompts inputs are then ignored"
+    required: false
+    default: ""
   category:
     description: "Category the prompts ask about, e.g. 'running shoes' (spaces allowed)"
     required: false
@@ -151,6 +156,7 @@ runs:
         PB_DEMO: ${{ inputs.demo }}
         PB_GROUNDED: ${{ inputs.grounded }}
         PB_MAX_COST: ${{ inputs.max-cost }}
+        PB_PROTOCOL: ${{ inputs.protocol }}
       run: |
         # Lists: one item per line (YAML `|` blocks); a value without a newline
         # is split on spaces for backward compatibility. Globbing is disabled.
@@ -160,12 +166,19 @@ runs:
             *) set -f; for item in $1; do printf '%s\n' "$item"; done; set +f ;;
           esac
         }
-        args=(scan "$PB_BRAND" --format json --no-save --prompts "$PB_PROMPTS")
-        if [ -n "$PB_CATEGORY" ]; then args+=(--category "$PB_CATEGORY"); fi
-        while IFS= read -r t; do [ -n "$t" ] && args+=(--category "$t"); done < <(split_list "$PB_CATEGORIES")
-        while IFS= read -r c; do [ -n "$c" ] && args+=(--competitor "$c"); done < <(split_list "$PB_COMPETITORS")
-        for p in $PB_PROVIDERS; do args+=(--provider "$p"); done
-        while IFS= read -r m; do [ -n "$m" ] && args+=(--model "$m"); done < <(split_list "$PB_MODELS")
+        if [ -n "$PB_PROTOCOL" ]; then
+          args=(scan --protocol "$PB_PROTOCOL" --format json --no-save)
+        elif [ -z "$PB_BRAND" ]; then
+          echo "::error::PromptBeacon needs a brand (or a protocol file)."
+          exit 1
+        else
+          args=(scan "$PB_BRAND" --format json --no-save --prompts "$PB_PROMPTS")
+          if [ -n "$PB_CATEGORY" ]; then args+=(--category "$PB_CATEGORY"); fi
+          while IFS= read -r t; do [ -n "$t" ] && args+=(--category "$t"); done < <(split_list "$PB_CATEGORIES")
+          while IFS= read -r c; do [ -n "$c" ] && args+=(--competitor "$c"); done < <(split_list "$PB_COMPETITORS")
+          for p in $PB_PROVIDERS; do args+=(--provider "$p"); done
+          while IFS= read -r m; do [ -n "$m" ] && args+=(--model "$m"); done < <(split_list "$PB_MODELS")
+        fi
         if [ "$PB_DEMO" = "true" ]; then args+=(--demo); fi
         if [ "$PB_GROUNDED" = "true" ]; then args+=(--grounded); fi
         if [ "${PB_STABILITY:-0}" -gt 0 ]; then args+=(--stability "$PB_STABILITY"); fi

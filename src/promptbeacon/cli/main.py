@@ -2023,6 +2023,355 @@ def ci(
         err_console.print("[green]✓ Visibility check passed.[/green]")
 
 
+def _is_interactive() -> bool:
+    """Whether init may ask questions (a terminal on stdin and stdout)."""
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+@app.command()
+def init(
+    path: Annotated[
+        Path, typer.Argument(help="Project root (default: the current directory)")
+    ] = Path("."),
+    brand: Annotated[
+        str | None,
+        typer.Option(
+            "--brand", "-b", help="Name to measure (default: the project name)"
+        ),
+    ] = None,
+    categories: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--category", "-t", help='Category to ask about, e.g. "python http client"'
+        ),
+    ] = None,
+    competitors: Annotated[
+        list[str] | None,
+        typer.Option("--competitor", "-c", help="Competitors (repeatable)"),
+    ] = None,
+    providers: Annotated[
+        list[str] | None, typer.Option("--provider", "-p", help=PROVIDER_HELP)
+    ] = None,
+    models: _ModelsOption = None,
+    max_cost: Annotated[
+        float | None,
+        typer.Option(
+            "--max-cost",
+            help="Cap per weekly run in US dollars (default: twice the estimate, "
+            "rounded up to $0.05)",
+            min=0.000001,
+        ),
+    ] = None,
+    protocol: Annotated[
+        bool,
+        typer.Option(
+            "--protocol",
+            help="Also write .promptbeacon/protocol.json, pinning the prompts and "
+            "models, and use it in the workflow",
+        ),
+    ] = False,
+    workflow: Annotated[
+        str,
+        typer.Option("--workflow", help="Where to write the workflow"),
+    ] = ".github/workflows/ai-visibility.yml",
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes", "-y", help="Write without asking (new files only; see --force)"
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="With --yes, also replace files that differ"),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Only show what would be written"),
+    ] = False,
+    run_demo: Annotated[
+        bool | None,
+        typer.Option(
+            "--demo/--no-demo",
+            help="Run a keyless demo scan at the end (asked when interactive)",
+        ),
+    ] = None,
+    output_format: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="text, or json (the plan, for tools)"),
+    ] = OutputFormat.text,
+) -> None:
+    """Set this repository up: weekly AI-visibility workflow, badge and next steps.
+
+    Reads pyproject.toml, package.json, Cargo.toml, the README and the git
+    remote, proposes a category (with its basis), shows the files it would
+    write and asks first. Never replaces a file without confirmation; running
+    it again changes nothing unless the inputs changed. Works with no API keys.
+
+    Example:
+        promptbeacon init
+
+        promptbeacon init --dry-run
+
+        promptbeacon init -t "python http client" -c requests -c aiohttp --yes
+    """
+    from rich.text import Text
+
+    from promptbeacon.core.config import has_api_key
+    from promptbeacon.init_project import build_plan, detect_project, write_plan
+
+    root = path.expanduser().resolve()
+    if not root.is_dir():
+        err_console.print(f"[red]Error:[/red] {path} is not a directory.")
+        raise typer.Exit(1)
+    machine = output_format == OutputFormat.json
+    _text_only_notice(output_format, "init")
+    interactive = _is_interactive() and not machine and not yes and not dry_run
+    say = err_console.print if machine else console.print
+
+    project = detect_project(root)
+    category = categories[0] if categories else None
+    if not machine:
+        found = ", ".join(project.found) or "no project files"
+        say(
+            f"[cyan]Project:[/cyan] {project.name or '?'} ({found})"
+            + (f" — {project.description}" if project.description else ""),
+            highlight=False,
+        )
+
+    try:
+        plan = build_plan(
+            project,
+            brand=brand,
+            category=category,
+            competitors=competitors,
+            providers=providers,
+            models=models,
+            max_cost=max_cost,
+            protocol=protocol,
+            workflow_path=workflow,
+        )
+    except ValueError as e:
+        err_console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1) from None
+
+    # Let a person confirm or correct the two guesses that matter most.
+    if interactive:
+        if not categories and not project.protocol:
+            hint = (
+                f" (guessed from {plan.category_basis})"
+                if plan.category
+                else " (could not guess one)"
+            )
+            say(
+                "[bold]Category[/bold]: what developers would ask AI about, "
+                f'e.g. "python http client"{hint}.'
+            )
+            answer = typer.prompt("Category", default=plan.category or "").strip()
+            if answer and answer != plan.category:
+                category = answer
+        if not competitors and not project.protocol:
+            default = ", ".join(plan.competitors)
+            answer = typer.prompt(
+                "Competitors to compare with (comma-separated, Enter for none)",
+                default=default,
+                show_default=bool(default),
+            ).strip()
+            picked = [c.strip() for c in answer.split(",") if c.strip()]
+            if picked != plan.competitors:
+                competitors = picked or None
+        if category != (categories[0] if categories else None) or competitors:
+            plan = build_plan(
+                project,
+                brand=brand,
+                category=category or plan.category,
+                competitors=competitors,
+                providers=providers,
+                models=models,
+                max_cost=max_cost,
+                protocol=protocol,
+                workflow_path=workflow,
+            )
+
+    if not plan.category and not plan.uses_protocol:
+        err_console.print(
+            "[red]Error:[/red] No category: PromptBeacon could not guess one from "
+            'the project files. Pass --category, e.g. --category "python http '
+            'client".'
+        )
+        raise typer.Exit(1)
+
+    if machine:
+        data = plan.as_dict()
+        data["written"] = []
+        if yes and not dry_run:
+            paths = [
+                f.path
+                for f in plan.files
+                if f.status == "create" or (f.status == "update" and force)
+            ]
+            data["written"] = [str(p) for p in write_plan(plan, paths)]
+        _emit(json.dumps(data, indent=2))
+        return
+
+    if not categories and not interactive and plan.category:
+        say(
+            f"[dim]Category: {plan.category!r} (from {plan.category_basis}, "
+            f"{plan.category_confidence} confidence). Override with --category.[/dim]",
+            highlight=False,
+        )
+    if plan.competitors:
+        say(
+            f"[dim]Competitors: {', '.join(plan.competitors)} ({plan.competitor_basis})."
+            "[/dim]",
+            highlight=False,
+        )
+    else:
+        say(
+            "[dim]No competitors: add -c NAME (two or more also give a rank "
+            "badge).[/dim]"
+        )
+    if plan.estimate_usd is not None:
+        say(
+            f"[dim]Estimated cost per weekly run: ${plan.estimate_usd:.4f} "
+            f"(LiteLLM prices); capped at ${plan.max_cost:.2f} by max-cost.[/dim]"
+        )
+
+    # Preview.
+    to_write: list[str] = []
+    for planned in plan.files:
+        if planned.status == "unchanged":
+            say(f"[green]✓[/green] {planned.path} is up to date.")
+            continue
+        if planned.status == "create":
+            say(f"\n[bold]create[/bold] {planned.path}")
+            say(
+                planned.content.rstrip("\n"),
+                markup=False,
+                highlight=False,
+                soft_wrap=True,
+            )
+            to_write.append(planned.path)
+        else:
+            note = "" if planned.generated_before else " (not written by init)"
+            say(f"\n[bold yellow]update[/bold yellow] {planned.path}{note}")
+            for line in planned.diff().splitlines():
+                style = (
+                    "green"
+                    if line.startswith("+") and not line.startswith("+++")
+                    else "red"
+                    if line.startswith("-") and not line.startswith("---")
+                    else "dim"
+                )
+                say(Text(line, style=style), soft_wrap=True)
+            to_write.append(planned.path)
+
+    written = []
+    if not to_write:
+        say("\nNothing to write: the project is already set up.")
+    elif dry_run:
+        say("\n[cyan]Dry run: nothing was written.[/cyan]")
+    elif not interactive and not yes:
+        say(
+            "\n[yellow]Not a terminal, so nothing was written. Re-run with --yes to "
+            "write new files (and --force to replace changed ones), or --dry-run to "
+            "only preview.[/yellow]"
+        )
+    else:
+        chosen = []
+        for planned in plan.files:
+            if planned.path not in to_write:
+                continue
+            if planned.status == "update":
+                if yes and not force:
+                    say(
+                        f"[yellow]Skipped {planned.path}: it exists and differs "
+                        "(diff above). Re-run with --yes --force to replace it.[/yellow]"
+                    )
+                    continue
+                if interactive and not typer.confirm(
+                    f"Replace {planned.path}?", default=False
+                ):
+                    continue
+            chosen.append(planned.path)
+        updates = {f.path for f in plan.files if f.status == "update"}
+        news = [f for f in chosen if f not in updates]
+        if (
+            interactive
+            and news
+            and not typer.confirm(f"Write {', '.join(news)}?", default=True)
+        ):
+            chosen = [f for f in chosen if f not in news]
+        written = write_plan(plan, chosen)
+        for target in written:
+            say(f"[green]Wrote[/green] {target.relative_to(root).as_posix()}")
+        if not written:
+            say("Nothing was written.")
+
+    # Keys: the workflow needs repository secrets; local keys only matter here.
+    if plan.secrets:
+        local = [p for p in plan.providers if has_api_key(p)]
+        say("\n[bold]API keys[/bold]")
+        say(
+            "The workflow reads "
+            + ", ".join(plan.secrets)
+            + " from your repository secrets. Add "
+            + ("it" if len(plan.secrets) == 1 else "them")
+            + " with the GitHub CLI (it prompts for the value, so the key stays out "
+            "of your shell history):"
+        )
+        for name in plan.secrets:
+            say(f"  gh secret set {name}", highlight=False)
+        if not local:
+            say(
+                "[dim]No key is set locally either; that is fine for the demo. For a "
+                "local real scan, put the key in a .env file or the environment.[/dim]"
+            )
+
+    say("\n[bold]README badge[/bold] (updates after the first workflow run):")
+    say(plan.badge_markdown, markup=False, highlight=False, soft_wrap=True)
+    if plan.rank_badge_markdown:
+        say("[dim]Rank among the projects you compared:[/dim]")
+        say(plan.rank_badge_markdown, markup=False, highlight=False, soft_wrap=True)
+
+    if run_demo is None:
+        run_demo = interactive and typer.confirm(
+            "\nRun a keyless demo scan now to see the output?", default=True
+        )
+    if run_demo:
+        say("\n[cyan]DEMO — canned answers, not a measurement.[/cyan]")
+        beacon = _beacon_from_options(
+            plan.brand,
+            competitors=plan.competitors or list(DEMO_PLACEHOLDER_COMPETITORS),
+            categories=[plan.category] if plan.category else None,
+            demo=True,
+        )
+        report = _run_scan(beacon, f"Demo scan for {plan.brand}...")
+        _print_tier_banner(report)
+        sov = report.share_of_voice
+        if sov and sov.aggregate:
+            table = Table(title="Mentions per project (demo data)")
+            table.add_column("Project", style="cyan")
+            table.add_column("Answers mentioning it", justify="right")
+            for entry in sorted(sov.aggregate.values(), key=lambda e: -e.appearances):
+                name = entry.brand_name
+                if name == report.brand:
+                    name = f"[bold]{name}[/bold]"
+                table.add_row(name, f"{entry.appearances}/{entry.total_prompts}")
+            say(table)
+
+    from promptbeacon.init_project import next_steps
+
+    steps = next_steps(plan)
+    if to_write and not written:
+        flags = " --yes" if not interactive else ""
+        steps.insert(
+            0, f"Write the files: promptbeacon init{flags} (without --dry-run)"
+        )
+    say("\n[bold]Next steps[/bold]")
+    for i, step in enumerate(steps, 1):
+        say(f"  {i}. {step}", highlight=False, soft_wrap=True)
+
+
 @app.command("mcp")
 def mcp_server() -> None:
     """Run the MCP server over stdio (for Claude Code, Cursor and other clients).

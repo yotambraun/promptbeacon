@@ -4,6 +4,7 @@ Gating and tracking AI visibility in CI, then practical end-to-end scripts.
 
 ## Contents
 
+- [`promptbeacon init`](#promptbeacon-init)
 - [GitHub Action](#github-action)
 - [Other CI systems: `promptbeacon ci`](#other-ci-systems-promptbeacon-ci)
 - [pytest plugin](#pytest-plugin)
@@ -19,6 +20,27 @@ Gating and tracking AI visibility in CI, then practical end-to-end scripts.
 - [Automated alerting system](#automated-alerting-system)
 - [Weekly report generation](#weekly-report-generation)
 - [BeaconGuard: brand safety](#beaconguard-brand-safety)
+
+---
+
+## `promptbeacon init`
+
+The quickest way to the workflow below: run it in your repository.
+
+```bash
+promptbeacon init --dry-run      # preview the workflow, write nothing
+promptbeacon init                # confirm the category and competitors, then write
+gh secret set OPENAI_API_KEY     # the key the workflow reads
+gh workflow run ai-visibility.yml
+```
+
+It detects the project from `pyproject.toml`, `package.json`, `Cargo.toml` and the git
+remote, proposes a category with its basis, writes
+`.github/workflows/ai-visibility.yml` (weekly, `yotambraun/promptbeacon@v1`, with
+`max-cost`, badge, rank badge, card and trend paths and a commented `models` example)
+only after showing it and asking, and prints the README badge snippet. Re-running it
+changes nothing; a file you edited is only replaced after you confirm. See
+[`init`](cli.md#init) for every option.
 
 ---
 
@@ -52,7 +74,8 @@ comment up to date, and applies your thresholds last.
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `brand` | (required) | Brand to measure |
+| `brand` | | Brand to measure (required unless `protocol` is set) |
+| `protocol` | | Path to a pinned protocol JSON (e.g. `.promptbeacon/protocol.json` from `promptbeacon init --protocol`); fixes the brand, prompts, providers and models |
 | `category` | | Category the prompts ask about; spaces allowed (`running shoes`) |
 | `categories` | | Several categories, one per line |
 | `competitors` | | Competitors, one per line |
@@ -130,8 +153,9 @@ jobs:
 ### Templates
 
 - [ai-visibility-weekly.yml](https://github.com/yotambraun/promptbeacon/blob/main/examples/workflows/ai-visibility-weekly.yml)
-  — weekly scan that commits a refreshed badge, badge JSON and card
-  (`permissions: contents: write`). See [Badges & share cards](share.md).
+  — weekly scan that commits a refreshed badge, badge JSON, card and trend
+  (`permissions: contents: write`); `promptbeacon init` writes a filled-in version.
+  See [Badges & share cards](share.md).
 - [ai-visibility-pr.yml](https://github.com/yotambraun/promptbeacon/blob/main/examples/workflows/ai-visibility-pr.yml)
   — pull-request check with a sticky comment.
 

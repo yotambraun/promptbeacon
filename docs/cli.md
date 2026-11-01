@@ -26,6 +26,7 @@ promptbeacon --help
 | Command | What it does |
 | --- | --- |
 | [`demo`](#demo) | Keyless demo scan |
+| [`init`](#init) | Set a repository up: weekly workflow, badge snippet, next steps |
 | [`scan`](#scan) | Full scan of a brand or project (the main command) |
 | [`quick`](#quick) | Fast 3-prompt scan |
 | [`compare`](#compare) | Scan with competitors and show the comparison table |
@@ -334,6 +335,62 @@ promptbeacon history "Nike" -f json
 
 Real `scan` runs are saved automatically. If there is no history yet, the command says
 how to create it instead of creating an empty database.
+
+---
+
+## `init`
+
+Set a repository up in one command: a weekly workflow that measures it with the
+PromptBeacon Action, refreshes a README badge, a card and a score trend, and the badge
+snippet to paste.
+
+```bash
+cd your-project
+promptbeacon init --dry-run          # show what it would write, write nothing
+promptbeacon init                    # asks for the category and competitors, then asks before writing
+promptbeacon init -t "python http client" -c requests -c aiohttp --yes   # non-interactive
+```
+
+What it does:
+
+1. **Detects the project** from `pyproject.toml`, `package.json` or `Cargo.toml` (name,
+   description, keywords), the README (projects it compares itself to) and the git
+   remote (`owner/name` and the default branch). No network access.
+2. **Proposes a category** with its basis, for example `'python async http client'
+   (from pyproject.toml description, high confidence)`. In a terminal you can accept or
+   change it, and the competitors; `--category` and `--competitor` skip the questions.
+3. **Shows the files** it would write, in full for new files and as a diff for changed
+   ones: `.github/workflows/ai-visibility.yml` (using `yotambraun/promptbeacon@v1`, with
+   a commented `models` example, a `max-cost` cap of twice the estimated cost, and
+   badge, rank badge, card and trend paths) and, with `--protocol`,
+   `.promptbeacon/protocol.json`. An existing protocol file is used as it is.
+4. **Asks before writing.** It never replaces a file without confirmation: interactively
+   it asks per changed file (default no); with `--yes` it creates new files and skips
+   changed ones unless you add `--force`. Without a terminal and without `--yes` it
+   writes nothing and says how. Running it again with the same answers changes
+   nothing.
+5. **Explains the keys.** It works without any API key. The workflow reads the key from
+   a repository secret, and init prints the exact command: `gh secret set
+   OPENAI_API_KEY` (it prompts for the value, so the key stays out of your shell
+   history).
+6. **Optionally runs a demo scan** (`--demo`, or asked in a terminal), labelled as demo
+   data, and ends with the README badge snippet and a short "Next steps" list.
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `PATH` | | Project root (default `.`) |
+| `--brand NAME` | `-b` | Name to measure (default: the project name) |
+| `--category` | `-t` | Category; skips the question |
+| `--competitor` | `-c` | Competitors (repeatable); skips the question. Two or more add a rank badge |
+| `--provider`, `--model` | `-p`, `-m` | As for `scan`; written to the workflow, and each provider's key is listed as a secret |
+| `--max-cost USD` | | Cap per run (default: twice the estimate, rounded up to $0.05) |
+| `--protocol` | | Also write `.promptbeacon/protocol.json` (pinned prompts and models) and use it in the workflow |
+| `--workflow PATH` | | Workflow file (default `.github/workflows/ai-visibility.yml`) |
+| `--yes` | `-y` | Write without asking: new files only |
+| `--force` | | With `--yes`, also replace files that differ |
+| `--dry-run` | | Only show the plan |
+| `--demo` / `--no-demo` | | Run a keyless demo scan at the end (asked in a terminal) |
+| `--format` | `-f` | `text`, or `json` (the whole plan, including file contents and diffs) |
 
 ---
 

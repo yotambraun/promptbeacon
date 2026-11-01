@@ -155,6 +155,19 @@ README, prints what it guessed and why, and lets you override both. See
 
 ## Step 5: share or track it
 
+In your project's repository, one command sets up a weekly check that commits a README
+badge, a share card and a score trend:
+
+```bash
+promptbeacon init --dry-run    # preview; then run without --dry-run
+```
+
+It reads `pyproject.toml`, `package.json` or `Cargo.toml` and the git remote, proposes
+the category, shows the workflow and asks before writing. See
+[`init`](cli.md#init).
+
+Or by hand, from one saved report:
+
 ```bash
 promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -f json --no-save > report.json
 promptbeacon badge --report report.json        # README badge (SVG)
@@ -275,6 +288,7 @@ report.assert_visibility(min_score=40, min_share_of_voice=0.2)
 promptbeacon demo "Brand" -t "category" -c "Rival"
 promptbeacon scan "Brand" -t "category" -c "Rival" [-p openai] [-m openai=gpt-6-sol] [--grounded] [--stability 5]
 promptbeacon scan --repo owner/name | --pypi pkg | --npm pkg | --crate name | --hf owner/name
+promptbeacon init [--dry-run]     # set a repository up
 promptbeacon badge | card | ci | history | sources | funnel | dashboard | mcp
 ```
 

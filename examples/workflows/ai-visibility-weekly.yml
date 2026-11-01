@@ -1,7 +1,9 @@
 # Weekly AI-visibility scan that refreshes a README badge and share card.
 #
-# Copy to .github/workflows/ai-visibility.yml, set your brand/category/
-# competitors, and add an OPENAI_API_KEY repository secret. The badge JSON is
+# `promptbeacon init` writes a filled-in copy of this for your project. To do it
+# by hand: copy to .github/workflows/ai-visibility.yml, set your brand/category/
+# competitors, and add an OPENAI_API_KEY repository secret
+# (gh secret set OPENAI_API_KEY). The badge JSON is
 # committed to your repo, so shields.io can render it:
 #
 #   [![AI visibility](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOWNER%2FREPO%2Fmain%2F.promptbeacon%2Fbadge.json)](https://github.com/yotambraun/promptbeacon)
@@ -41,13 +43,16 @@ jobs:
           # PromptBeacon's defaults change (one provider=model_id per line).
           models: |
             openai=gpt-6-luna
+          max-cost: "0.05" # US dollars per run; the scan stops at the cap
           badge-path: .promptbeacon/badge.svg
           badge-endpoint-path: .promptbeacon/badge.json
+          rank-badge-path: .promptbeacon/rank.svg # "#2 of 3 · ..." (2+ competitors)
           card-path: .promptbeacon/card.svg
+          trend-path: .promptbeacon/trend.json # score sparkline on the card
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      - name: Commit badge and card
+      - name: Commit badge, card and trend
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

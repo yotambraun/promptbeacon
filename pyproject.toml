@@ -70,6 +70,9 @@ dependencies = [
     "typer>=0.9.0,<1.0.0",
     "rich>=13.0.0,<16.0.0",
     "python-dotenv>=1.0.0,<2.0.0",
+    # pyproject.toml / Cargo.toml reading for `promptbeacon init` (tomllib is
+    # in the standard library from Python 3.11).
+    "tomli>=1.1.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
