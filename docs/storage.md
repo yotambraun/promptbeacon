@@ -285,7 +285,7 @@ query = """
         AVG(visibility_score) as avg_score,
         COUNT(*) as scan_count
     FROM scans
-    WHERE timestamp >= datetime('now', '-30 days')
+    WHERE timestamp >= now() - INTERVAL 30 DAY
     GROUP BY brand, DATE(timestamp)
     ORDER BY date
 """
@@ -303,7 +303,7 @@ for row in results:
 ```python
 query = """
     SELECT
-        strftime('%Y-W%W', timestamp) as week,
+        strftime(timestamp, '%Y-W%W') as week,
         AVG(visibility_score) as avg_score,
         MIN(visibility_score) as min_score,
         MAX(visibility_score) as max_score
@@ -325,14 +325,14 @@ for week, avg, min_score, max_score in results:
 ```python
 query = """
     SELECT
-        DATE(timestamp) as date,
-        sentiment,
+        DATE(s.timestamp) as date,
+        m.sentiment,
         COUNT(*) as count
-    FROM mentions m
+    FROM brand_mentions m
     JOIN provider_results pr ON m.result_id = pr.id
     JOIN scans s ON pr.scan_id = s.id
     WHERE s.brand = ?
-        AND timestamp >= datetime('now', '-30 days')
+        AND s.timestamp >= now() - INTERVAL 30 DAY
     GROUP BY date, sentiment
     ORDER BY date
 """
@@ -352,7 +352,7 @@ query = """
     FROM provider_results pr
     JOIN scans s ON pr.scan_id = s.id
     WHERE s.brand = ?
-        AND s.timestamp >= datetime('now', '-30 days')
+        AND s.timestamp >= now() - INTERVAL 30 DAY
     GROUP BY provider
 """
 
@@ -407,7 +407,7 @@ db = Database("~/.promptbeacon/nike.db")
 df_scans = pd.read_sql("SELECT * FROM scans", db.connection)
 
 # Load mentions into DataFrame
-df_mentions = pd.read_sql("SELECT * FROM mentions", db.connection)
+df_mentions = pd.read_sql("SELECT * FROM brand_mentions", db.connection)
 
 # Analysis with pandas
 print(df_scans.groupby("brand")["visibility_score"].agg(["mean", "std"]))
@@ -508,7 +508,7 @@ db = Database("~/.promptbeacon/nike.db")
 # Delete scans older than 90 days
 query = """
     DELETE FROM scans
-    WHERE timestamp < datetime('now', '-90 days')
+    WHERE timestamp < now() - INTERVAL 90 DAY
 """
 
 deleted = db.connection.execute(query).fetchall()
@@ -531,13 +531,13 @@ current_db = Database("~/.promptbeacon/nike.db")
 query = """
     INSERT INTO archive_db.scans
     SELECT * FROM current_db.scans
-    WHERE timestamp < datetime('2026-01-01')
+    WHERE timestamp < TIMESTAMP '2026-01-01'
 """
 
 # Then delete from current
 current_db.connection.execute("""
     DELETE FROM scans
-    WHERE timestamp < datetime('2026-01-01')
+    WHERE timestamp < TIMESTAMP '2026-01-01'
 """)
 ```
 
@@ -582,8 +582,10 @@ from promptbeacon.storage.database import Database
 
 db = Database("~/.promptbeacon/nike.db")
 
-result = db.connection.execute("PRAGMA integrity_check").fetchone()
-print(f"Integrity: {result[0]}")  # Should be "ok"
+# DuckDB checksums its blocks and fails loudly on a damaged file, so a full
+# read of the tables is a practical health check.
+count = db.connection.execute("SELECT count(*) FROM scans").fetchone()[0]
+print(f"Readable: {count} scans")
 ```
 
 ---
@@ -622,7 +624,7 @@ query = """
         brand,
         AVG(visibility_score) as avg_score
     FROM scans
-    WHERE timestamp >= datetime('now', '-30 days')
+    WHERE timestamp >= now() - INTERVAL 30 DAY
     GROUP BY brand
 """
 
@@ -639,21 +641,18 @@ print(f"Query took {duration * 1000:.2f}ms")
 
 ### Migrating from Older Versions
 
-If database schema changes between versions:
+Opening a file migrates it: new columns are added with `ALTER TABLE ... ADD COLUMN IF
+NOT EXISTS` (1.4.0 added `measurement_tier` and `categories` to `scans`), and existing
+rows are kept. To see which columns a file has:
 
 ```python
 from promptbeacon.storage.database import Database
 
 db = Database("~/.promptbeacon/nike.db")
-
-# Check current schema version
-version = db.connection.execute(
-    "SELECT value FROM metadata WHERE key = 'schema_version'"
-).fetchone()
-
-print(f"Schema version: {version}")
-
-# PromptBeacon handles migrations automatically on first connection
+columns = db.connection.execute(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'scans'"
+).fetchall()
+print([c[0] for c in columns])
 ```
 
 ### Merging Databases
@@ -758,12 +757,11 @@ from promptbeacon.storage.database import Database
 
 db = Database("~/.promptbeacon/nike.db")
 
-# Check integrity
-result = db.connection.execute("PRAGMA integrity_check").fetchone()
-
-if result[0] != "ok":
-    print("Database corrupted. Restore from backup.")
-    # Restore from backup
+# Check that the file can be read (DuckDB checksums its blocks)
+try:
+    db.connection.execute("SELECT count(*) FROM scans").fetchone()
+except Exception as e:
+    print(f"Database cannot be read ({e}). Restore from backup.")
 else:
     print("Database is healthy")
 ```
@@ -778,7 +776,7 @@ else:
 from promptbeacon.storage.database import Database
 
 db = Database("~/.promptbeacon/nike.db")
-db.connection.execute("DELETE FROM scans WHERE timestamp < datetime('now', '-90 days')")
+db.connection.execute("DELETE FROM scans WHERE timestamp < now() - INTERVAL 90 DAY")
 db.connection.execute("VACUUM")
 
 # 2. Archive to separate database
@@ -852,13 +850,13 @@ def weekly_maintenance(db_path: str):
     db.connection.execute("ANALYZE")
     db.connection.execute("VACUUM")
 
-    # 3. Check integrity
-    result = db.connection.execute("PRAGMA integrity_check").fetchone()
-    print(f"Integrity: {result[0]}")
+    # 3. Check that it reads back
+    count = db.connection.execute("SELECT count(*) FROM scans").fetchone()[0]
+    print(f"Readable: {count} scans")
 
     # 4. Cleanup old data (optional)
     db.connection.execute(
-        "DELETE FROM scans WHERE timestamp < datetime('now', '-90 days')"
+        "DELETE FROM scans WHERE timestamp < now() - INTERVAL 90 DAY"
     )
 
     print(f"Maintenance completed: {datetime.now()}")

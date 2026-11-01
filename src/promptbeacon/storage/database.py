@@ -50,7 +50,7 @@ class Database:
         Args:
             db_path: Path to the DuckDB file. If None, uses in-memory database.
         """
-        self.db_path = Path(db_path) if db_path else None
+        self.db_path = Path(db_path).expanduser() if db_path else None
         self._conn: DuckDBPyConnection | None = None
 
     def _get_connection(self) -> DuckDBPyConnection:
@@ -67,6 +67,11 @@ class Database:
                 logger.error("Failed to connect to database: %s", e)
                 raise StorageError(f"Failed to connect to database: {e}") from e
         return self._conn
+
+    @property
+    def connection(self) -> DuckDBPyConnection:
+        """The DuckDB connection, for your own SQL (see the storage docs)."""
+        return self._get_connection()
 
     def _initialize_schema(self) -> None:
         """Initialize the database schema."""

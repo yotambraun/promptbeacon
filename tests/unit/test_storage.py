@@ -133,3 +133,11 @@ class TestDatabase:
 
         assert history.brand == "NonExistentBrand"
         assert len(history.data_points) == 0
+
+
+def test_connection_property_runs_sql(temp_db, sample_report):
+    temp_db.save_report(sample_report)
+    rows = temp_db.connection.execute(
+        "SELECT brand, measurement_tier FROM scans"
+    ).fetchall()
+    assert rows == [("TestBrand", "base_model")]

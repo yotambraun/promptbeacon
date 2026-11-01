@@ -36,9 +36,9 @@ promptbeacon badge --pypi httpx
 </p>
 
 The badge shows the visibility score and share of voice (`--metric both`, the
-default), or only one of them (`--metric score`, `--metric sov`). Its color follows the
-score: green from 70, amber from 40, red below. A badge made from demo data reads
-`AI visibility · demo` and is grey.
+default), or only one of them (`--metric score`, `--metric sov`); `--metric rank` is
+described below. Its color follows the score: green from 70, amber from 40, red below.
+A badge made from demo data reads `AI visibility · demo` and is grey.
 
 There are two ways to put it in a README.
 
@@ -102,7 +102,7 @@ report = (
     Beacon("Nike")
     .demo()
     .with_category("running shoes")
-    .with_competitors("Adidas")
+    .with_competitors("Adidas", "New Balance")
     .scan()
 )
 svg = render_badge_svg(report)
