@@ -1356,16 +1356,18 @@ A single historical data point.
 
 Share of Voice (SoV) is computed automatically on every scan. It measures what fraction of all brand mentions across all prompts belongs to each brand.
 
-### `calculate_share_of_voice(results, target, competitors) -> ShareOfVoiceReport`
+### `calculate_share_of_voice(results, target_brand, competitors=None) -> ShareOfVoiceReport`
 
 Standalone function to compute SoV from a list of provider results.
 
 ```python
-from promptbeacon import calculate_share_of_voice
+from promptbeacon import Beacon
+from promptbeacon.analysis import calculate_share_of_voice
 
+report = Beacon("Nike").with_category("running shoes").demo().scan()
 sov = calculate_share_of_voice(
     results=report.provider_results,
-    target="Nike",
+    target_brand="Nike",
     competitors=["Adidas", "Puma"],
 )
 ```
