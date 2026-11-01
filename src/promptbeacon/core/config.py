@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
 _ENV_LOADED = False
@@ -27,9 +27,17 @@ def load_env(dotenv_path: str | Path | None = None, *, override: bool = False) -
     global _ENV_LOADED
     if _ENV_LOADED and dotenv_path is None:
         return
-    load_dotenv(dotenv_path=dotenv_path, override=override)
     if dotenv_path is None:
+        # Search from the working directory. Without usecwd=True, python-dotenv
+        # searches upwards from this file's directory (site-packages), which
+        # misses a project's .env unless the virtualenv happens to live inside
+        # the project.
+        found = find_dotenv(usecwd=True)
+        if found:
+            load_dotenv(dotenv_path=found, override=override)
         _ENV_LOADED = True
+        return
+    load_dotenv(dotenv_path=dotenv_path, override=override)
 
 
 # Auto-load .env on import so a .env file populates the environment.

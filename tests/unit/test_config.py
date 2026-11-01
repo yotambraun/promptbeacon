@@ -140,6 +140,21 @@ class TestEnvLoading:
         load_env(env_file)  # override=False by default
         assert os.environ.get("PROMPTBEACON_TEST_KEY2") == "from-env"
 
+    def test_load_env_searches_the_working_directory(self, tmp_path, monkeypatch):
+        from promptbeacon.core import config
+
+        project = tmp_path / "project"
+        (project / "sub").mkdir(parents=True)
+        (project / ".env").write_text("PROMPTBEACON_TEST_KEY3=cwd\n", encoding="utf-8")
+        monkeypatch.chdir(project / "sub")
+        monkeypatch.setattr(config, "_ENV_LOADED", False)
+        monkeypatch.delenv("PROMPTBEACON_TEST_KEY3", raising=False)
+        try:
+            load_env()
+            assert os.environ.get("PROMPTBEACON_TEST_KEY3") == "cwd"
+        finally:
+            os.environ.pop("PROMPTBEACON_TEST_KEY3", None)
+
     def test_tavily_key_absent(self, monkeypatch):
         monkeypatch.delenv("TAVILY_API_KEY", raising=False)
         assert get_tavily_api_key() is None
