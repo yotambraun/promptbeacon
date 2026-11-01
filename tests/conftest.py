@@ -5,6 +5,7 @@ from datetime import datetime
 import pytest
 
 from promptbeacon.core.clock import utc_now
+from promptbeacon.core.config import Provider, model_env_var
 from promptbeacon.core.schemas import (
     BrandMention,
     CompetitorScore,
@@ -14,6 +15,32 @@ from promptbeacon.core.schemas import (
     VisibilityMetrics,
 )
 from promptbeacon.storage.database import Database
+
+_PROVIDER_ENV_VARS = (
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "GEMINI_API_KEY",
+    "MISTRAL_API_KEY",
+    "COHERE_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "TAVILY_API_KEY",
+    "PROMPTBEACON_DEMO",
+)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_provider_credentials(monkeypatch):
+    """Tests never use real keys, even if a developer's .env defines them.
+
+    PromptBeacon loads .env on import, so without this a test that forgot to
+    mock the provider could make a real, billed request. Tests that need a key
+    set a fake one with monkeypatch.
+    """
+    for var in _PROVIDER_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    for provider in Provider:
+        monkeypatch.delenv(model_env_var(provider), raising=False)
 
 
 @pytest.fixture(autouse=True)
