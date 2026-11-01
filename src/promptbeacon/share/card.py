@@ -314,18 +314,18 @@ def layout(
 
     # Score trend (real scans only): caption, sparkline and the latest score.
     if len(data.trend) >= MIN_TREND_POINTS:
-        right = WIDTH - PAD - pill_w - 28
-        value = f"{round(data.trend[-1])}"
-        value_w = text_width(value, 18, bold=True)
+        t_right = WIDTH - PAD - pill_w - 28
+        t_value = f"{round(data.trend[-1])}"
+        t_value_w = text_width(t_value, 18, bold=True)
         line_w, line_h = 140.0, 30.0
-        line_x = right - value_w - 12 - line_w
+        line_x = t_right - t_value_w - 12 - line_w
         points = _sparkline(data.trend, line_x, cy - line_h / 2, line_w, line_h)
         caption = f"Score, last {len(data.trend)} scans"
         shapes.append(Text(line_x - 14, cy + 5, caption, 15, p["muted"], 400, "end"))
         shapes.append(Line(points, INDIGO if theme == "light" else "#A5B4FC", 2.5))
         lx, ly = points[-1]
         shapes.append(Ring(lx, ly, 4, 0, 1.0, fill=True))
-        shapes.append(Text(right, cy + 6, value, 18, p["text"], 700, "end"))
+        shapes.append(Text(t_right, cy + 6, t_value, 18, p["text"], 700, "end"))
 
     # Title: shrink, then wrap to two lines, then truncate the second line.
     content_w = WIDTH - 2 * PAD
