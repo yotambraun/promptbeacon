@@ -18,12 +18,17 @@ Set up the `yotambraun/promptbeacon@v1` GitHub Action in the user's repository.
      step only warns.
 2. Collect `brand`, `category` (required for a meaningful result) and
    `competitors` (one per line). Use the project's own name and category if
-   this is the user's repository.
+   this is the user's repository. Set the Action's `models` input (one
+   `provider=model_id` per line, e.g. `openai=gpt-6-luna`) so the tracked
+   number does not move when PromptBeacon's default models change; the
+   providers named there are the ones queried.
 3. Write `.github/workflows/ai-visibility.yml` based on the templates at
    https://github.com/yotambraun/promptbeacon/tree/main/examples/workflows
    (`ai-visibility-weekly.yml` or `ai-visibility-pr.yml`).
-4. Tell the user to add an `OPENAI_API_KEY` (or another provider key) as a
-   repository secret, and that each run is billed to that key. Mention
+4. Tell the user to add an `OPENAI_API_KEY` (or the key for the provider in
+   `models`, e.g. `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) as a repository
+   secret and pass it in the step's `env`, and that each run is billed to
+   that key. Mention
    `demo: "true"` for a free dry run.
 5. For the badge, show both options: the committed SVG
    (`![AI visibility](.promptbeacon/badge.svg)`) or shields.io via

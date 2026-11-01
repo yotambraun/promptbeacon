@@ -24,12 +24,17 @@ subject, compared with its competitors.
    client", "running shoes"). If you are unsure, ask the user, or let
    `project_scan` guess it and show the user the guess and its basis.
    Add `competitors` when the user knows them.
+   If the user names a model ("use Claude Sonnet", "check with my local
+   Ollama model"), pass `models`, for example
+   `{"anthropic": "claude-sonnet-5-5"}` or `{"litellm": "ollama/llama3.2"}`.
+   Otherwise each provider's default model is used; `providers` lists them.
 4. Report the result plainly:
    - visibility score (0-100), share of voice and rank, and how many answers
      mentioned the subject (for example "8 of 10 answers");
    - a short table of brands and how often each was mentioned;
    - `measurement_tier`: `demo` (canned data), `base_model` (the model's
      training memory, no web search) or `api_grounded` (provider web search);
+   - which models answered (the `models` field of the result);
    - the estimated cost, if any.
 5. Suggest one concrete next step: re-run with competitors, run `sources`
    with `grounded: true` to see which sites shape these answers, or create a

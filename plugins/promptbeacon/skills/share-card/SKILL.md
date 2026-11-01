@@ -12,7 +12,9 @@ argument-hint: "[brand or github:owner/name | pypi:package | npm:package] [categ
 2. Confirm the subject, its category and (if known) competitors, as in the
    `ai-visibility` skill.
 3. Call `share_assets` with `brand` or `project`, `category`, `competitors`,
-   and `output_dir` (default `.promptbeacon`). Set `png: true` if the user
+   and `output_dir` (default `.promptbeacon`). Pass `models` only if the user
+   asked for specific models (e.g. `{"anthropic": "claude-sonnet-5-5"}`); the
+   card names the models that answered. Set `png: true` if the user
    wants to post the card on social networks (they do not accept SVG).
 4. Show the user the files that were written and the README snippets from the
    result: `readme_badge`, and `readme_card`, which uses `<picture>` so GitHub
