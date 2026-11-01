@@ -1,0 +1,38 @@
+{
+ "id": "rajpurkar/squad",
+ "author": "rajpurkar",
+ "tags": [
+  "task_categories:question-answering",
+  "task_ids:extractive-qa",
+  "annotations_creators:crowdsourced",
+  "language_creators:crowdsourced",
+  "language_creators:found",
+  "multilinguality:monolingual",
+  "source_datasets:extended|wikipedia",
+  "language:en",
+  "license:cc-by-sa-4.0",
+  "size_categories:10K<n<100K",
+  "format:parquet",
+  "modality:text",
+  "library:datasets",
+  "library:pandas",
+  "library:polars",
+  "library:mlcroissant",
+  "arxiv:1606.05250",
+  "region:us"
+ ],
+ "description": "\n\t\n\t\t\n\t\n\t\n\t\tDataset Card for SQuAD\n\t\n\n\n\t\n\t\t\n\t\n\t\n\t\tDataset Summary\n\t\n\nStanford Question Answering Dataset (SQuAD) is a reading comprehension dataset, consisting of questions posed by crowdworkers on a set of Wikipedia articles, where the answer to every question is a segment of text, or span, from the corresponding reading passage, or the question might be unanswerable.\nSQuAD 1.1 contains 100,000+ question-answer pairs on 500+ articles.\n\n\t\n\t\t\n\t\n\t\n\t\tSupported Tasks and Leaderboards\n\t\n\nQuestion\u2026 See the full description on the dataset page: https://huggingface.co/datasets/rajpurkar/squad.",
+ "cardData": {
+  "language": [
+   "en"
+  ],
+  "license": "cc-by-sa-4.0",
+  "task_categories": [
+   "question-answering"
+  ],
+  "task_ids": [
+   "extractive-qa"
+  ],
+  "pretty_name": "SQuAD"
+ }
+}

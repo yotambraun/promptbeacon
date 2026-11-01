@@ -36,8 +36,9 @@ DEMO_NOTE = (
 INSTRUCTIONS = (
     "PromptBeacon measures whether AI assistants recommend a brand or "
     "open-source project. Prefer project_scan for software projects (GitHub, "
-    "PyPI, npm). Always pass a category when you know it. Results labelled "
-    "measurement_tier='demo' are canned data, not a measurement."
+    "PyPI, npm, crates.io, Hugging Face). Always pass a category when you know "
+    "it. Results labelled measurement_tier='demo' are canned data, not a "
+    "measurement."
 )
 
 
@@ -174,7 +175,9 @@ async def project_scan(
     Reads public metadata to guess the category and competitors, then scans.
 
     Args:
-        project: "github:owner/name", "pypi:package", "npm:package", or owner/name.
+        project: "github:owner/name", "pypi:package", "npm:package",
+            "crates:name", "hf:owner/name" (also hf:datasets/... and
+            hf:spaces/...), or owner/name.
         category: Override the guessed category, e.g. "python http client".
         competitors: Override the competitor candidates.
         providers: e.g. ["openai", "anthropic"].
@@ -261,7 +264,8 @@ async def share_assets(
 
     Args:
         brand: Brand to scan (or use project).
-        project: "github:owner/name", "pypi:package" or "npm:package".
+        project: "github:owner/name", "pypi:package", "npm:package",
+            "crates:name" or "hf:owner/name".
         category: The category, e.g. "python http client".
         competitors: Competitors to compare against.
         providers: e.g. ["openai", "anthropic"].

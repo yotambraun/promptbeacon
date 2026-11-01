@@ -274,7 +274,7 @@ report.assert_visibility(min_score=40, min_share_of_voice=0.2)
 ```bash
 promptbeacon demo "Brand" -t "category" -c "Rival"
 promptbeacon scan "Brand" -t "category" -c "Rival" [-p openai] [-m openai=gpt-6-sol] [--grounded] [--stability 5]
-promptbeacon scan --repo owner/name | --pypi pkg | --npm pkg
+promptbeacon scan --repo owner/name | --pypi pkg | --npm pkg | --crate name | --hf owner/name
 promptbeacon badge | card | ci | history | sources | funnel | dashboard | mcp
 ```
 

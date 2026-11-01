@@ -2,7 +2,7 @@
 name: ai-visibility
 description: Check whether AI assistants (ChatGPT, Claude, Gemini and others) mention and recommend a product, brand, or open-source project, and how it compares with competitors. Use when someone asks "does AI recommend my product/library?", wants their share of voice in AI answers, or wants to know which sites AI cites for their category.
 when_to_use: Trigger phrases include "does ChatGPT recommend", "AI visibility", "share of voice", "is my library recommended by AI", "GEO", "AEO", "which sites does AI cite".
-argument-hint: "[brand or github:owner/name | pypi:package | npm:package] [category]"
+argument-hint: "[brand or github:owner/name | pypi:package | npm:package | crates:name | hf:owner/name] [category]"
 ---
 
 # AI visibility check
@@ -16,9 +16,10 @@ subject, compared with its competitors.
    API keys and are billed to them.
 2. Work out what to scan:
    - An open-source project or package: use `project_scan` with
-     `github:owner/name`, `pypi:package` or `npm:package`. If the user means
-     the current repository, read its name and description from
-     `pyproject.toml`, `package.json` or the git remote first.
+     `github:owner/name`, `pypi:package`, `npm:package`, `crates:name` or
+     `hf:owner/name`. If the user means the current repository, read its name
+     and description from `pyproject.toml`, `package.json`, `Cargo.toml` or
+     the git remote first.
    - Anything else: use `scan` with the brand name.
 3. Always pass a `category` phrased the way a buyer would ask ("python http
    client", "running shoes"). If you are unsure, ask the user, or let

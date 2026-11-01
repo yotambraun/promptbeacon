@@ -223,6 +223,18 @@ def scan(
     npm: Annotated[
         str | None, typer.Option("--npm", help="Scan an npm package, e.g. express")
     ] = None,
+    crate: Annotated[
+        str | None,
+        typer.Option("--crate", help="Scan a Rust crate on crates.io, e.g. serde"),
+    ] = None,
+    hf: Annotated[
+        str | None,
+        typer.Option(
+            "--hf",
+            help="Scan a Hugging Face model (owner/name), dataset "
+            "(datasets/owner/name) or Space (spaces/owner/name)",
+        ),
+    ] = None,
     project: Annotated[
         str | None,
         typer.Option(
@@ -345,6 +357,10 @@ def scan(
 
         promptbeacon scan --pypi httpx --demo      # an open-source package
 
+        promptbeacon scan --crate serde --demo     # a Rust crate
+
+        promptbeacon scan --hf sentence-transformers/all-MiniLM-L6-v2 --demo
+
         promptbeacon scan "httpx" -t "python http client" -m openai=gpt-6-sol
 
         promptbeacon scan "httpx" -t "python http client" -m litellm=ollama/llama3.2
@@ -364,11 +380,11 @@ def scan(
         brand = proto.brand
         run_stability = proto.runs > 0
     else:
-        project_ref = _project_ref(repo, pypi, npm, project)
+        project_ref = _project_ref(repo, pypi, npm, project, crate=crate, hf=hf)
         if not brand and not project_ref:
             err_console.print(
-                "[red]Error:[/red] Provide a BRAND, a project (--repo/--pypi/--npm), "
-                "or --protocol."
+                "[red]Error:[/red] Provide a BRAND, a project "
+                "(--repo/--pypi/--npm/--crate/--hf), or --protocol."
             )
             raise typer.Exit(1)
 
@@ -1291,18 +1307,24 @@ def _project_ref(
     pypi: str | None = None,
     npm: str | None = None,
     project: str | None = None,
+    *,
+    crate: str | None = None,
+    hf: str | None = None,
 ) -> str | None:
     """Combine the project options into one ``kind:ref`` (at most one allowed)."""
     refs = [
         f"github:{repo}" if repo else None,
         f"pypi:{pypi}" if pypi else None,
         f"npm:{npm}" if npm else None,
+        f"crates:{crate}" if crate else None,
+        f"hf:{hf}" if hf else None,
         project,
     ]
     given = [r for r in refs if r]
     if len(given) > 1:
         err_console.print(
-            "[red]Error:[/red] Use only one of --repo, --pypi, --npm, --project."
+            "[red]Error:[/red] Use only one of --repo, --pypi, --npm, --crate, "
+            "--hf, --project."
         )
         raise typer.Exit(1)
     return given[0] if given else None
@@ -1327,26 +1349,49 @@ def _beacon_from_options(
     and turns configuration errors into clean exits.
     """
     from promptbeacon.builder import configure_beacon
-    from promptbeacon.projects import ProjectMetadataError
+    from promptbeacon.projects import (
+        ProjectMetadataError,
+        ProjectMetadataUnavailable,
+        project_name_from_ref,
+    )
 
     try:
         if project:
-            with _progress() as progress:
-                progress.add_task(description=f"Reading {project}...", total=None)
-                beacon = configure_beacon(
-                    brand,
-                    project=project,
-                    competitors=competitors,
-                    providers=providers,
-                    models=models,
-                    categories=categories,
-                    prompt_count=prompt_count,
-                    demo=demo,
-                    grounded=grounded,
-                    infer_category=infer_category,
+            try:
+                with _progress() as progress:
+                    progress.add_task(description=f"Reading {project}...", total=None)
+                    beacon = configure_beacon(
+                        brand,
+                        project=project,
+                        competitors=competitors,
+                        providers=providers,
+                        models=models,
+                        categories=categories,
+                        prompt_count=prompt_count,
+                        demo=demo,
+                        grounded=grounded,
+                        infer_category=infer_category,
+                    )
+            except ProjectMetadataUnavailable as e:
+                if not demo:
+                    raise
+                # The keyless demo works offline: carry on with the name only.
+                brand = brand or project_name_from_ref(project)
+                err_console.print(
+                    f"[yellow]Could not read {project} ({e}). Demo continues "
+                    f"offline with the name {brand!r}"
+                    + (
+                        "."
+                        if categories
+                        else "; add --category for meaningful prompts."
+                    )
+                    + "[/yellow]",
+                    highlight=False,
                 )
-            _project_notice(beacon, categories, competitors, infer_category, demo)
-            return beacon
+                project = None
+            else:
+                _project_notice(beacon, categories, competitors, infer_category, demo)
+                return beacon
         return configure_beacon(
             brand,
             competitors=competitors,
@@ -1432,8 +1477,9 @@ def _report_for_share(
             raise typer.Exit(1) from None
     if not brand and not project:
         err_console.print(
-            "[red]Error:[/red] Provide a BRAND or project (--repo/--pypi/--npm) to "
-            "scan, or --report with a saved `promptbeacon scan -f json` report."
+            "[red]Error:[/red] Provide a BRAND or project (--repo/--pypi/--npm/"
+            "--crate/--hf) to scan, or --report with a saved "
+            "`promptbeacon scan -f json` report."
         )
         raise typer.Exit(1)
     if options.get("demo"):
@@ -1469,6 +1515,11 @@ _SharePrompts = Annotated[
 _ShareRepo = Annotated[str | None, typer.Option("--repo", help="GitHub owner/name")]
 _SharePyPI = Annotated[str | None, typer.Option("--pypi", help="PyPI package")]
 _ShareNpm = Annotated[str | None, typer.Option("--npm", help="npm package")]
+_ShareCrate = Annotated[str | None, typer.Option("--crate", help="crates.io crate")]
+_ShareHF = Annotated[
+    str | None,
+    typer.Option("--hf", help="Hugging Face owner/name (datasets/... or spaces/...)"),
+]
 _ShareProject = Annotated[
     str | None, typer.Option("--project", help="kind:ref, e.g. pypi:httpx")
 ]
@@ -1487,6 +1538,8 @@ def badge(
     repo: _ShareRepo = None,
     pypi: _SharePyPI = None,
     npm: _ShareNpm = None,
+    crate: _ShareCrate = None,
+    hf: _ShareHF = None,
     project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
@@ -1527,7 +1580,7 @@ def badge(
         report_path,
         brand,
         f"Scanning {brand or 'project'} for a badge...",
-        project=_project_ref(repo, pypi, npm, project),
+        project=_project_ref(repo, pypi, npm, project, crate=crate, hf=hf),
         competitors=competitors,
         providers=providers,
         models=models,
@@ -1573,6 +1626,8 @@ def card(
     repo: _ShareRepo = None,
     pypi: _SharePyPI = None,
     npm: _ShareNpm = None,
+    crate: _ShareCrate = None,
+    hf: _ShareHF = None,
     project: _ShareProject = None,
     competitors: _ShareCompetitors = None,
     providers: _ShareProviders = None,
@@ -1614,7 +1669,7 @@ def card(
         report_path,
         brand,
         f"Scanning {brand or 'project'} for a card...",
-        project=_project_ref(repo, pypi, npm, project),
+        project=_project_ref(repo, pypi, npm, project, crate=crate, hf=hf),
         competitors=competitors,
         providers=providers,
         models=models,

@@ -1,7 +1,7 @@
 ---
 name: share-card
 description: Create a README badge (SVG and shields.io endpoint JSON) and a 1200x630 share card showing how often AI assistants recommend a product or open-source project versus its competitors. Use when someone wants an "AI visibility" badge for their README or an image to share their results.
-argument-hint: "[brand or github:owner/name | pypi:package | npm:package] [category]"
+argument-hint: "[brand or github:owner/name | pypi:package | npm:package | crates:name | hf:owner/name] [category]"
 ---
 
 # Badge and share card

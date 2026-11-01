@@ -1,0 +1,48 @@
+{
+ "crate": {
+  "id": "reqwest",
+  "name": "reqwest",
+  "description": "higher level HTTP client library",
+  "homepage": null,
+  "documentation": "https://docs.rs/reqwest",
+  "repository": "https://github.com/seanmonstar/reqwest",
+  "keywords": [
+   "client",
+   "http",
+   "request"
+  ],
+  "categories": [
+   "wasm",
+   "web-programming::http-client"
+  ],
+  "max_version": "0.0.0",
+  "max_stable_version": null,
+  "default_version": "0.13.5"
+ },
+ "keywords": [
+  {
+   "id": "client",
+   "keyword": "client"
+  },
+  {
+   "id": "http",
+   "keyword": "http"
+  },
+  {
+   "id": "request",
+   "keyword": "request"
+  }
+ ],
+ "categories": [
+  {
+   "id": "wasm",
+   "category": "WebAssembly",
+   "slug": "wasm"
+  },
+  {
+   "id": "web-programming::http-client",
+   "category": "HTTP client",
+   "slug": "web-programming::http-client"
+  }
+ ]
+}

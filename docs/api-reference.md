@@ -255,7 +255,9 @@ print(report.categories)  # e.g. ["running shoes"]
 #### `Beacon.from_project(ref, *, kind=None, infer=False, http=None, cache=True) -> Beacon`
 
 Create a Beacon for an open-source project or package from its public metadata:
-`"github:owner/name"`, `"pypi:package"`, `"npm:package"` (or a bare `owner/name`).
+`"github:owner/name"`, `"pypi:package"`, `"npm:package"`, `"crates:name"`,
+`"hf:owner/name"` (also `hf:datasets/owner/name`, `hf:spaces/owner/name`), or a bare
+`owner/name` (GitHub).
 Sets the brand, developer-oriented prompts, an offline category guess and README
 competitor candidates; inspect them on `beacon.project`. With `infer=True` the
 category is refined with one LLM call at scan time (the offline guess is the
@@ -779,7 +781,7 @@ configure_beacon(
 
 Build a Beacon from plain options. This is the single mapping used by the CLI and the
 MCP server, so scripts that take options from users can use the same behaviour.
-`project` takes `"github:..."`, `"pypi:..."` or `"npm:..."`; a `brand` given together
+`project` takes `"github:..."`, `"pypi:..."`, `"npm:..."`, `"crates:..."` or `"hf:..."`; a `brand` given together
 with a project wins and the project name becomes an alias. Raises `ValueError` for a
 missing brand/project or an unknown provider.
 
@@ -799,12 +801,13 @@ report = beacon.scan()
 
 | Name | Description |
 | --- | --- |
-| `fetch_project(ref, kind=None, *, http=None, cache=True) -> ProjectMetadata` | Fetch metadata for `"kind:ref"`; raises `ProjectMetadataError` (not found, rate limited, offline) |
-| `ProjectMetadata` | `source`, `ref`, `name`, `description`, `keywords`, `language`, `homepage`, `url`, `readme`, `aliases` |
+| `fetch_project(ref, kind=None, *, http=None, cache=True) -> ProjectMetadata` | Fetch metadata for `"kind:ref"`; raises `ProjectMetadataError` (not found, rate limited) or its subclass `ProjectMetadataUnavailable` (offline, timeout) |
+| `project_name_from_ref(ref) -> str` | The project name a reference points at, without network access |
+| `ProjectMetadata` | `source`, `ref`, `name`, `description`, `keywords`, `language`, `homepage`, `url`, `readme`, `aliases`, `category_hint`, `category_hint_basis` |
 | `guess_category(meta) -> CategoryGuess` | Offline guess: `category`, `confidence` (`high`/`medium`/`low`), `basis` |
 | `guess_competitors(meta, limit=4) -> list[str]` | Peer projects the README compares itself to |
 | `profile_project(meta) -> ProjectProfile` | Category guess plus competitor candidates |
-| `MetadataSource`, `register_source(cls)` | Base class and registry for sources (`GitHubSource`, `PyPISource`, `NpmSource` built in) |
+| `MetadataSource`, `register_source(cls)` | Base class and registry for sources (`GitHubSource`, `PyPISource`, `NpmSource`, `CratesSource`, `HuggingFaceSource` built in) |
 | `available_sources() -> list[str]` | Registered source kinds |
 | `MetadataCache(directory=None, ttl_seconds=86400)` | On-disk response cache |
 

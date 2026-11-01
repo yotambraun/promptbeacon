@@ -79,6 +79,8 @@ promptbeacon scan [BRAND] [OPTIONS]
 | `--repo OWNER/NAME` | A GitHub repository (also accepts a github.com URL) |
 | `--pypi PACKAGE` | A PyPI package |
 | `--npm PACKAGE` | An npm package (scoped names such as `@scope/pkg` work) |
+| `--crate NAME` | A Rust crate on crates.io |
+| `--hf OWNER/NAME` | A Hugging Face model; `datasets/OWNER/NAME` or `spaces/OWNER/NAME` for datasets and Spaces |
 | `--project KIND:REF` | Any registered source, e.g. `pypi:httpx`, `github:owner/name` |
 
 Project options read public metadata to choose the brand, a category and competitor
@@ -335,7 +337,7 @@ promptbeacon badge --pypi httpx --metric sov
 
 | Option | Description |
 | --- | --- |
-| `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
+| `BRAND` or `--repo/--pypi/--npm/--crate/--hf/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved `scan -f json` report instead of scanning |
 | `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-badge.svg`) |
@@ -359,7 +361,7 @@ promptbeacon card --report report.json --theme both --png card.png
 
 | Option | Description |
 | --- | --- |
-| `BRAND` or `--repo/--pypi/--npm/--project` | What to scan (omit with `--report`) |
+| `BRAND` or `--repo/--pypi/--npm/--crate/--hf/--project` | What to scan (omit with `--report`) |
 | `--report PATH` | Render from a saved report |
 | `--category`, `--competitor`, `--provider`, `--model`, `--prompts`, `--demo`, `--grounded` | As for `scan` |
 | `--output`, `-o` | SVG file (default `promptbeacon-card.svg`) |

@@ -55,7 +55,8 @@ _FILLER = {
     "production-ready", "batteries-included", "full-featured", "feature-rich",
     "zero-dependency", "dependency-free", "secure", "reliable", "scalable",
     "efficient", "pure", "native", "complete", "comprehensive", "ultimate",
-    "yet", "another", "your", "my", "our", "very", "super", "really",
+    "yet", "another", "your", "my", "our", "very", "super", "really", "generic",
+    "higher", "level", "higher-level", "high-level", "ergonomic",
 }  # fmt: skip
 
 _PREPOSITIONS = {
@@ -128,6 +129,9 @@ def _description_phrase(meta: ProjectMetadata, brand: set[str]) -> str | None:
     clauses = re.split(r"[.;:!?()\[\]—–]|\s-\s", desc)
     segments = [seg for clause in clauses for seg in clause.split(",")]
     for segment in segments:
+        # "serialization/deserialization framework" -> "serialization framework"
+        # (short pairs such as "I/O" or "TCP/IP" are left alone).
+        segment = re.sub(r"\b([A-Za-z]{4,})/[A-Za-z]{4,}\b", r"\1", segment)
         words = [w for w in _words(segment) if w not in brand]
         while words and words[0] in _FILLER:
             words.pop(0)
@@ -166,7 +170,20 @@ def guess_category(meta: ProjectMetadata) -> CategoryGuess:
     topics = _topic_phrases(meta, brand)
     phrase = _description_phrase(meta, brand)
 
+    if meta.category_hint:
+        return CategoryGuess(
+            meta.category_hint, "high", meta.category_hint_basis or "registry metadata"
+        )
+
     if phrase:
+        words = phrase.split()
+        # "http client library" -> "http client": the kind is the client.
+        if (
+            len(words) >= 3
+            and words[-1] in ("library", "lib")
+            and (words[-2] in _KIND_NOUNS)
+        ):
+            phrase = " ".join(words[:-1])
         last = phrase.split()[-1]
         if len(phrase.split()) >= 2 and last in _KIND_NOUNS:
             return CategoryGuess(_with_language(phrase, meta), "high", "description")

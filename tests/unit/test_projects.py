@@ -170,32 +170,32 @@ def test_cache_avoids_repeat_requests(tmp_path):
 
 
 def test_new_sources_are_one_small_class():
-    class CratesSource(MetadataSource):
-        kind = "crates"
-        label = "crates.io"
-        example = "serde"
+    class ConanSource(MetadataSource):
+        kind = "conan"
+        label = "Conan"
+        example = "fmt"
 
         def fetch(self, ref: str) -> ProjectMetadata:
-            data = self._get(f"https://crates.io/api/v1/crates/{ref}").json()["crate"]
+            data = self._get(f"https://conan.example/api/{ref}").json()["package"]
             return ProjectMetadata(
                 source=self.kind, ref=ref, name=data["name"],
                 description=data["description"], keywords=data["keywords"],
-                language="Rust",
+                language="C++",
             )  # fmt: skip
 
-    register_source(CratesSource)
+    register_source(ConanSource)
     try:
-        crate = {"crate": {"name": "serde", "description": "A serialization framework",
-                           "keywords": ["serde", "serialization"]}}  # fmt: skip
+        pkg = {"package": {"name": "fmt", "description": "A formatting library",
+                           "keywords": ["fmt", "formatting"]}}  # fmt: skip
         meta = fetch_project(
-            "crates:serde", http=FakeHttp({"crates.io": json.dumps(crate)}), cache=False
+            "conan:fmt", http=FakeHttp({"conan.example": json.dumps(pkg)}), cache=False
         )
-        assert "crates" in available_sources()
-        assert guess_category(meta).category == "rust serialization framework"
+        assert "conan" in available_sources()
+        assert guess_category(meta).category == "c++ formatting library"
     finally:
         from promptbeacon.projects import sources
 
-        sources._SOURCES.pop("crates", None)
+        sources._SOURCES.pop("conan", None)
 
 
 # --- inference -------------------------------------------------------------------

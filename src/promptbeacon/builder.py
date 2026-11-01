@@ -41,7 +41,8 @@ def configure_beacon(
         brand: Brand to measure. Optional when ``project`` is given (the
             project name is used; a brand given here wins and the project name
             becomes an alias).
-        project: ``"github:owner/name"``, ``"pypi:pkg"`` or ``"npm:pkg"`` — reads
+        project: ``"github:owner/name"``, ``"pypi:pkg"``, ``"npm:pkg"``,
+            ``"crates:name"`` or ``"hf:owner/name"`` — reads
             public metadata for the category and competitor candidates.
         competitors: Competitors (override project guesses).
         providers: Provider names such as ``["openai", "anthropic"]``.
@@ -74,7 +75,9 @@ def configure_beacon(
         if infer_category:
             beacon = beacon.with_category_inference()
     else:
-        raise ValueError("Provide a brand or a project (github:, pypi: or npm:).")
+        raise ValueError(
+            "Provide a brand or a project (github:, pypi:, npm:, crates: or hf:)."
+        )
 
     if competitors:
         beacon = beacon.with_competitors(*competitors)

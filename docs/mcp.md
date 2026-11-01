@@ -65,7 +65,7 @@ responses).
 | --- | --- | --- |
 | `providers` | none | Which providers and Tavily are configured (`true`/`false`, never the key values), the model each provider will use, and the default mode |
 | `scan` | `brand`, `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `grounded` | Score, share of voice and rank, presence, a per-brand table, top sources, models, prompts, cost, top recommendations, `measurement_tier` |
-| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
+| `project_scan` | `project` (`github:owner/name`, `pypi:pkg`, `npm:pkg`, `crates:name`, `hf:owner/name`), `category`, `competitors`, `providers`, `models`, `prompts`, `demo`, `infer_category` | The scan result plus a `project` object with the metadata and the guessed category and competitors, with their basis |
 | `sources` | `brand`, `category`, `competitors`, `providers`, `models`, `demo`, `grounded` (default `true`) | The domains AI answers cite and whether each cites the brand |
 | `share_assets` | `brand` or `project`, `category`, `competitors`, `providers`, `models`, `demo`, `output_dir`, `png` | Paths of `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`), README snippets, and the summary |
 
