@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "react-state-management-library",
+  "category": "react state management library",
+  "group": "JavaScript",
+  "candidates": [
+    {
+      "name": "Jotai",
+      "url": "https://github.com/pmndrs/jotai"
+    },
+    {
+      "name": "MobX",
+      "url": "https://github.com/mobxjs/mobx"
+    },
+    {
+      "name": "Redux",
+      "url": "https://github.com/reduxjs/redux"
+    },
+    {
+      "name": "Valtio",
+      "url": "https://github.com/pmndrs/valtio"
+    },
+    {
+      "name": "XState",
+      "url": "https://github.com/statelyai/xstate"
+    },
+    {
+      "name": "Zustand",
+      "url": "https://github.com/pmndrs/zustand"
+    }
+  ],
+  "prompts": [
+    "What is the best react state management library?",
+    "Which react state management library should I use for a new project?",
+    "What react state management library do you recommend?",
+    "What are the most popular react state management library options?",
+    "Compare the leading react state management library options.",
+    "Which react state management library is the most reliable for production use?",
+    "What react state management library has the best documentation and community?",
+    "What is the easiest react state management library to get started with?",
+    "What are good alternatives to the most popular react state management library?",
+    "Which react state management library do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

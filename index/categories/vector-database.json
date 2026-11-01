@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "id": "vector-database",
+  "category": "vector database",
+  "group": "Data",
+  "candidates": [
+    {
+      "name": "Chroma",
+      "url": "https://github.com/chroma-core/chroma",
+      "match": [
+        "Chroma",
+        "ChromaDB"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "LanceDB",
+      "url": "https://github.com/lancedb/lancedb"
+    },
+    {
+      "name": "Milvus",
+      "url": "https://github.com/milvus-io/milvus"
+    },
+    {
+      "name": "pgvector",
+      "url": "https://github.com/pgvector/pgvector"
+    },
+    {
+      "name": "Qdrant",
+      "url": "https://github.com/qdrant/qdrant"
+    },
+    {
+      "name": "Weaviate",
+      "url": "https://github.com/weaviate/weaviate"
+    }
+  ],
+  "prompts": [
+    "What is the best vector database?",
+    "Which vector database should I use for a new project?",
+    "What vector database do you recommend?",
+    "What are the most popular vector database options?",
+    "Compare the leading vector database options.",
+    "Which vector database is the most reliable for production use?",
+    "What vector database has the best documentation and community?",
+    "What is the easiest vector database to get started with?",
+    "What are good alternatives to the most popular vector database?",
+    "Which vector database do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

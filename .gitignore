@@ -74,3 +74,8 @@ Thumbs.db
 
 # mkdocs build output
 site/
+
+# AI Recommendation Index: build output and local demo snapshots
+# (index/demo/html is the committed, labelled demo site)
+index/site/
+index/demo/data/

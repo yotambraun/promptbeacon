@@ -1,0 +1,100 @@
+# AI Recommendation Index: monthly run. DISABLED until the owner enables it.
+#
+# It does nothing until all of these are done (see index/README.md):
+#   1. Repository secrets OPENAI_API_KEY, ANTHROPIC_API_KEY and GEMINI_API_KEY.
+#   2. Repository variable PB_INDEX_ENABLED = true (the job is skipped otherwise).
+#   3. The schedule below uncommented, after one manual run has been checked.
+#   4. A decision on hosting: the site is uploaded as an artifact; the Pages
+#      deployment step is commented out at the end.
+# Each run is capped by max-cost (about $1.59 estimated for all 30 categories).
+
+name: AI Recommendation Index
+
+on:
+  workflow_dispatch:
+    inputs:
+      max-cost:
+        description: "Spending cap in US dollars for the whole run"
+        required: true
+        default: "5"
+      categories:
+        description: "Comma-separated category ids (empty = all)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "0 5 2 * *" # 05:00 UTC on the 2nd of every month
+
+permissions:
+  contents: write # commit the snapshots and raw answers
+
+concurrency:
+  group: ai-recommendation-index
+  cancel-in-progress: false
+
+jobs:
+  index:
+    if: vars.PB_INDEX_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.12"
+
+      - name: Install PromptBeacon from this commit
+        run: uv venv && uv pip install -e .
+
+      - name: Validate and price the protocols
+        working-directory: index
+        run: |
+          ../.venv/bin/python -m pbindex validate
+          ../.venv/bin/python -m pbindex estimate
+
+      - name: Run the protocols
+        working-directory: index
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PB_MAX_COST: ${{ inputs.max-cost || '5' }}
+          PB_CATEGORIES: ${{ inputs.categories }}
+        run: |
+          args=(run --max-cost "$PB_MAX_COST")
+          if [ -n "$PB_CATEGORIES" ]; then args+=(--categories "$PB_CATEGORIES"); fi
+          ../.venv/bin/python -m pbindex "${args[@]}"
+
+      - name: Build the site
+        working-directory: index
+        run: ../.venv/bin/python -m pbindex build
+
+      - name: Commit snapshots and raw answers
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index/data
+          if git diff --cached --quiet; then
+            echo "No new snapshots."
+          else
+            git commit -m "data(index): monthly AI Recommendation Index run"
+            git push
+          fi
+
+      - name: Upload the site
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-recommendation-index-site
+          path: index/site
+
+      # Hosting is an owner decision. For GitHub Pages under the docs site, for
+      # example, publish index/site to a subdirectory of the gh-pages branch:
+      # - uses: peaceiris/actions-gh-pages@v4
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: index/site
+      #     destination_dir: index
+      #     keep_files: true

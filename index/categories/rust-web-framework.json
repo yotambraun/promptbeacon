@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "rust-web-framework",
+  "category": "rust web framework",
+  "group": "Rust",
+  "candidates": [
+    {
+      "name": "Actix Web",
+      "url": "https://github.com/actix/actix-web",
+      "match": [
+        "Actix"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Axum",
+      "url": "https://github.com/tokio-rs/axum"
+    },
+    {
+      "name": "Poem",
+      "url": "https://github.com/poem-web/poem",
+      "match": [
+        "Poem"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Rocket",
+      "url": "https://github.com/rwf2/Rocket",
+      "match": [
+        "Rocket"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Warp",
+      "url": "https://github.com/seanmonstar/warp",
+      "match": [
+        "Warp",
+        "warp"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best rust web framework?",
+    "Which rust web framework should I use for a new project?",
+    "What rust web framework do you recommend?",
+    "What are the most popular rust web framework options?",
+    "Compare the leading rust web framework options.",
+    "Which rust web framework is the most reliable for production use?",
+    "What rust web framework has the best documentation and community?",
+    "What is the easiest rust web framework to get started with?",
+    "What are good alternatives to the most popular rust web framework?",
+    "Which rust web framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

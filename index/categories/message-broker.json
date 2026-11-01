@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "id": "message-broker",
+  "category": "open-source message broker",
+  "group": "Infrastructure",
+  "candidates": [
+    {
+      "name": "Apache Kafka",
+      "url": "https://github.com/apache/kafka",
+      "match": [
+        "Kafka"
+      ]
+    },
+    {
+      "name": "Apache Pulsar",
+      "url": "https://github.com/apache/pulsar",
+      "match": [
+        "Pulsar"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "NATS",
+      "url": "https://github.com/nats-io/nats-server",
+      "match": [
+        "NATS"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "RabbitMQ",
+      "url": "https://github.com/rabbitmq/rabbitmq-server"
+    }
+  ],
+  "prompts": [
+    "What is the best open-source message broker?",
+    "Which open-source message broker should I use for a new project?",
+    "What open-source message broker do you recommend?",
+    "What are the most popular open-source message broker options?",
+    "Compare the leading open-source message broker options.",
+    "Which open-source message broker is the most reliable for production use?",
+    "What open-source message broker has the best documentation and community?",
+    "What is the easiest open-source message broker to get started with?",
+    "What are good alternatives to the most popular open-source message broker?",
+    "Which open-source message broker do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

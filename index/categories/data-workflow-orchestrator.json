@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "id": "data-workflow-orchestrator",
+  "category": "data workflow orchestrator",
+  "group": "Data",
+  "candidates": [
+    {
+      "name": "Apache Airflow",
+      "url": "https://github.com/apache/airflow",
+      "match": [
+        "Airflow"
+      ]
+    },
+    {
+      "name": "Dagster",
+      "url": "https://github.com/dagster-io/dagster"
+    },
+    {
+      "name": "Kestra",
+      "url": "https://github.com/kestra-io/kestra"
+    },
+    {
+      "name": "Luigi",
+      "url": "https://github.com/spotify/luigi",
+      "match": [
+        "Luigi"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Prefect",
+      "url": "https://github.com/PrefectHQ/prefect",
+      "match": [
+        "Prefect"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best data workflow orchestrator?",
+    "Which data workflow orchestrator should I use for a new project?",
+    "What data workflow orchestrator do you recommend?",
+    "What are the most popular data workflow orchestrator options?",
+    "Compare the leading data workflow orchestrator options.",
+    "Which data workflow orchestrator is the most reliable for production use?",
+    "What data workflow orchestrator has the best documentation and community?",
+    "What is the easiest data workflow orchestrator to get started with?",
+    "What are good alternatives to the most popular data workflow orchestrator?",
+    "Which data workflow orchestrator do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

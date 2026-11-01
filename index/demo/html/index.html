@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>[DEMO] AI Recommendation Index</title>
+<style>
+:root{--bg:#fff;--fg:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#f1f5f9;
+--accent:#4f46e5;--bar:#c7d2fe;--warn-bg:#fef3c7;--warn-fg:#78350f;--warn-line:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--fg:#f8fafc;--muted:#94a3b8;
+--line:#1e293b;--soft:#111a2e;--accent:#a5b4fc;--bar:#3730a3;--warn-bg:#3a2a0a;
+--warn-fg:#fde68a;--warn-line:#b45309}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+a{color:var(--accent)}
+header.top{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;
+border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:24px}
+header.top a{text-decoration:none;font-weight:600}
+h1{font-size:1.9rem;line-height:1.2;margin:.2em 0 .4em}
+h2{font-size:1.25rem;margin-top:2em}
+.muted{color:var(--muted)}
+.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line);
+border-radius:10px;padding:12px 16px;margin:0 0 24px;font-weight:600}
+.table{width:100%;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ci{position:relative;height:12px;min-width:140px;background:var(--soft);border-radius:6px}
+.ci .range{position:absolute;top:0;height:12px;background:var(--bar);border-radius:6px}
+.ci .point{position:absolute;top:-2px;width:3px;height:16px;background:var(--accent);
+border-radius:2px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em}
+pre{background:var(--soft);padding:10px 12px;border-radius:8px;overflow-x:auto}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--soft);
+font-size:.8rem;color:var(--muted)}
+footer{margin-top:48px;border-top:1px solid var(--line);padding-top:12px;font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+<a href="index.html">AI Recommendation Index</a>
+<a href="methodology.html">Methodology</a>
+<a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>
+</header>
+<div class="banner">DEMO DATA: canned answers from PromptBeacon&#x27;s offline mock model, with placeholder project names. Not a measurement and not a ranking.</div>
+
+<h1>AI Recommendation Index</h1>
+<p>Which open-source projects do AI assistants recommend? For 3 developer
+categories, the same fixed questions go to the same models every month, and projects
+are ranked by how often the answers mention them. Every answer is published.</p>
+<p class="muted">Latest run: 2026-11-01. Read the
+<a href="methodology.html">methodology</a> before quoting a number.</p>
+<h2>Data</h2><div class=table><table><thead><tr><th>Category</th><th>Most mentioned (share of answers)</th><th class=num>Projects</th><th class=num>Answers</th><th class=num>Date</th></tr></thead><tbody><tr><td><a href="categories/vector-database.html">vector database</a></td><td>Project C 92%, Project E 87%, Project D 71%</td><td class=num>6</td><td class=num>90</td><td class=num>2026-11-01</td></tr></tbody></table></div><h2>Python</h2><div class=table><table><thead><tr><th>Category</th><th>Most mentioned (share of answers)</th><th class=num>Projects</th><th class=num>Answers</th><th class=num>Date</th></tr></thead><tbody><tr><td><a href="categories/python-http-client.html">python http client</a></td><td>Project C 82%, Project A 72%, Project D 72%</td><td class=num>7</td><td class=num>90</td><td class=num>2026-11-01</td></tr></tbody></table></div><h2>Web</h2><div class=table><table><thead><tr><th>Category</th><th>Most mentioned (share of answers)</th><th class=num>Projects</th><th class=num>Answers</th><th class=num>Date</th></tr></thead><tbody><tr><td><a href="categories/static-site-generator.html">static site generator</a></td><td>Project C 82%, Project A 72%, Project D 70%</td><td class=num>8</td><td class=num>90</td><td class=num>2026-11-01</td></tr></tbody></table></div>
+
+<footer class="muted">Measured with <a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>. Raw answers
+and JSON snapshots are published with every page. Rankings are by measured mention
+rate only.</footer>
+</main>
+</body>
+</html>

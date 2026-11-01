@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "id": "nodejs-web-framework",
+  "category": "node.js web framework",
+  "group": "JavaScript",
+  "candidates": [
+    {
+      "name": "Express",
+      "url": "https://github.com/expressjs/express",
+      "match": [
+        "Express",
+        "Express.js"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Fastify",
+      "url": "https://github.com/fastify/fastify"
+    },
+    {
+      "name": "hapi",
+      "url": "https://github.com/hapijs/hapi",
+      "match": [
+        "hapi",
+        "Hapi",
+        "hapi.js"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Hono",
+      "url": "https://github.com/honojs/hono"
+    },
+    {
+      "name": "Koa",
+      "url": "https://github.com/koajs/koa",
+      "match": [
+        "Koa"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "NestJS",
+      "url": "https://github.com/nestjs/nest",
+      "match": [
+        "NestJS",
+        "Nest.js"
+      ]
+    }
+  ],
+  "prompts": [
+    "What is the best node.js web framework?",
+    "Which node.js web framework should I use for a new project?",
+    "What node.js web framework do you recommend?",
+    "What are the most popular node.js web framework options?",
+    "Compare the leading node.js web framework options.",
+    "Which node.js web framework is the most reliable for production use?",
+    "What node.js web framework has the best documentation and community?",
+    "What is the easiest node.js web framework to get started with?",
+    "What are good alternatives to the most popular node.js web framework?",
+    "Which node.js web framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

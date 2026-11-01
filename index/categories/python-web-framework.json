@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "id": "python-web-framework",
+  "category": "python web framework",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "Django",
+      "url": "https://github.com/django/django"
+    },
+    {
+      "name": "FastAPI",
+      "url": "https://github.com/fastapi/fastapi"
+    },
+    {
+      "name": "Flask",
+      "url": "https://github.com/pallets/flask",
+      "match": [
+        "Flask"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Litestar",
+      "url": "https://github.com/litestar-org/litestar"
+    },
+    {
+      "name": "Pyramid",
+      "url": "https://github.com/Pylons/pyramid",
+      "match": [
+        "Pyramid"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Quart",
+      "url": "https://github.com/pallets/quart"
+    },
+    {
+      "name": "Sanic",
+      "url": "https://github.com/sanic-org/sanic"
+    },
+    {
+      "name": "Starlette",
+      "url": "https://github.com/encode/starlette"
+    },
+    {
+      "name": "Tornado",
+      "url": "https://github.com/tornadoweb/tornado",
+      "match": [
+        "Tornado"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best python web framework?",
+    "Which python web framework should I use for a new project?",
+    "What python web framework do you recommend?",
+    "What are the most popular python web framework options?",
+    "Compare the leading python web framework options.",
+    "Which python web framework is the most reliable for production use?",
+    "What python web framework has the best documentation and community?",
+    "What is the easiest python web framework to get started with?",
+    "What are good alternatives to the most popular python web framework?",
+    "Which python web framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

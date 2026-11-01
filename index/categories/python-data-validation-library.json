@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "id": "python-data-validation-library",
+  "category": "python data validation library",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "attrs",
+      "url": "https://github.com/python-attrs/attrs",
+      "match": [
+        "attrs"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Cerberus",
+      "url": "https://github.com/pyeve/cerberus",
+      "match": [
+        "Cerberus"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "marshmallow",
+      "url": "https://github.com/marshmallow-code/marshmallow"
+    },
+    {
+      "name": "msgspec",
+      "url": "https://github.com/jcrist/msgspec"
+    },
+    {
+      "name": "Pydantic",
+      "url": "https://github.com/pydantic/pydantic"
+    },
+    {
+      "name": "voluptuous",
+      "url": "https://github.com/alecthomas/voluptuous"
+    }
+  ],
+  "prompts": [
+    "What is the best python data validation library?",
+    "Which python data validation library should I use for a new project?",
+    "What python data validation library do you recommend?",
+    "What are the most popular python data validation library options?",
+    "Compare the leading python data validation library options.",
+    "Which python data validation library is the most reliable for production use?",
+    "What python data validation library has the best documentation and community?",
+    "What is the easiest python data validation library to get started with?",
+    "What are good alternatives to the most popular python data validation library?",
+    "Which python data validation library do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

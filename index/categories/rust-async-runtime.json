@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "rust-async-runtime",
+  "category": "rust async runtime",
+  "group": "Rust",
+  "candidates": [
+    {
+      "name": "async-std",
+      "url": "https://github.com/async-rs/async-std"
+    },
+    {
+      "name": "Embassy",
+      "url": "https://github.com/embassy-rs/embassy",
+      "match": [
+        "Embassy"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "glommio",
+      "url": "https://github.com/DataDog/glommio"
+    },
+    {
+      "name": "smol",
+      "url": "https://github.com/smol-rs/smol",
+      "match": [
+        "smol"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Tokio",
+      "url": "https://github.com/tokio-rs/tokio"
+    }
+  ],
+  "prompts": [
+    "What is the best rust async runtime?",
+    "Which rust async runtime should I use for a new project?",
+    "What rust async runtime do you recommend?",
+    "What are the most popular rust async runtime options?",
+    "Compare the leading rust async runtime options.",
+    "Which rust async runtime is the most reliable for production use?",
+    "What rust async runtime has the best documentation and community?",
+    "What is the easiest rust async runtime to get started with?",
+    "What are good alternatives to the most popular rust async runtime?",
+    "Which rust async runtime do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

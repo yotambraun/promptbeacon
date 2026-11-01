@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>[DEMO] Methodology — AI Recommendation Index</title>
+<style>
+:root{--bg:#fff;--fg:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#f1f5f9;
+--accent:#4f46e5;--bar:#c7d2fe;--warn-bg:#fef3c7;--warn-fg:#78350f;--warn-line:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--fg:#f8fafc;--muted:#94a3b8;
+--line:#1e293b;--soft:#111a2e;--accent:#a5b4fc;--bar:#3730a3;--warn-bg:#3a2a0a;
+--warn-fg:#fde68a;--warn-line:#b45309}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+a{color:var(--accent)}
+header.top{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;
+border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:24px}
+header.top a{text-decoration:none;font-weight:600}
+h1{font-size:1.9rem;line-height:1.2;margin:.2em 0 .4em}
+h2{font-size:1.25rem;margin-top:2em}
+.muted{color:var(--muted)}
+.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line);
+border-radius:10px;padding:12px 16px;margin:0 0 24px;font-weight:600}
+.table{width:100%;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ci{position:relative;height:12px;min-width:140px;background:var(--soft);border-radius:6px}
+.ci .range{position:absolute;top:0;height:12px;background:var(--bar);border-radius:6px}
+.ci .point{position:absolute;top:-2px;width:3px;height:16px;background:var(--accent);
+border-radius:2px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em}
+pre{background:var(--soft);padding:10px 12px;border-radius:8px;overflow-x:auto}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--soft);
+font-size:.8rem;color:var(--muted)}
+footer{margin-top:48px;border-top:1px solid var(--line);padding-top:12px;font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+<a href="index.html">AI Recommendation Index</a>
+<a href="methodology.html">Methodology</a>
+<a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>
+</header>
+<div class="banner">DEMO DATA: canned answers from PromptBeacon&#x27;s offline mock model, with placeholder project names. Not a measurement and not a ranking.</div>
+
+<h1>Methodology</h1>
+<p>The Index measures one thing: <b>how often AI assistants mention a project when
+asked for recommendations in its category</b>. It does not judge quality, popularity or
+anything else, and nobody can pay to change it.</p>
+
+<h2>What is asked</h2>
+<p>Each category has a pinned protocol (a JSON file in the repository) with
+10 fixed prompts. They are the same for every category, with the
+category name filled in:</p>
+<ol><li>What is the best {category}?</li><li>Which {category} should I use for a new project?</li><li>What {category} do you recommend?</li><li>What are the most popular {category} options?</li><li>Compare the leading {category} options.</li><li>Which {category} is the most reliable for production use?</li><li>What {category} has the best documentation and community?</li><li>What is the easiest {category} to get started with?</li><li>What are good alternatives to the most popular {category}?</li><li>Which {category} do experienced developers prefer?</li></ol>
+<p>Each prompt is sent 3 times to each model, so a category gets
+90 answers per run.</p>
+
+<h2>Models and tier</h2>
+<p>Models: OpenAI gpt-6-luna, Anthropic claude-haiku-5-5, Google gemini-3.5-flash-lite, at temperature 0.7 (not sent to Claude models,
+which use their default) and up to 1024 output tokens. The measurement tier is
+<b>base model</b>: plain API answers from the model's training memory, without web
+search. It approximates, but does not equal, what people see in ChatGPT, Claude or
+Gemini apps, which add web search and other orchestration. Model versions are pinned
+per protocol and change only with a new protocol version, so runs stay comparable.</p>
+
+<h2>Candidates</h2>
+<p>Each category lists 4 to 9 widely used open-source projects, in alphabetical order.
+The list decides which names are counted, not their order. It was compiled by the
+maintainer from the projects most often named in each ecosystem's documentation and
+comparisons; additions are welcome (see below). An answer can mention other projects;
+they are not counted.</p>
+<ul><li><b>css framework</b>: Bootstrap, Bulma, Foundation, Pico CSS, Tailwind CSS, UnoCSS</li><li><b>data workflow orchestrator</b>: Apache Airflow, Dagster, Kestra, Luigi, Prefect</li><li><b>deep learning framework</b>: JAX, Keras, PaddlePaddle, PyTorch, TensorFlow</li><li><b>go web framework</b>: chi, Echo, Fiber, Gin, gorilla/mux, net/http</li><li><b>in-memory data store</b>: Dragonfly, KeyDB, Memcached, Redis, Valkey</li><li><b>javascript bundler</b>: esbuild, Parcel, Rollup, Rspack, Vite, webpack</li><li><b>javascript frontend framework</b>: Angular, Preact, React, SolidJS, Svelte, Vue</li><li><b>javascript test runner</b>: AVA, Jasmine, Jest, Mocha, node:test, Vitest</li><li><b>llm application framework</b>: DSPy, Haystack, LangChain, LlamaIndex, Pydantic AI, Semantic Kernel</li><li><b>open-source message broker</b>: Apache Kafka, Apache Pulsar, NATS, RabbitMQ</li><li><b>node.js orm</b>: Drizzle ORM, MikroORM, Prisma, Sequelize, TypeORM</li><li><b>node.js web framework</b>: Express, Fastify, hapi, Hono, Koa, NestJS</li><li><b>python cli framework</b>: argparse, Click, Cyclopts, docopt, Python Fire, Typer</li><li><b>python data validation library</b>: attrs, Cerberus, marshmallow, msgspec, Pydantic, voluptuous</li><li><b>python dataframe library</b>: Dask, Modin, pandas, Polars, PySpark, Vaex</li><li><b>python http client</b>: aiohttp, httpx, niquests, pycurl, requests, treq, urllib3</li><li><b>python linter</b>: Flake8, Prospector, pycodestyle, Pyflakes, Pylint, Ruff</li><li><b>python orm</b>: Peewee, Pony ORM, SQLAlchemy, SQLModel, Tortoise ORM</li><li><b>python package manager</b>: conda, Hatch, PDM, pip, Pipenv, Poetry, uv</li><li><b>python plotting library</b>: Altair, Bokeh, Matplotlib, Plotly, plotnine, Seaborn</li><li><b>python testing framework</b>: behave, nose2, pytest, Robot Framework, unittest, Ward</li><li><b>python type checker</b>: mypy, Pyre, Pyright, pytype, ty</li><li><b>python web framework</b>: Django, FastAPI, Flask, Litestar, Pyramid, Quart, Sanic, Starlette, Tornado</li><li><b>react state management library</b>: Jotai, MobX, Redux, Valtio, XState, Zustand</li><li><b>open-source relational database</b>: MariaDB, MySQL, PostgreSQL, SQLite</li><li><b>rust async runtime</b>: async-std, Embassy, glommio, smol, Tokio</li><li><b>rust web framework</b>: Actix Web, Axum, Poem, Rocket, Warp</li><li><b>self-hosted search engine</b>: Apache Solr, Elasticsearch, Meilisearch, OpenSearch, Typesense</li><li><b>static site generator</b>: Astro, Docusaurus, Eleventy, Gatsby, Hugo, Jekyll, MkDocs, Zola</li><li><b>vector database</b>: Chroma, LanceDB, Milvus, pgvector, Qdrant, Weaviate</li></ul>
+
+<h2>Counting a mention</h2>
+<p>An answer mentions a project when the project's name (or one of the listed
+spellings, such as "Postgres" for PostgreSQL) appears as a whole word. Names that are
+also ordinary words are matched case-sensitively or by specific spellings (for
+example "Requests" or <code>requests</code> library, not "HTTP requests"). Each answer
+counts a project at most once, wherever it appears in the answer.</p>
+
+<h2>How ranking works</h2>
+<ul>
+<li><b>Mention rate</b> = answers that mention the project ÷ successful answers.</li>
+<li><b>Rank</b> = 1 + the number of projects with a higher count. Equal counts share a
+rank (shown with "=").</li>
+<li><b>95% interval</b>: a Wilson score interval for the mention rate. When two
+projects' intervals overlap ("≈"), the order between them is not statistically clear.
+The interval treats answers as independent; repeated answers to the same prompt are
+correlated, so the real uncertainty is somewhat larger.</li>
+<li>Failed requests are excluded and counted on each page. A run stopped by its budget
+is marked partial.</li>
+</ul>
+
+<h2>Limitations</h2>
+<ul>
+<li>A base model's answers reflect training data with a cut-off date; recent projects
+can be under-mentioned.</li>
+<li>Three models and ten prompts are a sample, not every question developers ask.
+Answers vary between runs, which is why each prompt runs 3 times and intervals
+are shown.</li>
+<li>Name matching is literal. A project with a common-word name may be under- or
+over-counted; the matching rules are in each protocol and the raw answers are
+published so anyone can check.</li>
+<li>A mention is not a recommendation: an answer may mention a project to advise
+against it.</li>
+</ul>
+
+<h2 id="requests-and-disputes">Requests and disputes</h2>
+<p>Everything happens in public GitHub issues with the <code>index</code> label:</p>
+<ul>
+<li><b>Add a project or a category</b>: <a href="https://github.com/yotambraun/promptbeacon/issues/new?labels=index&amp;title=Index%3A+add+">open an
+issue</a> with the category, the project and its repository. A project is added when
+it is open source and is a real alternative in the category; additions take effect in
+the next run (rankings are never edited by hand).</li>
+<li><b>Dispute a result</b>: <a href="https://github.com/yotambraun/promptbeacon/issues/new?labels=index&amp;title=Index%3A+dispute+">open an
+issue</a> pointing at the raw answers. Matching errors are fixed in the protocol and
+the category is re-measured in the next run; published snapshots are not changed.</li>
+</ul>
+
+<h2>Cost</h2>
+<p>A full run is 2700 answers. Estimated with PromptBeacon's cost estimator from
+LiteLLM's price map (about 500 output tokens per answer): <b>$1.59</b>
+per run, at most $3.24 if every answer used 1024 tokens. Runs are
+capped with <code>--max-cost</code>.</p>
+<div class=table><table><thead><tr><th>Model</th><th class=num>Estimate per run</th></tr>
+</thead><tbody><tr><td>OpenAI gpt-6-luna</td><td class=num>$0.227</td></tr><tr><td>Anthropic claude-haiku-5-5</td><td class=num>$0.227</td></tr><tr><td>Google gemini-3.5-flash-lite</td><td class=num>$1.13</td></tr></tbody></table></div>
+
+<h2>Reproduce it</h2>
+<pre>pip install promptbeacon
+git clone https://github.com/yotambraun/promptbeacon &amp;&amp; cd promptbeacon/index
+python -m pbindex estimate
+python -m pbindex run --max-cost 5 --categories python-http-client
+python -m pbindex build</pre>
+<p class="muted">Every snapshot records the SHA-256 of the protocol it used.
+</p>
+
+<footer class="muted">Measured with <a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>. Raw answers
+and JSON snapshots are published with every page. Rankings are by measured mention
+rate only.</footer>
+</main>
+</body>
+</html>

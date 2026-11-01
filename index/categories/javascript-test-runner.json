@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "id": "javascript-test-runner",
+  "category": "javascript test runner",
+  "group": "JavaScript",
+  "candidates": [
+    {
+      "name": "AVA",
+      "url": "https://github.com/avajs/ava",
+      "match": [
+        "AVA"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Jasmine",
+      "url": "https://github.com/jasmine/jasmine",
+      "match": [
+        "Jasmine"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Jest",
+      "url": "https://github.com/jestjs/jest",
+      "match": [
+        "Jest"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Mocha",
+      "url": "https://github.com/mochajs/mocha",
+      "match": [
+        "Mocha"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "node:test",
+      "url": "https://nodejs.org/api/test.html",
+      "match": [
+        "node:test",
+        "Node.js test runner",
+        "node --test"
+      ]
+    },
+    {
+      "name": "Vitest",
+      "url": "https://github.com/vitest-dev/vitest"
+    }
+  ],
+  "prompts": [
+    "What is the best javascript test runner?",
+    "Which javascript test runner should I use for a new project?",
+    "What javascript test runner do you recommend?",
+    "What are the most popular javascript test runner options?",
+    "Compare the leading javascript test runner options.",
+    "Which javascript test runner is the most reliable for production use?",
+    "What javascript test runner has the best documentation and community?",
+    "What is the easiest javascript test runner to get started with?",
+    "What are good alternatives to the most popular javascript test runner?",
+    "Which javascript test runner do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

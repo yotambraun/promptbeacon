@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "deep-learning-framework",
+  "category": "deep learning framework",
+  "group": "Machine learning",
+  "candidates": [
+    {
+      "name": "JAX",
+      "url": "https://github.com/jax-ml/jax",
+      "match": [
+        "JAX"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Keras",
+      "url": "https://github.com/keras-team/keras"
+    },
+    {
+      "name": "PaddlePaddle",
+      "url": "https://github.com/PaddlePaddle/Paddle"
+    },
+    {
+      "name": "PyTorch",
+      "url": "https://github.com/pytorch/pytorch"
+    },
+    {
+      "name": "TensorFlow",
+      "url": "https://github.com/tensorflow/tensorflow"
+    }
+  ],
+  "prompts": [
+    "What is the best deep learning framework?",
+    "Which deep learning framework should I use for a new project?",
+    "What deep learning framework do you recommend?",
+    "What are the most popular deep learning framework options?",
+    "Compare the leading deep learning framework options.",
+    "Which deep learning framework is the most reliable for production use?",
+    "What deep learning framework has the best documentation and community?",
+    "What is the easiest deep learning framework to get started with?",
+    "What are good alternatives to the most popular deep learning framework?",
+    "Which deep learning framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

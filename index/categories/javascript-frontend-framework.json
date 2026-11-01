@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "id": "javascript-frontend-framework",
+  "category": "javascript frontend framework",
+  "group": "JavaScript",
+  "candidates": [
+    {
+      "name": "Angular",
+      "url": "https://github.com/angular/angular",
+      "match": [
+        "Angular"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Preact",
+      "url": "https://github.com/preactjs/preact"
+    },
+    {
+      "name": "React",
+      "url": "https://github.com/facebook/react",
+      "match": [
+        "React"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "SolidJS",
+      "url": "https://github.com/solidjs/solid",
+      "match": [
+        "SolidJS",
+        "Solid.js",
+        "Solid"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Svelte",
+      "url": "https://github.com/sveltejs/svelte"
+    },
+    {
+      "name": "Vue",
+      "url": "https://github.com/vuejs/core",
+      "match": [
+        "Vue",
+        "Vue.js"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best javascript frontend framework?",
+    "Which javascript frontend framework should I use for a new project?",
+    "What javascript frontend framework do you recommend?",
+    "What are the most popular javascript frontend framework options?",
+    "Compare the leading javascript frontend framework options.",
+    "Which javascript frontend framework is the most reliable for production use?",
+    "What javascript frontend framework has the best documentation and community?",
+    "What is the easiest javascript frontend framework to get started with?",
+    "What are good alternatives to the most popular javascript frontend framework?",
+    "Which javascript frontend framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

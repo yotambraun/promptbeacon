@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "id": "python-dataframe-library",
+  "category": "python dataframe library",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "Dask",
+      "url": "https://github.com/dask/dask"
+    },
+    {
+      "name": "Modin",
+      "url": "https://github.com/modin-project/modin"
+    },
+    {
+      "name": "pandas",
+      "url": "https://github.com/pandas-dev/pandas"
+    },
+    {
+      "name": "Polars",
+      "url": "https://github.com/pola-rs/polars"
+    },
+    {
+      "name": "PySpark",
+      "url": "https://github.com/apache/spark",
+      "match": [
+        "PySpark",
+        "Spark"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Vaex",
+      "url": "https://github.com/vaexio/vaex"
+    }
+  ],
+  "prompts": [
+    "What is the best python dataframe library?",
+    "Which python dataframe library should I use for a new project?",
+    "What python dataframe library do you recommend?",
+    "What are the most popular python dataframe library options?",
+    "Compare the leading python dataframe library options.",
+    "Which python dataframe library is the most reliable for production use?",
+    "What python dataframe library has the best documentation and community?",
+    "What is the easiest python dataframe library to get started with?",
+    "What are good alternatives to the most popular python dataframe library?",
+    "Which python dataframe library do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

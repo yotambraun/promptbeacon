@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "python-plotting-library",
+  "category": "python plotting library",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "Altair",
+      "url": "https://github.com/vega/altair",
+      "match": [
+        "Altair"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Bokeh",
+      "url": "https://github.com/bokeh/bokeh"
+    },
+    {
+      "name": "Matplotlib",
+      "url": "https://github.com/matplotlib/matplotlib"
+    },
+    {
+      "name": "Plotly",
+      "url": "https://github.com/plotly/plotly.py"
+    },
+    {
+      "name": "plotnine",
+      "url": "https://github.com/has2k1/plotnine"
+    },
+    {
+      "name": "Seaborn",
+      "url": "https://github.com/mwaskom/seaborn"
+    }
+  ],
+  "prompts": [
+    "What is the best python plotting library?",
+    "Which python plotting library should I use for a new project?",
+    "What python plotting library do you recommend?",
+    "What are the most popular python plotting library options?",
+    "Compare the leading python plotting library options.",
+    "Which python plotting library is the most reliable for production use?",
+    "What python plotting library has the best documentation and community?",
+    "What is the easiest python plotting library to get started with?",
+    "What are good alternatives to the most popular python plotting library?",
+    "Which python plotting library do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

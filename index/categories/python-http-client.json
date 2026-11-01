@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "python-http-client",
+  "category": "python http client",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "aiohttp",
+      "url": "https://github.com/aio-libs/aiohttp"
+    },
+    {
+      "name": "httpx",
+      "url": "https://github.com/encode/httpx"
+    },
+    {
+      "name": "niquests",
+      "url": "https://github.com/jawah/niquests"
+    },
+    {
+      "name": "pycurl",
+      "url": "https://github.com/pycurl/pycurl"
+    },
+    {
+      "name": "requests",
+      "url": "https://github.com/psf/requests",
+      "match": [
+        "Requests",
+        "`requests`",
+        "requests library",
+        "python-requests",
+        "requests.get",
+        "import requests"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "treq",
+      "url": "https://github.com/twisted/treq"
+    },
+    {
+      "name": "urllib3",
+      "url": "https://github.com/urllib3/urllib3"
+    }
+  ],
+  "prompts": [
+    "What is the best python http client?",
+    "Which python http client should I use for a new project?",
+    "What python http client do you recommend?",
+    "What are the most popular python http client options?",
+    "Compare the leading python http client options.",
+    "Which python http client is the most reliable for production use?",
+    "What python http client has the best documentation and community?",
+    "What is the easiest python http client to get started with?",
+    "What are good alternatives to the most popular python http client?",
+    "Which python http client do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

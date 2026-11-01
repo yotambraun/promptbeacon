@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "python-package-manager",
+  "category": "python package manager",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "conda",
+      "url": "https://github.com/conda/conda"
+    },
+    {
+      "name": "Hatch",
+      "url": "https://github.com/pypa/hatch",
+      "match": [
+        "Hatch"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "PDM",
+      "url": "https://github.com/pdm-project/pdm",
+      "match": [
+        "PDM"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "pip",
+      "url": "https://github.com/pypa/pip"
+    },
+    {
+      "name": "Pipenv",
+      "url": "https://github.com/pypa/pipenv"
+    },
+    {
+      "name": "Poetry",
+      "url": "https://github.com/python-poetry/poetry",
+      "match": [
+        "Poetry"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "uv",
+      "url": "https://github.com/astral-sh/uv",
+      "match": [
+        "uv"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best python package manager?",
+    "Which python package manager should I use for a new project?",
+    "What python package manager do you recommend?",
+    "What are the most popular python package manager options?",
+    "Compare the leading python package manager options.",
+    "Which python package manager is the most reliable for production use?",
+    "What python package manager has the best documentation and community?",
+    "What is the easiest python package manager to get started with?",
+    "What are good alternatives to the most popular python package manager?",
+    "Which python package manager do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

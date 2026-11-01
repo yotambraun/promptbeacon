@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>[DEMO] static site generator — AI Recommendation Index</title>
+<style>
+:root{--bg:#fff;--fg:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#f1f5f9;
+--accent:#4f46e5;--bar:#c7d2fe;--warn-bg:#fef3c7;--warn-fg:#78350f;--warn-line:#f59e0b}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1020;--fg:#f8fafc;--muted:#94a3b8;
+--line:#1e293b;--soft:#111a2e;--accent:#a5b4fc;--bar:#3730a3;--warn-bg:#3a2a0a;
+--warn-fg:#fde68a;--warn-line:#b45309}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+a{color:var(--accent)}
+header.top{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;
+border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:24px}
+header.top a{text-decoration:none;font-weight:600}
+h1{font-size:1.9rem;line-height:1.2;margin:.2em 0 .4em}
+h2{font-size:1.25rem;margin-top:2em}
+.muted{color:var(--muted)}
+.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line);
+border-radius:10px;padding:12px 16px;margin:0 0 24px;font-weight:600}
+.table{width:100%;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ci{position:relative;height:12px;min-width:140px;background:var(--soft);border-radius:6px}
+.ci .range{position:absolute;top:0;height:12px;background:var(--bar);border-radius:6px}
+.ci .point{position:absolute;top:-2px;width:3px;height:16px;background:var(--accent);
+border-radius:2px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em}
+pre{background:var(--soft);padding:10px 12px;border-radius:8px;overflow-x:auto}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--soft);
+font-size:.8rem;color:var(--muted)}
+footer{margin-top:48px;border-top:1px solid var(--line);padding-top:12px;font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+<a href="../index.html">AI Recommendation Index</a>
+<a href="../methodology.html">Methodology</a>
+<a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>
+</header>
+<div class="banner">DEMO DATA: canned answers from PromptBeacon&#x27;s offline mock model, with placeholder project names. Not a measurement and not a ranking.</div>
+
+<p class="muted">Web · 2026-11-01</p>
+<h1>Which static site generator do AI assistants recommend?</h1>
+<p>Share of 90 answers that mention each project, from
+10 fixed prompts × 3 runs × 3 models
+(OpenAI gpt-6-luna, Anthropic claude-haiku-5-5, Google gemini-3.5-flash-lite). <span class="pill">tier: base model</span>
+measures what the models say from training memory, without web search.</p>
+
+<div class="table"><table>
+<thead><tr><th class="num">Rank</th><th>Project</th><th class="num">Mentioned in</th>
+<th class="num">95% interval</th><th>Interval</th><th class="num">OpenAI</th><th class="num">Anthropic</th><th class="num">Google</th></tr></thead>
+<tbody><tr><td class=num>1</td><td>Project C</td><td class="num">82% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">73%–89%</td><td><div class="ci" title="95% interval 73% to 89%"><div class="range" style="left:73.1%;width:15.7%"></div><div class="point" style="left:calc(82.2% - 1px)"></div></div></td><td class="num">80%</td><td class="num">83%</td><td class="num">83%</td></tr><tr><td class=num>2</td><td>Project A</td><td class="num">72% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">62%–80%</td><td><div class="ci" title="95% interval 62% to 80%"><div class="range" style="left:62.2%;width:18.2%"></div><div class="point" style="left:calc(72.2% - 1px)"></div></div></td><td class="num">67%</td><td class="num">77%</td><td class="num">73%</td></tr><tr><td class=num>3</td><td>Project D</td><td class="num">70% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">60%–78%</td><td><div class="ci" title="95% interval 60% to 78%"><div class="range" style="left:59.9%;width:18.6%"></div><div class="point" style="left:calc(70.0% - 1px)"></div></div></td><td class="num">73%</td><td class="num">63%</td><td class="num">73%</td></tr><tr><td class=num>4</td><td>Project E</td><td class="num">60% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">50%–70%</td><td><div class="ci" title="95% interval 50% to 70%"><div class="range" style="left:49.7%;width:19.8%"></div><div class="point" style="left:calc(60.0% - 1px)"></div></div></td><td class="num">70%</td><td class="num">53%</td><td class="num">57%</td></tr><tr><td class=num>5</td><td>Project F</td><td class="num">52% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">42%–62%</td><td><div class="ci" title="95% interval 42% to 62%"><div class="range" style="left:42.0%;width:20.2%"></div><div class="point" style="left:calc(52.2% - 1px)"></div></div></td><td class="num">50%</td><td class="num">57%</td><td class="num">50%</td></tr><tr><td class=num>6</td><td>Project B</td><td class="num">42% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">33%–53%</td><td><div class="ci" title="95% interval 33% to 53%"><div class="range" style="left:32.5%;width:20.0%"></div><div class="point" style="left:calc(42.2% - 1px)"></div></div></td><td class="num">40%</td><td class="num">43%</td><td class="num">43%</td></tr><tr><td class=num>7</td><td>Project G</td><td class="num">40% <span class="muted" title="95% interval overlaps the next project">≈</span></td><td class="num">30%–50%</td><td><div class="ci" title="95% interval 30% to 50%"><div class="range" style="left:30.5%;width:19.8%"></div><div class="point" style="left:calc(40.0% - 1px)"></div></div></td><td class="num">43%</td><td class="num">37%</td><td class="num">40%</td></tr><tr><td class=num>8</td><td>Project H</td><td class="num">26%</td><td class="num">18%–35%</td><td><div class="ci" title="95% interval 18% to 35%"><div class="range" style="left:17.7%;width:17.8%"></div><div class="point" style="left:calc(25.6% - 1px)"></div></div></td><td class="num">23%</td><td class="num">30%</td><td class="num">23%</td></tr></tbody></table></div>
+<p class="muted">Ranked by mention rate only. "=" marks a tie; "≈" marks an interval that
+overlaps the next project's, so the order between them is not statistically clear.
+0 failed answers are excluded. Estimated cost of this category:
+$0.</p>
+<h2>Data</h2>
+<ul>
+<li><a href="../data/static-site-generator.json">Snapshot (JSON)</a>: every number on this page,
+with the protocol fingerprint <code>2314b2ba30de</code>.</li>
+<li><a href="../raw/static-site-generator.jsonl">Raw answers (JSON Lines)</a>: every answer, with the
+projects it mentions.</li>
+<li><a href="https://github.com/yotambraun/promptbeacon/blob/main/index/categories/static-site-generator.json">Protocol</a>: the pinned
+prompts, candidates, models and runs.</li>
+</ul>
+<h2>Prompts</h2>
+<ol><li>What is the best static site generator?</li><li>Which static site generator should I use for a new project?</li><li>What static site generator do you recommend?</li><li>What are the most popular static site generator options?</li><li>Compare the leading static site generator options.</li><li>Which static site generator is the most reliable for production use?</li><li>What static site generator has the best documentation and community?</li><li>What is the easiest static site generator to get started with?</li><li>What are good alternatives to the most popular static site generator?</li><li>Which static site generator do experienced developers prefer?</li></ol>
+<h2>Rank badges</h2>
+<p class="muted">For a project's README. The badge is regenerated with every run.</p>
+<ul><li>Project C: <code>#1 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-c.json)](&lt;SITE_URL&gt;)</pre></li><li>Project A: <code>#2 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-a.json)](&lt;SITE_URL&gt;)</pre></li><li>Project D: <code>#3 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-d.json)](&lt;SITE_URL&gt;)</pre></li><li>Project E: <code>#4 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-e.json)](&lt;SITE_URL&gt;)</pre></li><li>Project F: <code>#5 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-f.json)](&lt;SITE_URL&gt;)</pre></li><li>Project B: <code>#6 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-b.json)](&lt;SITE_URL&gt;)</pre></li><li>Project G: <code>#7 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-g.json)](&lt;SITE_URL&gt;)</pre></li><li>Project H: <code>#8 of 8</code><pre>[![AI rank](https://img.shields.io/endpoint?url=&amp;lt;SITE_URL&amp;gt;/badges/static-site-generator/project-h.json)](&lt;SITE_URL&gt;)</pre></li></ul>
+<h2>Missing a project, or think something is wrong?</h2>
+<p><a href="https://github.com/yotambraun/promptbeacon/issues/new?labels=index&amp;title=Index%3A%20static-site-generator%3A%20">Open an
+issue</a>. See <a href="../methodology.html#requests-and-disputes">how requests and
+disputes are handled</a>.</p>
+
+<footer class="muted">Measured with <a href="https://github.com/yotambraun/promptbeacon">PromptBeacon</a>. Raw answers
+and JSON snapshots are published with every page. Rankings are by measured mention
+rate only.</footer>
+</main>
+</body>
+</html>

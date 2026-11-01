@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "id": "python-http-client",
+  "category": "python http client",
+  "group": "Python",
+  "date": "2026-11-01",
+  "generated_at": "2026-11-01T21:58:01+00:00",
+  "demo": true,
+  "note": "DEMO DATA: canned answers from PromptBeacon's offline mock model, with placeholder project names. Not a measurement and not a ranking.",
+  "tier": "base_model",
+  "models": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "prompts": [
+    "What is the best python http client?",
+    "Which python http client should I use for a new project?",
+    "What python http client do you recommend?",
+    "What are the most popular python http client options?",
+    "Compare the leading python http client options.",
+    "Which python http client is the most reliable for production use?",
+    "What python http client has the best documentation and community?",
+    "What is the easiest python http client to get started with?",
+    "What are good alternatives to the most popular python http client?",
+    "Which python http client do experienced developers prefer?"
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1024,
+  "protocol_sha256": "9e62e3e19079fa8cb1acdf923de33d2cf3a00de661930dcd8caed3feb6fbf81e",
+  "planned_answers": 90,
+  "answers": 90,
+  "failed_answers": 0,
+  "skipped_answers": 0,
+  "partial": false,
+  "cost_usd": 0.0,
+  "results": [
+    {
+      "name": "Project C",
+      "url": "#",
+      "mentions": 74,
+      "answers": 90,
+      "rate": 0.8222,
+      "ci_low": 0.7306,
+      "ci_high": 0.8875,
+      "rank": 1,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 26,
+          "answers": 30,
+          "rate": 0.8667
+        },
+        "google": {
+          "mentions": 24,
+          "answers": 30,
+          "rate": 0.8
+        },
+        "openai": {
+          "mentions": 24,
+          "answers": 30,
+          "rate": 0.8
+        }
+      }
+    },
+    {
+      "name": "Project A",
+      "url": "#",
+      "mentions": 65,
+      "answers": 90,
+      "rate": 0.7222,
+      "ci_low": 0.622,
+      "ci_high": 0.8042,
+      "rank": 2,
+      "tied": true,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 23,
+          "answers": 30,
+          "rate": 0.7667
+        },
+        "google": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        },
+        "openai": {
+          "mentions": 22,
+          "answers": 30,
+          "rate": 0.7333
+        }
+      }
+    },
+    {
+      "name": "Project D",
+      "url": "#",
+      "mentions": 65,
+      "answers": 90,
+      "rate": 0.7222,
+      "ci_low": 0.622,
+      "ci_high": 0.8042,
+      "rank": 2,
+      "tied": true,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 22,
+          "answers": 30,
+          "rate": 0.7333
+        },
+        "google": {
+          "mentions": 23,
+          "answers": 30,
+          "rate": 0.7667
+        },
+        "openai": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        }
+      }
+    },
+    {
+      "name": "Project E",
+      "url": "#",
+      "mentions": 65,
+      "answers": 90,
+      "rate": 0.7222,
+      "ci_low": 0.622,
+      "ci_high": 0.8042,
+      "rank": 2,
+      "tied": true,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        },
+        "google": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        },
+        "openai": {
+          "mentions": 24,
+          "answers": 30,
+          "rate": 0.8
+        }
+      }
+    },
+    {
+      "name": "Project B",
+      "url": "#",
+      "mentions": 61,
+      "answers": 90,
+      "rate": 0.6778,
+      "ci_low": 0.5757,
+      "ci_high": 0.7653,
+      "rank": 5,
+      "tied": false,
+      "overlaps_next": false,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 19,
+          "answers": 30,
+          "rate": 0.6333
+        },
+        "google": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        },
+        "openai": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        }
+      }
+    },
+    {
+      "name": "Project F",
+      "url": "#",
+      "mentions": 39,
+      "answers": 90,
+      "rate": 0.4333,
+      "ci_low": 0.3358,
+      "ci_high": 0.5364,
+      "rank": 6,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 14,
+          "answers": 30,
+          "rate": 0.4667
+        },
+        "google": {
+          "mentions": 12,
+          "answers": 30,
+          "rate": 0.4
+        },
+        "openai": {
+          "mentions": 13,
+          "answers": 30,
+          "rate": 0.4333
+        }
+      }
+    },
+    {
+      "name": "Project G",
+      "url": "#",
+      "mentions": 34,
+      "answers": 90,
+      "rate": 0.3778,
+      "ci_low": 0.2846,
+      "ci_high": 0.481,
+      "rank": 7,
+      "tied": false,
+      "overlaps_next": false,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 11,
+          "answers": 30,
+          "rate": 0.3667
+        },
+        "google": {
+          "mentions": 12,
+          "answers": 30,
+          "rate": 0.4
+        },
+        "openai": {
+          "mentions": 11,
+          "answers": 30,
+          "rate": 0.3667
+        }
+      }
+    }
+  ]
+}

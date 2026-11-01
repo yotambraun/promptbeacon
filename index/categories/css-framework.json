@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "id": "css-framework",
+  "category": "css framework",
+  "group": "Web",
+  "candidates": [
+    {
+      "name": "Bootstrap",
+      "url": "https://github.com/twbs/bootstrap",
+      "match": [
+        "Bootstrap"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Bulma",
+      "url": "https://github.com/jgthms/bulma"
+    },
+    {
+      "name": "Foundation",
+      "url": "https://github.com/foundation/foundation-sites",
+      "match": [
+        "Foundation"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Pico CSS",
+      "url": "https://github.com/picocss/pico",
+      "match": [
+        "Pico CSS",
+        "Pico.css",
+        "PicoCSS"
+      ]
+    },
+    {
+      "name": "Tailwind CSS",
+      "url": "https://github.com/tailwindlabs/tailwindcss",
+      "match": [
+        "Tailwind"
+      ]
+    },
+    {
+      "name": "UnoCSS",
+      "url": "https://github.com/unocss/unocss"
+    }
+  ],
+  "prompts": [
+    "What is the best css framework?",
+    "Which css framework should I use for a new project?",
+    "What css framework do you recommend?",
+    "What are the most popular css framework options?",
+    "Compare the leading css framework options.",
+    "Which css framework is the most reliable for production use?",
+    "What css framework has the best documentation and community?",
+    "What is the easiest css framework to get started with?",
+    "What are good alternatives to the most popular css framework?",
+    "Which css framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

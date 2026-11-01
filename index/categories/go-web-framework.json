@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "id": "go-web-framework",
+  "category": "go web framework",
+  "group": "Go",
+  "candidates": [
+    {
+      "name": "chi",
+      "url": "https://github.com/go-chi/chi",
+      "match": [
+        "go-chi",
+        "chi router",
+        "Chi router",
+        "`chi`",
+        "Chi"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Echo",
+      "url": "https://github.com/labstack/echo",
+      "match": [
+        "Echo"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Fiber",
+      "url": "https://github.com/gofiber/fiber",
+      "match": [
+        "Fiber"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Gin",
+      "url": "https://github.com/gin-gonic/gin",
+      "match": [
+        "Gin"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "gorilla/mux",
+      "url": "https://github.com/gorilla/mux",
+      "match": [
+        "gorilla/mux",
+        "Gorilla Mux",
+        "Gorilla"
+      ]
+    },
+    {
+      "name": "net/http",
+      "url": "https://pkg.go.dev/net/http",
+      "match": [
+        "net/http"
+      ]
+    }
+  ],
+  "prompts": [
+    "What is the best go web framework?",
+    "Which go web framework should I use for a new project?",
+    "What go web framework do you recommend?",
+    "What are the most popular go web framework options?",
+    "Compare the leading go web framework options.",
+    "Which go web framework is the most reliable for production use?",
+    "What go web framework has the best documentation and community?",
+    "What is the easiest go web framework to get started with?",
+    "What are good alternatives to the most popular go web framework?",
+    "Which go web framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

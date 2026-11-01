@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "id": "llm-application-framework",
+  "category": "llm application framework",
+  "group": "Machine learning",
+  "candidates": [
+    {
+      "name": "DSPy",
+      "url": "https://github.com/stanfordnlp/dspy"
+    },
+    {
+      "name": "Haystack",
+      "url": "https://github.com/deepset-ai/haystack",
+      "match": [
+        "Haystack"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "LangChain",
+      "url": "https://github.com/langchain-ai/langchain"
+    },
+    {
+      "name": "LlamaIndex",
+      "url": "https://github.com/run-llama/llama_index",
+      "match": [
+        "LlamaIndex",
+        "Llama Index",
+        "llama_index",
+        "llama-index"
+      ]
+    },
+    {
+      "name": "Pydantic AI",
+      "url": "https://github.com/pydantic/pydantic-ai",
+      "match": [
+        "Pydantic AI",
+        "PydanticAI",
+        "pydantic-ai"
+      ]
+    },
+    {
+      "name": "Semantic Kernel",
+      "url": "https://github.com/microsoft/semantic-kernel"
+    }
+  ],
+  "prompts": [
+    "What is the best llm application framework?",
+    "Which llm application framework should I use for a new project?",
+    "What llm application framework do you recommend?",
+    "What are the most popular llm application framework options?",
+    "Compare the leading llm application framework options.",
+    "Which llm application framework is the most reliable for production use?",
+    "What llm application framework has the best documentation and community?",
+    "What is the easiest llm application framework to get started with?",
+    "What are good alternatives to the most popular llm application framework?",
+    "Which llm application framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

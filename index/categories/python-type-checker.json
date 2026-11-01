@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "id": "python-type-checker",
+  "category": "python type checker",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "mypy",
+      "url": "https://github.com/python/mypy"
+    },
+    {
+      "name": "Pyre",
+      "url": "https://github.com/facebook/pyre-check",
+      "match": [
+        "Pyre",
+        "pyre-check"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Pyright",
+      "url": "https://github.com/microsoft/pyright"
+    },
+    {
+      "name": "pytype",
+      "url": "https://github.com/google/pytype"
+    },
+    {
+      "name": "ty",
+      "url": "https://github.com/astral-sh/ty",
+      "match": [
+        "ty type checker",
+        "Astral's ty",
+        "`ty`",
+        "astral-sh/ty"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best python type checker?",
+    "Which python type checker should I use for a new project?",
+    "What python type checker do you recommend?",
+    "What are the most popular python type checker options?",
+    "Compare the leading python type checker options.",
+    "Which python type checker is the most reliable for production use?",
+    "What python type checker has the best documentation and community?",
+    "What is the easiest python type checker to get started with?",
+    "What are good alternatives to the most popular python type checker?",
+    "Which python type checker do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

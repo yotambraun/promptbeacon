@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "python-cli-framework",
+  "category": "python cli framework",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "argparse",
+      "url": "https://docs.python.org/3/library/argparse.html"
+    },
+    {
+      "name": "Click",
+      "url": "https://github.com/pallets/click",
+      "match": [
+        "Click"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Cyclopts",
+      "url": "https://github.com/BrianPugh/cyclopts"
+    },
+    {
+      "name": "docopt",
+      "url": "https://github.com/docopt/docopt"
+    },
+    {
+      "name": "Python Fire",
+      "url": "https://github.com/google/python-fire",
+      "match": [
+        "Python Fire",
+        "python-fire",
+        "google/python-fire"
+      ]
+    },
+    {
+      "name": "Typer",
+      "url": "https://github.com/fastapi/typer",
+      "match": [
+        "Typer"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best python cli framework?",
+    "Which python cli framework should I use for a new project?",
+    "What python cli framework do you recommend?",
+    "What are the most popular python cli framework options?",
+    "Compare the leading python cli framework options.",
+    "Which python cli framework is the most reliable for production use?",
+    "What python cli framework has the best documentation and community?",
+    "What is the easiest python cli framework to get started with?",
+    "What are good alternatives to the most popular python cli framework?",
+    "Which python cli framework do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

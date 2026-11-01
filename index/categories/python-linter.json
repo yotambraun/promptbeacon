@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "id": "python-linter",
+  "category": "python linter",
+  "group": "Python",
+  "candidates": [
+    {
+      "name": "Flake8",
+      "url": "https://github.com/PyCQA/flake8"
+    },
+    {
+      "name": "Prospector",
+      "url": "https://github.com/prospector-dev/prospector",
+      "match": [
+        "Prospector"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "pycodestyle",
+      "url": "https://github.com/PyCQA/pycodestyle"
+    },
+    {
+      "name": "Pyflakes",
+      "url": "https://github.com/PyCQA/pyflakes"
+    },
+    {
+      "name": "Pylint",
+      "url": "https://github.com/pylint-dev/pylint"
+    },
+    {
+      "name": "Ruff",
+      "url": "https://github.com/astral-sh/ruff",
+      "match": [
+        "Ruff"
+      ],
+      "case_sensitive": true
+    }
+  ],
+  "prompts": [
+    "What is the best python linter?",
+    "Which python linter should I use for a new project?",
+    "What python linter do you recommend?",
+    "What are the most popular python linter options?",
+    "Compare the leading python linter options.",
+    "Which python linter is the most reliable for production use?",
+    "What python linter has the best documentation and community?",
+    "What is the easiest python linter to get started with?",
+    "What are good alternatives to the most popular python linter?",
+    "Which python linter do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

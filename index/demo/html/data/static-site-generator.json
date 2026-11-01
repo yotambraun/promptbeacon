@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "id": "static-site-generator",
+  "category": "static site generator",
+  "group": "Web",
+  "date": "2026-11-01",
+  "generated_at": "2026-11-01T21:58:01+00:00",
+  "demo": true,
+  "note": "DEMO DATA: canned answers from PromptBeacon's offline mock model, with placeholder project names. Not a measurement and not a ranking.",
+  "tier": "base_model",
+  "models": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "prompts": [
+    "What is the best static site generator?",
+    "Which static site generator should I use for a new project?",
+    "What static site generator do you recommend?",
+    "What are the most popular static site generator options?",
+    "Compare the leading static site generator options.",
+    "Which static site generator is the most reliable for production use?",
+    "What static site generator has the best documentation and community?",
+    "What is the easiest static site generator to get started with?",
+    "What are good alternatives to the most popular static site generator?",
+    "Which static site generator do experienced developers prefer?"
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1024,
+  "protocol_sha256": "2314b2ba30de77c726125df6717bf536c37c2cfa0b8d58a3c23f42cb7daff75e",
+  "planned_answers": 90,
+  "answers": 90,
+  "failed_answers": 0,
+  "skipped_answers": 0,
+  "partial": false,
+  "cost_usd": 0.0,
+  "results": [
+    {
+      "name": "Project C",
+      "url": "#",
+      "mentions": 74,
+      "answers": 90,
+      "rate": 0.8222,
+      "ci_low": 0.7306,
+      "ci_high": 0.8875,
+      "rank": 1,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 25,
+          "answers": 30,
+          "rate": 0.8333
+        },
+        "google": {
+          "mentions": 25,
+          "answers": 30,
+          "rate": 0.8333
+        },
+        "openai": {
+          "mentions": 24,
+          "answers": 30,
+          "rate": 0.8
+        }
+      }
+    },
+    {
+      "name": "Project A",
+      "url": "#",
+      "mentions": 65,
+      "answers": 90,
+      "rate": 0.7222,
+      "ci_low": 0.622,
+      "ci_high": 0.8042,
+      "rank": 2,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 23,
+          "answers": 30,
+          "rate": 0.7667
+        },
+        "google": {
+          "mentions": 22,
+          "answers": 30,
+          "rate": 0.7333
+        },
+        "openai": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        }
+      }
+    },
+    {
+      "name": "Project D",
+      "url": "#",
+      "mentions": 63,
+      "answers": 90,
+      "rate": 0.7,
+      "ci_low": 0.5987,
+      "ci_high": 0.7849,
+      "rank": 3,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 19,
+          "answers": 30,
+          "rate": 0.6333
+        },
+        "google": {
+          "mentions": 22,
+          "answers": 30,
+          "rate": 0.7333
+        },
+        "openai": {
+          "mentions": 22,
+          "answers": 30,
+          "rate": 0.7333
+        }
+      }
+    },
+    {
+      "name": "Project E",
+      "url": "#",
+      "mentions": 54,
+      "answers": 90,
+      "rate": 0.6,
+      "ci_low": 0.4967,
+      "ci_high": 0.6951,
+      "rank": 4,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 16,
+          "answers": 30,
+          "rate": 0.5333
+        },
+        "google": {
+          "mentions": 17,
+          "answers": 30,
+          "rate": 0.5667
+        },
+        "openai": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        }
+      }
+    },
+    {
+      "name": "Project F",
+      "url": "#",
+      "mentions": 47,
+      "answers": 90,
+      "rate": 0.5222,
+      "ci_low": 0.4202,
+      "ci_high": 0.6224,
+      "rank": 5,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 17,
+          "answers": 30,
+          "rate": 0.5667
+        },
+        "google": {
+          "mentions": 15,
+          "answers": 30,
+          "rate": 0.5
+        },
+        "openai": {
+          "mentions": 15,
+          "answers": 30,
+          "rate": 0.5
+        }
+      }
+    },
+    {
+      "name": "Project B",
+      "url": "#",
+      "mentions": 38,
+      "answers": 90,
+      "rate": 0.4222,
+      "ci_low": 0.3254,
+      "ci_high": 0.5254,
+      "rank": 6,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 13,
+          "answers": 30,
+          "rate": 0.4333
+        },
+        "google": {
+          "mentions": 13,
+          "answers": 30,
+          "rate": 0.4333
+        },
+        "openai": {
+          "mentions": 12,
+          "answers": 30,
+          "rate": 0.4
+        }
+      }
+    },
+    {
+      "name": "Project G",
+      "url": "#",
+      "mentions": 36,
+      "answers": 90,
+      "rate": 0.4,
+      "ci_low": 0.3049,
+      "ci_high": 0.5033,
+      "rank": 7,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 11,
+          "answers": 30,
+          "rate": 0.3667
+        },
+        "google": {
+          "mentions": 12,
+          "answers": 30,
+          "rate": 0.4
+        },
+        "openai": {
+          "mentions": 13,
+          "answers": 30,
+          "rate": 0.4333
+        }
+      }
+    },
+    {
+      "name": "Project H",
+      "url": "#",
+      "mentions": 23,
+      "answers": 90,
+      "rate": 0.2556,
+      "ci_low": 0.1767,
+      "ci_high": 0.3544,
+      "rank": 8,
+      "tied": false,
+      "overlaps_next": false,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 9,
+          "answers": 30,
+          "rate": 0.3
+        },
+        "google": {
+          "mentions": 7,
+          "answers": 30,
+          "rate": 0.2333
+        },
+        "openai": {
+          "mentions": 7,
+          "answers": 30,
+          "rate": 0.2333
+        }
+      }
+    }
+  ]
+}

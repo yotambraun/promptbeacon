@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "nodejs-orm",
+  "category": "node.js orm",
+  "group": "JavaScript",
+  "candidates": [
+    {
+      "name": "Drizzle ORM",
+      "url": "https://github.com/drizzle-team/drizzle-orm",
+      "match": [
+        "Drizzle"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "MikroORM",
+      "url": "https://github.com/mikro-orm/mikro-orm"
+    },
+    {
+      "name": "Prisma",
+      "url": "https://github.com/prisma/prisma"
+    },
+    {
+      "name": "Sequelize",
+      "url": "https://github.com/sequelize/sequelize"
+    },
+    {
+      "name": "TypeORM",
+      "url": "https://github.com/typeorm/typeorm"
+    }
+  ],
+  "prompts": [
+    "What is the best node.js orm?",
+    "Which node.js orm should I use for a new project?",
+    "What node.js orm do you recommend?",
+    "What are the most popular node.js orm options?",
+    "Compare the leading node.js orm options.",
+    "Which node.js orm is the most reliable for production use?",
+    "What node.js orm has the best documentation and community?",
+    "What is the easiest node.js orm to get started with?",
+    "What are good alternatives to the most popular node.js orm?",
+    "Which node.js orm do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

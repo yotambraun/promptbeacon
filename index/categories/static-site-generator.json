@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "static-site-generator",
+  "category": "static site generator",
+  "group": "Web",
+  "candidates": [
+    {
+      "name": "Astro",
+      "url": "https://github.com/withastro/astro",
+      "match": [
+        "Astro"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Docusaurus",
+      "url": "https://github.com/facebook/docusaurus"
+    },
+    {
+      "name": "Eleventy",
+      "url": "https://github.com/11ty/eleventy",
+      "match": [
+        "Eleventy",
+        "11ty"
+      ]
+    },
+    {
+      "name": "Gatsby",
+      "url": "https://github.com/gatsbyjs/gatsby"
+    },
+    {
+      "name": "Hugo",
+      "url": "https://github.com/gohugoio/hugo",
+      "match": [
+        "Hugo"
+      ],
+      "case_sensitive": true
+    },
+    {
+      "name": "Jekyll",
+      "url": "https://github.com/jekyll/jekyll"
+    },
+    {
+      "name": "MkDocs",
+      "url": "https://github.com/mkdocs/mkdocs"
+    },
+    {
+      "name": "Zola",
+      "url": "https://github.com/getzola/zola"
+    }
+  ],
+  "prompts": [
+    "What is the best static site generator?",
+    "Which static site generator should I use for a new project?",
+    "What static site generator do you recommend?",
+    "What are the most popular static site generator options?",
+    "Compare the leading static site generator options.",
+    "Which static site generator is the most reliable for production use?",
+    "What static site generator has the best documentation and community?",
+    "What is the easiest static site generator to get started with?",
+    "What are good alternatives to the most popular static site generator?",
+    "Which static site generator do experienced developers prefer?"
+  ],
+  "providers": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "tier": "base_model",
+  "temperature": 0.7,
+  "max_tokens": 1024
+}

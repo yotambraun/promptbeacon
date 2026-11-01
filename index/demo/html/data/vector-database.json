@@ -1,0 +1,214 @@
+{
+  "schema": 1,
+  "id": "vector-database",
+  "category": "vector database",
+  "group": "Data",
+  "date": "2026-11-01",
+  "generated_at": "2026-11-01T21:58:01+00:00",
+  "demo": true,
+  "note": "DEMO DATA: canned answers from PromptBeacon's offline mock model, with placeholder project names. Not a measurement and not a ranking.",
+  "tier": "base_model",
+  "models": {
+    "openai": "gpt-6-luna",
+    "anthropic": "claude-haiku-5-5",
+    "google": "gemini-3.5-flash-lite"
+  },
+  "runs": 3,
+  "prompts": [
+    "What is the best vector database?",
+    "Which vector database should I use for a new project?",
+    "What vector database do you recommend?",
+    "What are the most popular vector database options?",
+    "Compare the leading vector database options.",
+    "Which vector database is the most reliable for production use?",
+    "What vector database has the best documentation and community?",
+    "What is the easiest vector database to get started with?",
+    "What are good alternatives to the most popular vector database?",
+    "Which vector database do experienced developers prefer?"
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1024,
+  "protocol_sha256": "bad95b33fc98d0c2964bc14fba9dfc003c47dab7a00e8aa75db5b5166668d1e6",
+  "planned_answers": 90,
+  "answers": 90,
+  "failed_answers": 0,
+  "skipped_answers": 0,
+  "partial": false,
+  "cost_usd": 0.0,
+  "results": [
+    {
+      "name": "Project C",
+      "url": "#",
+      "mentions": 83,
+      "answers": 90,
+      "rate": 0.9222,
+      "ci_low": 0.8481,
+      "ci_high": 0.9618,
+      "rank": 1,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 27,
+          "answers": 30,
+          "rate": 0.9
+        },
+        "google": {
+          "mentions": 29,
+          "answers": 30,
+          "rate": 0.9667
+        },
+        "openai": {
+          "mentions": 27,
+          "answers": 30,
+          "rate": 0.9
+        }
+      }
+    },
+    {
+      "name": "Project E",
+      "url": "#",
+      "mentions": 78,
+      "answers": 90,
+      "rate": 0.8667,
+      "ci_low": 0.7813,
+      "ci_high": 0.9221,
+      "rank": 2,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 25,
+          "answers": 30,
+          "rate": 0.8333
+        },
+        "google": {
+          "mentions": 25,
+          "answers": 30,
+          "rate": 0.8333
+        },
+        "openai": {
+          "mentions": 28,
+          "answers": 30,
+          "rate": 0.9333
+        }
+      }
+    },
+    {
+      "name": "Project D",
+      "url": "#",
+      "mentions": 64,
+      "answers": 90,
+      "rate": 0.7111,
+      "ci_low": 0.6104,
+      "ci_high": 0.7946,
+      "rank": 3,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 24,
+          "answers": 30,
+          "rate": 0.8
+        },
+        "google": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        },
+        "openai": {
+          "mentions": 19,
+          "answers": 30,
+          "rate": 0.6333
+        }
+      }
+    },
+    {
+      "name": "Project A",
+      "url": "#",
+      "mentions": 61,
+      "answers": 90,
+      "rate": 0.6778,
+      "ci_low": 0.5757,
+      "ci_high": 0.7653,
+      "rank": 4,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        },
+        "google": {
+          "mentions": 20,
+          "answers": 30,
+          "rate": 0.6667
+        },
+        "openai": {
+          "mentions": 21,
+          "answers": 30,
+          "rate": 0.7
+        }
+      }
+    },
+    {
+      "name": "Project F",
+      "url": "#",
+      "mentions": 49,
+      "answers": 90,
+      "rate": 0.5444,
+      "ci_low": 0.4418,
+      "ci_high": 0.6434,
+      "rank": 5,
+      "tied": false,
+      "overlaps_next": true,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 18,
+          "answers": 30,
+          "rate": 0.6
+        },
+        "google": {
+          "mentions": 16,
+          "answers": 30,
+          "rate": 0.5333
+        },
+        "openai": {
+          "mentions": 15,
+          "answers": 30,
+          "rate": 0.5
+        }
+      }
+    },
+    {
+      "name": "Project B",
+      "url": "#",
+      "mentions": 42,
+      "answers": 90,
+      "rate": 0.4667,
+      "ci_low": 0.3671,
+      "ci_high": 0.569,
+      "rank": 6,
+      "tied": false,
+      "overlaps_next": false,
+      "by_provider": {
+        "anthropic": {
+          "mentions": 14,
+          "answers": 30,
+          "rate": 0.4667
+        },
+        "google": {
+          "mentions": 14,
+          "answers": 30,
+          "rate": 0.4667
+        },
+        "openai": {
+          "mentions": 14,
+          "answers": 30,
+          "rate": 0.4667
+        }
+      }
+    }
+  ]
+}
