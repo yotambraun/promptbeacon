@@ -20,6 +20,7 @@ promptbeacon --help
   to **stdout**, unwrapped. Progress spinners, notices and errors go to **stderr**, so
   `promptbeacon scan ... -f json > report.json` always produces valid JSON.
 - **Lists.** Repeat an option for several values: `-c "Adidas" -c "New Balance"`.
+- **Version.** `promptbeacon --version`.
 
 ## Commands
 
@@ -61,6 +62,10 @@ promptbeacon demo [BRAND] [OPTIONS]
 promptbeacon demo "Nike" -t "running shoes" -c "Adidas" -c "New Balance"
 promptbeacon demo "Acme" -t "crm software" -f json > demo.json
 ```
+
+The text output ends (on stderr) with the next step: the matching
+`promptbeacon scan ... --estimate` command, which prices a real scan without sending
+anything, and `promptbeacon init`.
 
 ---
 

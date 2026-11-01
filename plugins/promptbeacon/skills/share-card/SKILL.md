@@ -18,8 +18,12 @@ argument-hint: "[brand or github:owner/name | pypi:package | npm:package | crate
    wants to post the card on social networks (they do not accept SVG).
 4. Show the user the files that were written and the README snippets from the
    result: `readme_badge`, and `readme_card`, which uses `<picture>` so GitHub
-   shows the dark card in dark mode.
+   shows the dark card in dark mode. With two or more competitors the result
+   also has `readme_rank_badge` ("AI rank: #2 of 3 · python http clients",
+   ranked only among the projects compared); otherwise `rank_badge` says why
+   there is none. For a real scan, pass `max_cost` (e.g. `0.05`).
 5. If the user wants the badge to stay current, offer the `visibility-ci`
-   skill to add a weekly GitHub workflow that refreshes it.
+   skill: `promptbeacon init` adds a weekly GitHub workflow that refreshes the
+   badge and card and keeps a score trend for the card's sparkline.
 
 $ARGUMENTS

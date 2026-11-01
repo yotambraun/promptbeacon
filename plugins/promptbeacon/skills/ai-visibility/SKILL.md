@@ -29,6 +29,10 @@ subject, compared with its competitors.
    Ollama model"), pass `models`, for example
    `{"anthropic": "claude-sonnet-5-5"}` or `{"litellm": "ollama/llama3.2"}`.
    Otherwise each provider's default model is used; `providers` lists them.
+   For real (billed) scans, pass `max_cost` in US dollars (for example `0.05`)
+   unless the user says otherwise: the scan is refused if its estimate is
+   higher, and stops at the cap. If the result has `partial: true`, say that
+   the numbers cover only part of the answers (`budget` has the counts).
 4. Report the result plainly:
    - visibility score (0-100), share of voice and rank, and how many answers
      mentioned the subject (for example "8 of 10 answers");
@@ -38,8 +42,10 @@ subject, compared with its competitors.
    - which models answered (the `models` field of the result);
    - the estimated cost, if any.
 5. Suggest one concrete next step: re-run with competitors, run `sources`
-   with `grounded: true` to see which sites shape these answers, or create a
-   badge and share card with the `share-card` skill.
+   with `grounded: true` to see which sites shape these answers, create a
+   badge and share card with the `share-card` skill, or, for the user's own
+   repository, set up a weekly check with the `visibility-ci` skill
+   (`promptbeacon init`).
 
 Do not present demo results as real findings. Do not invent numbers that the
 tools did not return.
