@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import sys
 import warnings
 import webbrowser
@@ -15,6 +16,7 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape as _markup_escape
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -62,6 +64,17 @@ class OutputFormat(str, Enum):
     markdown = "markdown"
     csv = "csv"
     html = "html"
+
+
+def _esc(error: object) -> str:
+    """An exception's text, safe to embed in Rich markup ("[share]" stays visible)."""
+    return _markup_escape(str(error))
+
+
+_KEYLESS_HINT = (
+    "Add --demo for a keyless run, or use a local model with --model "
+    "litellm=ollama/llama3.2. `promptbeacon providers` shows what is configured."
+)
 
 
 def _emit(text: str) -> None:
@@ -142,7 +155,11 @@ def _run_scan(beacon: Beacon, description: str, *, stability: bool = False):
                 warnings.simplefilter("ignore", UserWarning)
                 report = beacon.scan_stability() if stability else beacon.scan()
         except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
+            message = str(e)
+            if "No API keys found" in message:
+                message = message.split(" Or try keyless demo mode")[0]
+                message = f"{message}\n{_KEYLESS_HINT}"
+            err_console.print(f"[red]Error:[/red] {_esc(message)}")
             raise typer.Exit(1) from None
     _prompt_notice(report)
     return report
@@ -193,7 +210,7 @@ def _save_default_history(report, brand: str) -> None:
             db.close()
     except Exception as e:  # noqa: BLE001 — history is a convenience
         err_console.print(
-            f"[yellow]Could not save to history ({e}). The scan itself "
+            f"[yellow]Could not save to history ({_esc(e)}). The scan itself "
             "succeeded; use --storage PATH or set PROMPTBEACON_HOME.[/yellow]"
         )
         return
@@ -396,7 +413,7 @@ def scan(
         try:
             proto = load_protocol(protocol)
         except Exception as e:
-            err_console.print(f"[red]Error loading protocol:[/red] {e}")
+            err_console.print(f"[red]Error loading protocol:[/red] {_esc(e)}")
             raise typer.Exit(1) from None
         beacon = build_beacon(proto)
         if demo:
@@ -474,7 +491,7 @@ def scan(
             )
             err_console.print("[green]✓ Visibility assertions passed.[/green]")
         except VisibilityAssertionError as e:
-            err_console.print(f"[red]✗ Visibility assertion failed:[/red] {e}")
+            err_console.print(f"[red]✗ Visibility assertion failed:[/red] {_esc(e)}")
             raise typer.Exit(1) from None
 
 
@@ -556,6 +573,16 @@ def demo(
     report = _run_scan(beacon, f"Demo scan for {brand}...")
 
     _output_report(report, output_format, _print_comparison_report)
+    if output_format == OutputFormat.text:
+        args = _shell_args(brand, categories, competitors)
+        err_console.print(
+            "\n[bold]Next:[/bold] price a real scan (sends nothing): "
+            f"[cyan]promptbeacon scan {_esc(args)} --estimate[/cyan]\n"
+            "Then set a provider key (e.g. OPENAI_API_KEY in a .env file) and run "
+            "it without --estimate. Set up your repository: "
+            "[cyan]promptbeacon init[/cyan]",
+            highlight=False,
+        )
 
 
 @app.command(rich_help_panel="Share and track")
@@ -856,7 +883,7 @@ def funnel(
                 )
             )
         except Exception as e:
-            err_console.print(f"[red]Error:[/red] {e}")
+            err_console.print(f"[red]Error:[/red] {_esc(e)}")
             raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
@@ -911,7 +938,7 @@ def history(
     try:
         history_report = beacon.get_history(days)
     except Exception as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
 
     if output_format == OutputFormat.json:
@@ -990,6 +1017,20 @@ _TIER_NOTES = {
 }
 
 
+def _shell_args(
+    brand: str | None, categories: list[str] | None, competitors: list[str] | None
+) -> str:
+    """Brand, -t and -c options as a copy-pasteable command fragment."""
+    import shlex
+
+    parts = [shlex.quote(brand)] if brand else []
+    for c in categories or []:
+        parts += ["-t", shlex.quote(c)]
+    for c in competitors or []:
+        parts += ["-c", shlex.quote(c)]
+    return " ".join(parts)
+
+
 def _print_tier_banner(report) -> None:
     """Print an honest one-line label of how the scan was measured."""
     tier = getattr(report, "measurement_tier", "base_model")
@@ -1011,7 +1052,7 @@ def _print_estimate(beacon: Beacon, output_format: OutputFormat, *, stability: b
     try:
         est = beacon.estimate_cost(runs)
     except Exception as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
     if output_format == OutputFormat.json:
         data = est.as_dict()
@@ -1469,7 +1510,7 @@ def _beacon_from_options(
                 # The keyless demo works offline: carry on with the name only.
                 brand = brand or project_name_from_ref(project)
                 err_console.print(
-                    f"[yellow]Could not read {project} ({e}). Demo continues "
+                    f"[yellow]Could not read {project} ({_esc(e)}). Demo continues "
                     f"offline with the name {brand!r}"
                     + (
                         "."
@@ -1496,7 +1537,7 @@ def _beacon_from_options(
             max_cost=max_cost,
         )
     except (ProjectMetadataError, ValueError) as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
 
 
@@ -1565,7 +1606,9 @@ def _report_for_share(
         try:
             return Report.model_validate_json(report_path.read_text(encoding="utf-8"))
         except Exception as e:
-            err_console.print(f"[red]Error reading report {report_path}:[/red] {e}")
+            err_console.print(
+                f"[red]Error reading report {report_path}:[/red] {_esc(e)}"
+            )
             raise typer.Exit(1) from None
     if not brand and not project:
         err_console.print(
@@ -1702,7 +1745,7 @@ def badge(
     try:
         svg = render_badge_svg(report, label=label, metric=metric.value)
     except RankUnavailableError as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(svg, encoding="utf-8")
@@ -1849,7 +1892,7 @@ def card(
             try:
                 data = render_card_png(report, name, trend=trend)  # type: ignore[arg-type]
             except ImportError as e:
-                err_console.print(f"[red]Error:[/red] {e}")
+                err_console.print(f"[red]Error:[/red] {_esc(e)}")
                 raise typer.Exit(1) from None
             png_target = themed(png, name)
             png_target.parent.mkdir(parents=True, exist_ok=True)
@@ -1872,6 +1915,11 @@ def _card_trend(report, trend_file: Path | None, storage: Path | None):
     )
 
     if report.measurement_tier == "demo":
+        if trend_file is not None:
+            err_console.print(
+                f"[dim]Demo data is never added to {_esc(trend_file)} or drawn as a "
+                "trend.[/dim]"
+            )
         return None
     try:
         if trend_file is not None:
@@ -1882,7 +1930,7 @@ def _card_trend(report, trend_file: Path | None, storage: Path | None):
             points = history_points(Path(path).expanduser(), report)
             source = "history"
     except Exception as e:  # noqa: BLE001 — a trend is optional
-        err_console.print(f"[yellow]No trend on the card: {e}[/yellow]")
+        err_console.print(f"[yellow]No trend on the card: {_esc(e)}[/yellow]")
         return None
     values = trend_values(points, report)
     if values:
@@ -1958,7 +2006,7 @@ def ci(
     try:
         report = Report.model_validate_json(report_path.read_text(encoding="utf-8"))
     except Exception as e:
-        err_console.print(f"[red]Error reading report {report_path}:[/red] {e}")
+        err_console.print(f"[red]Error reading report {report_path}:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
 
     thresholds = {
@@ -2152,7 +2200,7 @@ def init(
             workflow_path=workflow,
         )
     except ValueError as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
 
     # Let a person confirm or correct the two guesses that matter most.
@@ -2324,8 +2372,9 @@ def init(
             say(f"  gh secret set {name}", highlight=False)
         if not local:
             say(
-                "[dim]No key is set locally either; that is fine for the demo. For a "
-                "local real scan, put the key in a .env file or the environment.[/dim]"
+                "[dim]No provider key is set locally either. init and `promptbeacon "
+                "demo` do not need one; for a real scan on this machine, put the key "
+                "in a .env file or the environment.[/dim]"
             )
 
     say("\n[bold]README badge[/bold] (updates after the first workflow run):")
@@ -2364,10 +2413,16 @@ def init(
 
     steps = next_steps(plan)
     if to_write and not written:
-        flags = " --yes" if not interactive else ""
-        steps.insert(
-            0, f"Write the files: promptbeacon init{flags} (without --dry-run)"
-        )
+        command = "promptbeacon init"
+        if path != Path("."):
+            command += f" {path}"
+        if not plan.uses_protocol:
+            command += " " + _shell_args(
+                None, [plan.category] if plan.category else None, plan.competitors
+            )
+        if not _is_interactive():
+            command += " --yes"
+        steps.insert(0, f"Write the files: {command.strip()}")
     say("\n[bold]Next steps[/bold]")
     for i, step in enumerate(steps, 1):
         say(f"  {i}. {step}", highlight=False, soft_wrap=True)
@@ -2387,20 +2442,53 @@ def mcp_server() -> None:
     try:
         from promptbeacon.mcp_server import create_server
     except ImportError as e:  # pragma: no cover
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
     try:
         server = create_server()
     except ImportError as e:
-        err_console.print(f"[red]Error:[/red] {e}")
+        err_console.print(f"[red]Error:[/red] {_esc(e)}")
         raise typer.Exit(1) from None
     server.run("stdio")
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        from promptbeacon import __version__
+
+        typer.echo(f"promptbeacon {__version__}")
+        raise typer.Exit()
+
+
+class _CliLogHandler(logging.Handler):
+    """Library warnings on stderr, styled, minus ones the CLI explains itself."""
+
+    _EXPLAINED = ("No category set for",)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        message = record.getMessage()
+        if message.startswith(self._EXPLAINED):
+            return
+        err_console.print(f"[yellow]{_esc(message)}[/yellow]", highlight=False)
+
+
 @app.callback()
-def main() -> None:
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+            help="Show the version and exit",
+        ),
+    ] = False,
+) -> None:
     """PromptBeacon: does AI recommend your library or dev product?"""
-    pass
+    del version
+    logger = logging.getLogger("promptbeacon")
+    if not any(isinstance(h, _CliLogHandler) for h in logger.handlers):
+        logger.addHandler(_CliLogHandler(level=logging.WARNING))
 
 
 if __name__ == "__main__":

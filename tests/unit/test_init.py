@@ -320,7 +320,7 @@ def test_no_project_and_no_category_are_clear_errors(tmp_path):
 def test_works_without_api_keys(tmp_path):
     root = make_python_project(tmp_path)
     result = run(root, "--dry-run")
-    assert "No key is set locally either" in " ".join(result.stdout.split())
+    assert "No provider key is set locally either" in " ".join(result.stdout.split())
 
 
 @pytest.mark.parametrize(

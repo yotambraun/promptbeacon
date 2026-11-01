@@ -257,7 +257,7 @@ class BudgetExceededError(ConfigurationError):
         self.max_cost = max_cost
         super().__init__(
             f"Estimated cost {format_usd(estimate.total_usd)} is above the "
-            f"{format_usd(max_cost)} budget ({estimate.summary()}). No request "
+            f"{format_usd(max_cost)} budget: {estimate.summary()}. No request "
             "was sent. Lower it with fewer prompts (--prompts 5), fewer providers "
             "(-p openai) or stability runs, a cheaper model (--model "
             "provider=model_id), or raise --max-cost."

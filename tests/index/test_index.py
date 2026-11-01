@@ -321,6 +321,8 @@ def test_cli(tmp_path, capsys):
 
 def test_committed_demo_site_is_labelled():
     html_dir = Path(__file__).resolve().parents[2] / "index" / "demo" / "html"
+    if not html_dir.exists():
+        pytest.skip("the demo site is not part of the sdist")
     pages = sorted(html_dir.rglob("*.html"))
     assert pages, "index/demo/html should hold the labelled demo site"
     for page in pages:
