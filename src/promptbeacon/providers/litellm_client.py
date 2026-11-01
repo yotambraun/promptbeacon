@@ -231,7 +231,9 @@ class LiteLLMClient(BaseLLMClient):
             LLMResponse with the completion.
         """
         litellm = load_litellm()
-        use_model = to_litellm_model(self.provider, model) if model else self.model
+        # A per-request model (e.g. with_smart_extraction(model=...)) is passed to
+        # LiteLLM as given, so it may name a model from any provider.
+        use_model = model or self.model
         start_time = time.time()
         try:
             response = await litellm.acompletion(
@@ -264,7 +266,9 @@ class LiteLLMClient(BaseLLMClient):
             LLMResponse with the completion.
         """
         litellm = load_litellm()
-        use_model = to_litellm_model(self.provider, model) if model else self.model
+        # A per-request model (e.g. with_smart_extraction(model=...)) is passed to
+        # LiteLLM as given, so it may name a model from any provider.
+        use_model = model or self.model
         start_time = time.time()
         try:
             response = litellm.completion(

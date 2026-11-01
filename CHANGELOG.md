@@ -62,6 +62,9 @@ faster start, and fixes for Python 3.12+.
 - Errors in PromptBeacon's own code are no longer reported as provider failures; they
   propagate with their original type.
 - `GEMINI_API_KEY` is accepted for Google (`GOOGLE_API_KEY` still wins when both are set).
+- The `.env` file is now found from the working directory, as documented. It was
+  searched for upwards from the installed package, so a project's `.env` was only found
+  when the virtualenv lived inside the project.
 - Perplexity grounded results also read cited URLs from `search_results` when a response
   has no `citations` list.
 

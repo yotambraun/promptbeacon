@@ -178,6 +178,7 @@ class Beacon:
         self._extraction_model: str | None = None
         self._smart_recommendations: bool = False
         self._providers_set: bool = False
+        self._warned_unused_models: bool = False
 
     @property
     def brand(self) -> str:
@@ -620,7 +621,8 @@ class Beacon:
         models = self._config.models
         if self._providers_set:
             ignored = [p.value for p in models if p not in configured]
-            if ignored:
+            if ignored and not self._warned_unused_models:
+                self._warned_unused_models = True
                 logger.warning(
                     "Models set for providers that are not being queried: %s. "
                     "Add them with with_providers() / --provider.",

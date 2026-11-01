@@ -349,3 +349,10 @@ def test_pytest_plugin_factory_accepts_models():
         demo=True,
     )
     assert _models(beacon.scan()) == {("openai", "gpt-6-sol")}
+
+
+def test_per_request_model_is_passed_through_unchanged(fake_completion, monkeypatch):
+    # e.g. with_smart_extraction(model="gpt-6-luna") on a Google client
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    _complete(LiteLLMClient(Provider.GOOGLE), model="gpt-6-luna")
+    assert fake_completion.calls[0]["model"] == "gpt-6-luna"
