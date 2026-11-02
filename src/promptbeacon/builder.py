@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 
 from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import Provider, parse_model_overrides
+from promptbeacon.prompts.templates import validate_prompts
 
 
 def parse_providers(names: Sequence[str | Provider]) -> list[Provider]:
@@ -80,6 +81,8 @@ def configure_beacon(
             "Give either your own prompts or a prompt count, not both: your "
             "prompts are all asked, as written."
         )
+    # Checked before any project metadata request.
+    prompt_list = validate_prompts(prompts) if prompts is not None else None
     if stability_runs is not None and stability_runs != 0 and stability_runs < 2:
         raise ValueError(
             f"stability runs must be at least 2 (got {stability_runs}); use 0 "
@@ -119,8 +122,8 @@ def configure_beacon(
         beacon = beacon.with_grounding()
     if max_cost is not None:
         beacon = beacon.with_max_cost(max_cost)
-    if prompts is not None:
-        beacon = beacon.with_prompts(list(prompts))
+    if prompt_list is not None:
+        beacon = beacon.with_prompts(prompt_list)
     if aliases:
         beacon = beacon.with_aliases(
             *_clean_aliases([*beacon.config.brand_aliases, *aliases], beacon.brand)
