@@ -17,9 +17,11 @@ from typing import Annotated
 import typer
 from rich.console import Console
 from rich.markup import escape as _markup_escape
+from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+from rich.text import Text
 
 from promptbeacon.beacon import Beacon
 from promptbeacon.core.config import (
@@ -946,6 +948,161 @@ def history(
     else:
         _text_only_notice(output_format, "history")
         _print_history_report(history_report)
+
+
+class AnswersFormat(str, Enum):
+    """Output formats for `promptbeacon answers`."""
+
+    text = "text"
+    jsonl = "jsonl"
+    json = "json"
+    csv = "csv"
+
+
+def _load_report_file(report_path: Path):
+    """Read a saved `scan -f json` report, or exit with a clean error."""
+    from promptbeacon.core.schemas import Report
+
+    try:
+        return Report.model_validate_json(report_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        err_console.print(f"[red]Error reading report {report_path}:[/red] {_esc(e)}")
+        raise typer.Exit(1) from None
+
+
+@app.command(rich_help_panel="Analyse")
+def answers(
+    report_path: Annotated[
+        Path,
+        typer.Option("--report", help="Report from `promptbeacon scan -f json`"),
+    ],
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            "-m",
+            help='Only answers from this provider ("openai"), model ("gpt-6-luna") '
+            'or both ("openai/gpt-6-luna")',
+        ),
+    ] = None,
+    mentions: Annotated[
+        str | None,
+        typer.Option(
+            "--mentions",
+            help="Only answers that name this brand (tracked or not; whole names)",
+        ),
+    ] = None,
+    missing: Annotated[
+        str | None,
+        typer.Option(
+            "--missing", help="Only successful answers that do not name this brand"
+        ),
+    ] = None,
+    limit: Annotated[
+        int | None,
+        typer.Option("--limit", help="Show at most this many answers", min=1),
+    ] = None,
+    excerpt_chars: Annotated[
+        int,
+        typer.Option("--excerpt", help="Excerpt length in characters", min=20),
+    ] = 240,
+    output_format: Annotated[
+        AnswersFormat,
+        typer.Option(
+            "--format",
+            "-f",
+            help="text, jsonl (one answer per line), json or csv. The machine "
+            "formats include the full answer text",
+        ),
+    ] = AnswersFormat.text,
+) -> None:
+    """List the answers behind a saved report: what each model said, per prompt.
+
+    One row per answer: prompt, provider and model, the tracked brands it
+    names in order, the target's position and list rank, whether it recommends
+    the target, an excerpt and the cited URLs. Reads the report only; sends
+    nothing.
+
+    Example:
+        promptbeacon scan httpx -t "python http client" -f json > report.json
+        promptbeacon answers --report report.json --missing httpx
+
+        promptbeacon answers --report report.json -m anthropic -f jsonl > answers.jsonl
+    """
+    import csv
+    import io
+
+    from promptbeacon.reporting.formats import answer_rows
+
+    report = _load_report_file(report_path)
+    rows = answer_rows(
+        report,
+        model=model,
+        mentions=mentions,
+        missing=missing,
+        excerpt_chars=excerpt_chars,
+    )
+    matched = len(rows)
+    rows = rows[:limit] if limit else rows
+
+    if output_format != AnswersFormat.text:
+        for row in rows:
+            row["response"] = report.provider_results[row["answer"]].response
+    if output_format == AnswersFormat.jsonl:
+        _emit("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))
+        return
+    if output_format == AnswersFormat.json:
+        _emit(json.dumps(rows, indent=2, ensure_ascii=False))
+        return
+    if output_format == AnswersFormat.csv:
+        buffer = io.StringIO()
+        fields = list(rows[0]) if rows else ["answer"]
+        writer = csv.DictWriter(buffer, fieldnames=fields, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(
+                {k: "; ".join(v) if isinstance(v, list) else v for k, v in row.items()}
+            )
+        _emit(buffer.getvalue())
+        return
+
+    for row in rows:
+        if not row["ok"]:
+            target = "[red]request failed[/red]"
+        elif not row["target_mentioned"]:
+            target = f"[yellow]{_markup_escape(report.brand)} not named[/yellow]"
+        else:
+            target = (
+                f"{_markup_escape(report.brand)} named #{row['target_position'] + 1}"
+            )
+            if row["target_rank"] is not None:
+                target += f", list rank {row['target_rank']}"
+            if row["target_recommended"]:
+                target += ", recommended"
+        console.print(
+            f"[bold]#{row['answer']}[/bold] "
+            f"{_markup_escape(row['provider'] + '/' + row['model'])} · {target}",
+            highlight=False,
+        )
+        console.print(f"  Prompt: {_markup_escape(row['prompt'])}", highlight=False)
+        if row["ok"]:
+            named = ", ".join(row["brands_found"]) or "none of the tracked brands"
+            console.print(f"  Names:  {_markup_escape(named)}", highlight=False)
+            console.print(Padding(Text(row["excerpt"], style="dim"), (0, 0, 0, 2)))
+        else:
+            console.print(f"  [red]{_markup_escape(row['error'] or '')}[/red]")
+        for url in row["cited_urls"]:
+            console.print(f"  Cites:  {_markup_escape(url)}", highlight=False)
+    err_console.print(
+        f"[dim]{len(rows)} of {len(report.provider_results)} answers"
+        + (
+            f"; {matched} match the filters"
+            if matched != len(report.provider_results)
+            else ""
+        )
+        + f" · measured: {report.measurement_tier}[/dim]",
+        highlight=False,
+    )
 
 
 @app.command(rich_help_panel="Start here")
@@ -2000,14 +2157,9 @@ def ci(
     """
     import os
 
-    from promptbeacon.core.schemas import Report
     from promptbeacon.share.summary import ci_outputs, summary_markdown
 
-    try:
-        report = Report.model_validate_json(report_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        err_console.print(f"[red]Error reading report {report_path}:[/red] {_esc(e)}")
-        raise typer.Exit(1) from None
+    report = _load_report_file(report_path)
 
     thresholds = {
         name: value
@@ -2436,7 +2588,7 @@ def mcp_server() -> None:
 
     Needs the extra: pip install 'promptbeacon[mcp]'. Tools: providers,
     estimate, scan, project_scan, sources, compare, recommendations, history,
-    funnel, init_preview, share_assets. Without provider keys, scans use the
+    answers, funnel, init_preview, share_assets. Without provider keys, scans use the
     keyless demo and say so. Setup for each client:
     https://yotambraun.github.io/promptbeacon/mcp/
 

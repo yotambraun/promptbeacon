@@ -1,6 +1,7 @@
 """Reporting module for PromptBeacon."""
 
 from promptbeacon.reporting.formats import (
+    answer_rows,
     to_csv,
     to_dashboard_html,
     to_dataframe,
@@ -18,6 +19,7 @@ from promptbeacon.reporting.report import (
 
 __all__ = [
     # Formats
+    "answer_rows",
     "to_csv",
     "to_dashboard_html",
     "to_dataframe",

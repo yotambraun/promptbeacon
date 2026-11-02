@@ -35,6 +35,7 @@ promptbeacon --help
 | [`funnel`](#funnel) | Where a brand drops out of a model of agentic search |
 | [`dashboard`](#dashboard) | Single-file HTML report |
 | [`history`](#history) | Saved scans and trend |
+| [`answers`](#answers) | The answers behind a saved report, one row each |
 | [`badge`](#badge) | README badge (SVG and shields.io endpoint JSON) |
 | [`card`](#card) | 1200x630 share card (SVG, optional PNG) |
 | [`ci`](#ci) | Outputs, job summary, PR-comment body and gates from a saved report |
@@ -343,6 +344,37 @@ how to create it instead of creating an empty database.
 
 ---
 
+## `answers`
+
+List the answers behind a saved report, so you can check what a number rests on. Reads
+the report only; sends nothing.
+
+```bash
+promptbeacon scan httpx -t "python http client" -c requests -f json > report.json
+promptbeacon answers --report report.json --missing httpx      # answers that left it out
+promptbeacon answers --report report.json -m anthropic -f jsonl > answers.jsonl
+```
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--report PATH` | | Report from `scan -f json` (required) |
+| `--model` | `-m` | Only answers from a provider (`openai`), a model (`gpt-6-luna`) or both (`openai/gpt-6-luna`) |
+| `--mentions NAME` | | Only answers that name this brand: a tracked one (aliases count) or any other name, matched as a whole name |
+| `--missing NAME` | | Only successful answers that do not name this brand |
+| `--limit N` | | Show at most N answers |
+| `--excerpt N` | | Excerpt length (default 240 characters) |
+| `--format` | `-f` | `text` (default), `jsonl` (one answer per line), `json`, `csv` |
+
+Each answer has: `answer` (its index in the report), `prompt`, `provider`, `model`, `ok`
+and `error`, `brands_found` (the tracked brands it names, in order), `target_mentioned`,
+`target_position` (0 = named first), `target_rank` (its number in a ranked list, if the
+answer has one), `target_recommended`, `excerpt` (one line around the first mention of
+the brand, else the start of the answer), `cited_urls` and `grounded`. The machine
+formats add `response`, the full answer text. In Python:
+`promptbeacon.reporting.answer_rows(report)`.
+
+---
+
 ## `init`
 
 Set a repository up in one command: a weekly workflow that measures it with the
@@ -485,8 +517,8 @@ promptbeacon mcp
 ```
 
 Tools: `providers`, `estimate`, `scan`, `project_scan`, `sources`, `compare`,
-`recommendations`, `history`, `funnel`, `init_preview` and `share_assets`. Setup for
-each client: [Use from AI assistants](mcp.md).
+`recommendations`, `history`, `answers`, `funnel`, `init_preview` and `share_assets`.
+Setup for each client: [Use from AI assistants](mcp.md).
 
 ---
 

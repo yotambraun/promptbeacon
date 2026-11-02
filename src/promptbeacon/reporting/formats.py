@@ -6,6 +6,8 @@ import html as _html
 from typing import TYPE_CHECKING, Any
 
 from promptbeacon.core.schemas import Report
+from promptbeacon.extraction.matching import find_brand, mentions_brand
+from promptbeacon.extraction.ranking import extract_rankings
 
 if TYPE_CHECKING:
     from promptbeacon.core.schemas import HistoryReport
@@ -182,6 +184,104 @@ def to_mentions_dataframe(report: Report):
             )
 
     return pd.DataFrame(mentions_data)
+
+
+def _excerpt(text: str, brand: str, limit: int) -> str:
+    """At most ``limit`` characters of ``text`` on one line, showing ``brand``."""
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    match = find_brand(text, brand)
+    start = max(0, match.start() - limit // 3) if match else 0
+    lead = "…" if start else ""
+    end = start + limit - len(lead)
+    if end >= len(text):
+        start = max(0, len(text) - limit + 1)
+        return "…" + text[start:]
+    return lead + text[start : end - 1] + "…"
+
+
+def answer_rows(
+    report: Report,
+    *,
+    model: str | None = None,
+    mentions: str | None = None,
+    missing: str | None = None,
+    excerpt_chars: int = 240,
+) -> list[dict[str, Any]]:
+    """One row per answer in a report: the evidence behind the numbers.
+
+    Each row has ``answer`` (the answer's index in ``report.provider_results``),
+    ``prompt``, ``provider``, ``model``, ``ok`` and ``error``, ``brands_found``
+    (tracked brands in order of first appearance), ``target_mentioned``,
+    ``target_position`` (the target's order among them, 0 = named first),
+    ``target_rank`` (its number in a ranked list, if the answer has one),
+    ``target_recommended``, ``excerpt`` (one line around the target's first
+    mention, else the start of the answer), ``cited_urls`` and ``grounded``.
+    It is computed from the saved answers with the same rules as the scan.
+
+    Args:
+        report: A scan report.
+        model: Keep answers from this provider (``"openai"``), model
+            (``"gpt-6-luna"``) or both (``"openai/gpt-6-luna"``); case-insensitive.
+        mentions: Keep answers that name this brand: a tracked brand (aliases
+            count) or any other name, matched as a whole name.
+        missing: Keep successful answers that do not name this brand.
+        excerpt_chars: Maximum excerpt length (20 or more).
+
+    Returns:
+        The matching rows, in report order.
+    """
+    if excerpt_chars < 20:
+        raise ValueError("excerpt_chars must be at least 20")
+    wanted_model = model.strip().lower() if model else None
+    target = report.brand.lower()
+
+    def names(result, brand: str) -> bool:
+        return any(
+            m.brand_name.lower() == brand.lower() for m in result.mentions
+        ) or mentions_brand(result.response, brand)
+
+    rows: list[dict[str, Any]] = []
+    for index, result in enumerate(report.provider_results):
+        if wanted_model and wanted_model not in {
+            result.provider.lower(),
+            result.model.lower(),
+            f"{result.provider}/{result.model}".lower(),
+        }:
+            continue
+        if mentions and not names(result, mentions):
+            continue
+        if missing and (not result.success or names(result, missing)):
+            continue
+
+        ordered = sorted(result.mentions, key=lambda m: m.position)
+        brands_found = list(dict.fromkeys(m.brand_name for m in ordered))
+        own = [m for m in ordered if m.brand_name.lower() == target]
+        rank = extract_rankings(result.response, report.brand).brand_positions.get(
+            report.brand
+        )
+        rows.append(
+            {
+                "answer": index,
+                "prompt": result.prompt,
+                "provider": result.provider,
+                "model": result.model,
+                "ok": result.success,
+                "error": result.error,
+                "brands_found": brands_found,
+                "target_mentioned": bool(own),
+                "target_position": own[0].position if own else None,
+                "target_rank": rank if own else None,
+                "target_recommended": any(m.is_recommendation for m in own),
+                "excerpt": _excerpt(result.response, report.brand, excerpt_chars),
+                "cited_urls": list(
+                    dict.fromkeys(c.url for c in result.citations if c.url)
+                ),
+                "grounded": result.grounded,
+            }
+        )
+    return rows
 
 
 def to_csv(report: Report) -> str:

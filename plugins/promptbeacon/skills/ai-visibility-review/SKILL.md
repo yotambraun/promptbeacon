@@ -1,6 +1,6 @@
 ---
 name: ai-visibility-review
-description: Run a full, evidence-based review of whether AI assistants (ChatGPT, Claude, Gemini, local models) recommend a product, library or open-source project, using the PromptBeacon MCP tools - cost check, one scan, competitor comparison, cited sources, history and significance, recommendations - and end with a summary and next actions. Use when someone asks for an AI visibility review, audit or report, wants to know why AI doesn't recommend their project and what to do about it, or wants to track whether their AI visibility is changing.
+description: Run a full, evidence-based review of whether AI assistants (ChatGPT, Claude, Gemini, local models) recommend a product, library or open-source project, using the PromptBeacon MCP tools - cost check, one scan, competitor comparison, the answers behind the numbers, cited sources, history and significance, recommendations - and end with a summary and next actions. Use when someone asks for an AI visibility review, audit or report, wants to know why AI doesn't recommend their project and what to do about it, or wants to track whether their AI visibility is changing.
 ---
 
 # AI visibility review
@@ -61,14 +61,22 @@ Everything below reads that file and costs nothing.
 Call `compare` with `report_path`. Report the rank, the share of voice, and how
 many answers mentioned each brand ("6 of 10 answers").
 
-## 6. Sources (optional, costs more)
+## 6. Evidence
+
+Call `answers` with `report_path` (free) to see the answers behind the numbers:
+`missing: "<subject>"` lists the answers that left the subject out and which
+brands they named instead; `mentions: "<subject>"` shows how it was named, its
+position and list rank. Quote one or two short excerpts, with the prompt and
+model, when you explain a result. Page with `offset` when `next_offset` is set.
+
+## 7. Sources (optional, costs more)
 
 Which sites AI answers cite shapes what they recommend. `sources` runs a
 web-grounded scan, which costs more than a plain one: call `estimate` with
 `grounded: true` and ask first. Report the most-cited domains and which ones
 cite the subject. In demo mode the domains are illustrative only.
 
-## 7. History and significance
+## 8. History and significance
 
 Call `history` with the brand name (free). With fewer than two saved scans,
 say there is no trend yet and that each real scan is saved. Otherwise report
@@ -79,13 +87,13 @@ categories or measurement tiers are not comparable: say so when it applies.
 Under the Claude Code plugin the history is separate from the CLI's; pass
 `storage: "~/.promptbeacon/data.db"` to read the CLI history.
 
-## 8. Recommendations
+## 9. Recommendations
 
 Call `recommendations` with `report_path`. They are rule-based, derived from the
 scan's answers. Offer `smart: true` (an LLM writes them from the same data; one
 more billed request, so ask) only in live mode and only if the user wants more.
 
-## 9. Summary
+## 10. Summary
 
 Write a short report:
 

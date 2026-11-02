@@ -34,10 +34,19 @@ Recommendation Index is built but not yet run.
 - **Measure once, analyse for free:** `scan` and `project_scan` take `save_report`, and
   `compare`, `recommendations` and `share_assets` take `report_path` to read that report
   instead of scanning.
+- **The answers behind a report.** `promptbeacon answers --report report.json` lists
+  each answer of a saved report: prompt, provider and model, the tracked brands it
+  names in order, the target's position and list rank, whether it recommends the
+  target, an excerpt and the cited URLs. Filter with `--model`, `--mentions NAME` and
+  `--missing NAME` (answers that leave a brand out); `-f jsonl`, `json` or `csv` export
+  it with the full answer text. The new MCP `answers` tool returns the same rows from
+  `report_path`, with excerpts instead of full text, paged (`offset`, `limit` up to
+  100), so an assistant can check the evidence at no cost. In Python:
+  `promptbeacon.reporting.answer_rows(report)`.
 - **`ai-visibility-review` skill** in the plugin: a full review that checks the keys,
-  prices the scan and asks before spending, scans once, then compares, checks sources,
-  history and significance, and ends with evidence and next steps. It is a plain
-  `SKILL.md`, usable by other agents.
+  prices the scan and asks before spending, scans once, then compares, reads the
+  answers behind the numbers, checks sources, history and significance, and ends with
+  evidence and next steps. It is a plain `SKILL.md`, usable by other agents.
 - New docs page: [Python API](https://yotambraun.github.io/promptbeacon/python/), whose
   examples run offline and are tested.
 - **`promptbeacon init`.** Reads `pyproject.toml`, `package.json` or `Cargo.toml`, the

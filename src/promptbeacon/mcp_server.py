@@ -55,7 +55,8 @@ INSTRUCTIONS = (
     "a category when you know it. Scans with provider keys are billed: call "
     "estimate first, pass max_cost, and ask the user before spending. Scan once "
     "with save_report, then pass that file as report_path to compare, "
-    "recommendations and share_assets, which then cost nothing. Results "
+    "recommendations, answers and share_assets, which then cost nothing; answers "
+    "shows the evidence per answer. Results "
     "labelled measurement_tier='demo' are canned data, not a measurement."
 )
 
@@ -746,6 +747,99 @@ def history(
     return result
 
 
+ANSWERS_MAX_LIMIT = 100
+
+
+def answers(
+    report_path: Annotated[
+        str,
+        Field(
+            description="A report written by scan or project_scan (save_report) or "
+            "by `promptbeacon scan -f json`, inside the working directory."
+        ),
+    ],
+    model: Annotated[
+        str | None,
+        Field(
+            description='Only answers from this provider ("openai"), model '
+            '("gpt-6-luna") or both ("openai/gpt-6-luna").'
+        ),
+    ] = None,
+    mentions: Annotated[
+        str | None,
+        Field(
+            description="Only answers that name this brand: a tracked brand "
+            "(aliases count) or any other name, matched as a whole name."
+        ),
+    ] = None,
+    missing: Annotated[
+        str | None,
+        Field(description="Only successful answers that do not name this brand."),
+    ] = None,
+    offset: Annotated[
+        int, Field(description="Skip this many matching answers (paging).", ge=0)
+    ] = 0,
+    limit: Annotated[
+        int,
+        Field(
+            description=f"Answers per page (default 20, at most {ANSWERS_MAX_LIMIT}).",
+            ge=1,
+            le=ANSWERS_MAX_LIMIT,
+        ),
+    ] = 20,
+    excerpt_chars: Annotated[
+        int,
+        Field(
+            description="Excerpt length per answer (default 240, 20-1000).",
+            ge=20,
+            le=1000,
+        ),
+    ] = 240,
+) -> dict[str, Any]:
+    """The answers behind a saved report, one row each, to check what the numbers rest on.
+
+    Each row has the prompt, provider and model, the tracked brands the answer
+    names (in order), whether it names the target, the target's position among
+    them and its rank in a ranked list, whether it recommends the target, a
+    one-line excerpt around the target (else the start of the answer), the
+    cited URLs, and the error for a failed request. Filter by model and by a
+    brand named or not named; page with offset and limit (next_offset is null
+    on the last page). Full answer text is not returned; use
+    `promptbeacon answers --report FILE -f jsonl` for an export.
+
+    Free and offline: reads a saved report.
+    """
+    from promptbeacon.reporting.formats import answer_rows
+
+    if not 1 <= limit <= ANSWERS_MAX_LIMIT:
+        raise ValueError(f"limit must be between 1 and {ANSWERS_MAX_LIMIT}.")
+    if offset < 0:
+        raise ValueError("offset must be 0 or more.")
+    if not 20 <= excerpt_chars <= 1000:
+        raise ValueError("excerpt_chars must be between 20 and 1000.")
+    report = _load_report(report_path)
+    rows = answer_rows(
+        report,
+        model=model,
+        mentions=mentions,
+        missing=missing,
+        excerpt_chars=excerpt_chars,
+    )
+    page = rows[offset : offset + limit]
+    end = offset + len(page)
+    return {
+        "brand": report.brand,
+        "categories": report.categories,
+        "measurement_tier": report.measurement_tier,
+        "total_answers": len(report.provider_results),
+        "matched": len(rows),
+        "offset": offset,
+        "limit": limit,
+        "next_offset": end if end < len(rows) else None,
+        "answers": page,
+    }
+
+
 async def funnel(
     brand: Brand,
     category: Category = None,
@@ -1063,6 +1157,7 @@ TOOLS = {
     "compare": (compare, True, True),
     "recommendations": (recommendations, True, True),
     "history": (history, True, False),
+    "answers": (answers, True, False),
     "funnel": (funnel, True, True),
     "init_preview": (init_preview, True, False),
     "share_assets": (share_assets, False, True),

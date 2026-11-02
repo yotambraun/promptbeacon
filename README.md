@@ -240,7 +240,7 @@ or install the plugin, which adds the server and four skills, including a full
 
 Then ask: *"Does AI recommend this project? Compare it with its main alternatives, and
 keep it under 5 cents."* The tools (`providers`, `estimate`, `scan`, `project_scan`,
-`sources`, `compare`, `recommendations`, `history`, `funnel`, `init_preview`,
+`sources`, `compare`, `recommendations`, `history`, `answers`, `funnel`, `init_preview`,
 `share_assets`) return JSON, say what they cost, and accept `models` and `max_cost`.
 With no key configured they use the demo and say so.
 
@@ -291,6 +291,7 @@ promptbeacon scan httpx -t "python http client" --max-cost 0.05   # cap what a s
 promptbeacon badge httpx -t "python http client" --demo      # README badge
 promptbeacon card httpx -t "python http client" --demo --png card.png
 promptbeacon ci --report report.json --min-sov 0.3           # summary + gate, any CI
+promptbeacon answers --report report.json --missing httpx     # the answers behind it
 # also: sources, funnel, dashboard, compare, history, providers, mcp
 ```
 

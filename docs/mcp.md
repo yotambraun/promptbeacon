@@ -297,16 +297,17 @@ How cost works:
   without sending anything. `max_cost` (US dollars) caps a scan: it is refused when the
   estimate is higher and stops at the cap, and the result then has `partial: true`.
 - **Measure once:** pass `save_report` (for example `.promptbeacon/report.json`) to
-  `scan` or `project_scan`, then give that file to `compare`, `recommendations` and
-  `share_assets` as `report_path`. They read it instead of scanning, so they cost
-  nothing.
-- **Always free:** `providers`, `estimate`, `history` and `init_preview` never call a
-  paid API.
+  `scan` or `project_scan`, then give that file to `compare`, `recommendations`,
+  `answers` and `share_assets` as `report_path`. They read it instead of scanning, so
+  they cost nothing.
+- **Always free:** `providers`, `estimate`, `history`, `answers` and `init_preview`
+  never call a paid API.
 
 ## Tools
 
-Every tool wraps the Python API and returns compact JSON (no raw model responses). Each
-argument is described in the tool's schema, which your assistant reads.
+Every tool wraps the Python API and returns compact JSON: no full model responses, only
+the short excerpts `answers` returns. Each argument is described in the tool's schema,
+which your assistant reads.
 
 | Tool | What it returns | Cost |
 | --- | --- | --- |
@@ -318,6 +319,7 @@ argument is described in the tool's schema, which your assistant reads.
 | `compare` | Each brand side by side: visibility score, mentions, positive share, share of voice, and the brand's rank | Free from a saved report |
 | `recommendations` | What to change, with rationale, priority and expected impact, and the explanations of the score; rule-based, or written by an LLM with `smart: true` (one more request) | Free from a saved report |
 | `history` | Saved scans over time, the trend, the change since the previous scan, and a significance check of the earlier against the later scans | Free |
+| `answers` | The answers behind a saved report, one row each: prompt, provider and model, the tracked brands named (in order), the target's position, list rank and whether it is recommended, a short excerpt and the cited URLs. Filter by `model`, `mentions` or `missing` (a brand named or not); paged with `offset` and `limit` (at most 100) | Free |
 | `funnel` | Where the brand drops out of a model of agentic web search: retrieval, rerank or citation | Tavily searches with `TAVILY_API_KEY`; mock backend without |
 | `init_preview` | What `promptbeacon init` would write (the weekly workflow, with a diff), the category and competitors it guessed, the cost per run, badge snippets, next steps, and the command to apply it. Never writes files | Free |
 | `share_assets` | Writes `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`; `rank.svg` and `rank.json` with 2+ competitors) and returns README snippets | Free from a saved report |
@@ -339,7 +341,7 @@ instructions.
 
 | Skill | What it does |
 | --- | --- |
-| `ai-visibility-review` | A full review: checks keys, prices the scan and asks before spending, scans once, then compares, checks sources, history and significance, and ends with evidence and next steps |
+| `ai-visibility-review` | A full review: checks keys, prices the scan and asks before spending, scans once, then compares, reads the answers behind the numbers, checks sources, history and significance, and ends with evidence and next steps |
 | `ai-visibility` | A quick check: score, share of voice and how it was measured |
 | `share-card` | A README badge, shields.io JSON and light and dark share cards |
 | `visibility-ci` | A weekly or pull-request GitHub workflow (`/promptbeacon:visibility-ci` in Claude Code) |

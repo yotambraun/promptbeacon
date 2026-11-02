@@ -119,6 +119,7 @@ def test_server_registers_the_tools():
         "compare",
         "recommendations",
         "history",
+        "answers",
         "funnel",
         "init_preview",
         "share_assets",
