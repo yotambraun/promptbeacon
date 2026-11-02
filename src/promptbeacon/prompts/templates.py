@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import string
+from collections.abc import Sequence
 
 # Each industry maps to a list of prompt templates that use {category}
 # as a placeholder.  They are designed to surface how LLMs talk about
@@ -283,3 +285,50 @@ def get_industry_prompts(industry: str) -> list[str]:
         available = ", ".join(AVAILABLE_INDUSTRIES)
         raise ValueError(f"Unknown industry: {industry!r}. Available: {available}")
     return INDUSTRY_TEMPLATES[key]
+
+
+MAX_PROMPTS = 1000
+
+
+def validate_prompts(prompts: Sequence[str]) -> list[str]:
+    """Check a custom prompt list and return it with surrounding spaces removed.
+
+    A prompt may use ``{category}``, which is replaced by each category of the
+    scan; any other literal brace must be doubled (``{{`` and ``}}``).
+
+    Raises:
+        ValueError: For an empty list, a blank or duplicate prompt, more than
+            ``MAX_PROMPTS`` prompts, or a placeholder other than ``{category}``.
+    """
+    if isinstance(prompts, str):
+        raise ValueError("prompts must be a list of strings, not one string")
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for number, prompt in enumerate(prompts, 1):
+        if not isinstance(prompt, str):
+            raise ValueError(f"prompt {number} is not a string")
+        text = prompt.strip()
+        if not text:
+            raise ValueError(f"prompt {number} is empty")
+        try:
+            fields = [
+                (name, spec, conversion)
+                for _, name, spec, conversion in string.Formatter().parse(text)
+                if name is not None
+            ]
+        except ValueError:
+            fields = [("", "", None)]
+        if any(f != ("category", "", None) for f in fields):
+            raise ValueError(
+                f"prompt {number} ({text!r}) may only use the {{category}} "
+                "placeholder; write other braces as {{ and }}"
+            )
+        if text in seen:
+            raise ValueError(f"prompt {number} is a duplicate: {text!r}")
+        seen.add(text)
+        cleaned.append(text)
+    if not cleaned:
+        raise ValueError("give at least one prompt")
+    if len(cleaned) > MAX_PROMPTS:
+        raise ValueError(f"at most {MAX_PROMPTS} prompts, got {len(cleaned)}")
+    return cleaned

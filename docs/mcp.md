@@ -324,6 +324,13 @@ which your assistant reads.
 | `init_preview` | What `promptbeacon init` would write (the weekly workflow, with a diff), the category and competitors it guessed, the cost per run, badge snippets, next steps, and the command to apply it. Never writes files | Free |
 | `share_assets` | Writes `badge.svg`, `badge.json`, `card.svg`, `card-dark.svg` (and `card.png`; `rank.svg` and `rank.json` with 2+ competitors) and returns README snippets | Free from a saved report |
 
+`estimate`, `scan` and `project_scan` also let the assistant define the measurement:
+`custom_prompts` (the questions your users ask, asked as written; `{category}` is
+replaced by the category), `aliases` (other names that count as the brand) and
+`stability_runs` (2-20 repeats, reported in a `stability` block with the score per run,
+its confidence interval and the prompts that flip-flop). Pass the same values to
+`estimate` first: custom prompts and runs change the price.
+
 A scan without a category returns a `warning` that the prompts were generic. Results
 with `measurement_tier: "demo"` are canned data, not a measurement.
 

@@ -43,6 +43,13 @@ Recommendation Index is built but not yet run.
   `report_path`, with excerpts instead of full text, paged (`offset`, `limit` up to
   100), so an assistant can check the evidence at no cost. In Python:
   `promptbeacon.reporting.answer_rows(report)`.
+- **Define the measurement: your own prompts, aliases and stability runs** from the CLI
+  and the MCP server. `scan` takes `--prompt` (repeatable), `--prompt-file` (one prompt
+  per line, `#` comments) and `--alias`; the MCP `scan`, `project_scan` and `estimate`
+  tools take `custom_prompts`, `aliases` and `stability_runs` (2-20, with a `stability`
+  block in the result). Cost estimates and `max_cost` count the custom prompts and the
+  runs. `configure_beacon` has the same options (`prompts`, `aliases`,
+  `stability_runs`).
 - **`ai-visibility-review` skill** in the plugin: a full review that checks the keys,
   prices the scan and asks before spending, scans once, then compares, reads the
   answers behind the numbers, checks sources, history and significance, and ends with
@@ -116,6 +123,12 @@ Recommendation Index is built but not yet run.
 - Python 3.14 support.
 
 ### Changed
+- `Beacon.with_prompts()` checks its prompts: an empty list, a blank or duplicate
+  prompt, more than 1,000 prompts, or a placeholder other than `{category}` (a literal
+  brace must be written `{{`) raise `ValueError` when the prompts are set, instead of a
+  `KeyError` or a skewed count during the scan. Surrounding spaces are removed.
+- `--stability` needs at least 2 runs (one run measures no stability); `0` still means a
+  single scan.
 - MCP tools describe every argument in their schema, say what they cost, and carry
   read-only and open-world hints. Real scans made by the MCP `scan` and `project_scan`
   tools are saved to the local history, as CLI scans are (`save_history: false` skips
@@ -179,6 +192,8 @@ Recommendation Index is built but not yet run.
   tracked brands the answer names (0 = first), mentions are returned in text order, and
   `average_position` is the mean of that order over the answers that name the brand.
   Smart extraction (`--smart`) orders mentions the same way.
+- A custom prompt without `{category}` was asked once per category, so a scan with two
+  categories asked it twice and counted the answers twice. It is now asked once.
 - The "actively recommended in N responses" insight counted mentions, so it could
   exceed the number of answers ("in 14 responses" from 10 prompts). It now counts
   answers ("in 5 of 10 answers").

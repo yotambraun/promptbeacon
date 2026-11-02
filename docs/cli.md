@@ -102,6 +102,9 @@ and `--competitor`. See [Open-source projects](projects.md).
 | `--infer-category` | | No category? Ask one model to name it (and suggest competitors if none were given). One extra LLM call, logged; ignored in demo mode |
 | `--competitor` | `-c` | Competitors to compare (repeatable) |
 | `--prompts` | `-n` | Prompts per category (default 10). Larger counts are extended deterministically with more templates and phrasing variants; a count that cannot be met is an error, never a silent cap |
+| `--prompt TEXT` | | Your own prompt, asked as written (repeatable), for example the questions your users ask. Replaces the built-in prompts; `{category}` in a prompt is replaced by each `--category`. Not combined with `--prompts` |
+| `--prompt-file PATH` | | A text file with one prompt per line; blank lines and lines starting with `#` are skipped. Asked after any `--prompt` values |
+| `--alias NAME` | | Another name that counts as the brand (repeatable), e.g. `python-httpx` |
 | `--protocol PATH` | | Pinned JSON protocol for reproducible runs (see below) |
 
 **Providers and mode**
@@ -113,7 +116,7 @@ and `--competitor`. See [Open-source projects](projects.md).
 | `--demo` | | Keyless demo mode |
 | `--grounded` | | Use each provider's web search and capture real citations (OpenAI, Anthropic, Gemini, Perplexity; needs `promptbeacon[grounded]`) |
 | `--smart` | | LLM-based extraction and recommendations (more calls) |
-| `--stability N` | `-r` | Repeat the whole scan N times and report stability (multiplies cost) |
+| `--stability N` | `-r` | Repeat the whole scan N times (2 or more) and report stability (multiplies cost) |
 
 **Cost**
 
@@ -164,6 +167,7 @@ promptbeacon scan httpx -t "python http client" -p openai -p anthropic --max-cos
 
 # Stability and a CI gate
 promptbeacon scan "Nike" -t "running shoes" --stability 5 --assert-min-stability 60
+promptbeacon scan httpx --prompt-file questions.txt --alias python-httpx -r 3 --estimate
 promptbeacon scan "Nike" -t "running shoes" -c "Adidas" --assert-min-score 40 --assert-min-sov 0.2
 
 # Machine-readable, without touching history

@@ -84,7 +84,7 @@ comment up to date, and applies your thresholds last.
 | `prompts` | `10` | Prompts per category |
 | `min-score` | `0` | Fail below this visibility score (0 = no gate) |
 | `min-share-of-voice` | `0` | Fail below this share of voice, 0-1 (0 = no gate) |
-| `stability` | `0` | Repeat the scan N times and report stability |
+| `stability` | `0` | Repeat the scan N times (2 or more) and report stability; 0 is off |
 | `min-stability` | `0` | Fail below this stability score (needs `stability`) |
 | `demo` | `false` | Keyless demo mode, for smoke tests |
 | `grounded` | `false` | Web-grounded scan (provider web search) |

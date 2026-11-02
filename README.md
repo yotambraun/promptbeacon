@@ -284,6 +284,7 @@ promptbeacon scan httpx -t "python http client" -m litellm=ollama/llama3.2   # l
 promptbeacon scan --repo encode/httpx                        # an open-source project
 promptbeacon scan httpx -t "python http client" --grounded   # web-grounded answers
 promptbeacon scan httpx -t "python http client" --stability 5
+promptbeacon scan httpx --prompt-file questions.txt --alias python-httpx   # your own questions
 promptbeacon scan httpx -t "python http client" --assert-min-score 50   # CI gate
 promptbeacon scan --protocol protocol.json                   # pinned, reproducible run
 promptbeacon init --dry-run                                  # set up a weekly workflow + badge

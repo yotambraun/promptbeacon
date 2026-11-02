@@ -21,6 +21,10 @@ first and ask before spending.
   "crm software"). Confirm it with the user if you guessed it. Ask for two to
   four competitors if you don't know them; they make share of voice and rank
   meaningful.
+- If the user knows the questions their users ask, use them as
+  `custom_prompts`; add other names of the product (a package name, an old
+  name) as `aliases`. For a decision that matters, `stability_runs: 3` shows
+  whether the result holds across runs (three times the cost).
 
 ## 2. Mode
 
@@ -36,8 +40,8 @@ Call `providers`.
 
 ## 3. Price it, then ask
 
-Call `estimate` with the same subject, category, competitors and models you will
-scan with, and a cap: `max_cost` from the user, or 0.05 (US dollars) by default.
+Call `estimate` with the same subject, category, competitors, models,
+`custom_prompts` and `stability_runs` you will scan with, and a cap: `max_cost` from the user, or 0.05 (US dollars) by default.
 Tell the user the estimate (`summary`) and the cap, and ask before scanning.
 Skip the question only when the user already approved a budget, the estimate is
 $0 (demo or local models), or they said not to ask. If it is above the cap,

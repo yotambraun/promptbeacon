@@ -29,6 +29,10 @@ subject, compared with its competitors.
    Ollama model"), pass `models`, for example
    `{"anthropic": "claude-sonnet-5-5"}` or `{"litellm": "ollama/llama3.2"}`.
    Otherwise each provider's default model is used; `providers` lists them.
+   If the user has the questions their users actually ask, pass them as
+   `custom_prompts` (asked as written); pass other names of the product as
+   `aliases`. `stability_runs` (2-20) repeats the scan to show how stable the
+   result is, and multiplies the cost.
    For real (billed) scans, pass `max_cost` in US dollars (for example `0.05`)
    unless the user says otherwise: the scan is refused if its estimate is
    higher, and stops at the cap. If the result has `partial: true`, say that

@@ -46,7 +46,7 @@ inputs:
     required: false
     default: "0"
   stability:
-    description: "Repeat the scan N times and report stability (0 = off)"
+    description: "Repeat the scan N times and report stability (0 = off, otherwise 2 or more)"
     required: false
     default: "0"
   min-stability:

@@ -70,6 +70,7 @@ from promptbeacon.prompts.templates import (
     NEUTRAL_BUYER_INTENT_TEMPLATES,
     expand_prompt_templates,
     get_industry_prompts,
+    validate_prompts,
 )
 from promptbeacon.providers.base import BaseLLMClient
 from promptbeacon.providers.grounding import (
@@ -196,6 +197,11 @@ class Beacon:
     def brand(self) -> str:
         """The brand being monitored."""
         return self._config.brand
+
+    @property
+    def stability_runs(self) -> int | None:
+        """Runs set with :meth:`with_stability`, or ``None`` for a single scan."""
+        return self._stability_runs
 
     @property
     def config(self) -> BeaconConfig:
@@ -428,15 +434,21 @@ class Beacon:
     def with_prompts(self, prompts: list[str]) -> Self:
         """Set custom prompts for scanning.
 
-        Use {category} as a placeholder for category names.
+        Use ``{category}`` as a placeholder for category names: such a prompt is
+        asked once per category. A prompt without it is asked once, as written.
+        Write other literal braces as ``{{`` and ``}}``.
 
         Args:
-            prompts: List of prompt templates.
+            prompts: List of prompts or prompt templates.
 
         Returns:
             Self for chaining.
+
+        Raises:
+            ValueError: For an empty list, a blank or duplicate prompt, or a
+                placeholder other than ``{category}``.
         """
-        self._custom_prompts = prompts
+        self._custom_prompts = validate_prompts(prompts)
         self._explicit_prompts = True
         return self
 
@@ -800,11 +812,14 @@ class Beacon:
         uses_category = any("{category}" in t for t in templates)
 
         if self._categories_set or not uses_category:
-            prompts = [
-                t.format(category=category)
-                for category in self._config.categories
-                for t in templates
-            ]
+            # A template without {category} is asked once, not once per category.
+            prompts = list(
+                dict.fromkeys(
+                    t.format(category=category)
+                    for category in self._config.categories
+                    for t in templates
+                )
+            )
             strategy: PromptStrategy
             if not uses_category:
                 strategy = "custom"

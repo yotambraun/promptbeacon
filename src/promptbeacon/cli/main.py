@@ -309,6 +309,33 @@ def scan(
         int | None,
         typer.Option("--prompts", "-n", help="Number of prompts per category"),
     ] = None,
+    custom_prompts: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--prompt",
+            help="Your own prompt, asked as written (repeatable). Replaces the "
+            "built-in prompts; {category} is replaced by each --category",
+        ),
+    ] = None,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--prompt-file",
+            help="A text file of prompts, one per line (blank lines and lines "
+            "starting with # are skipped), asked after any --prompt",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ] = None,
+    aliases: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--alias",
+            help="Another name that counts as the brand (repeatable), e.g. "
+            "python-httpx",
+        ),
+    ] = None,
     storage: Annotated[
         Path | None,
         typer.Option(
@@ -407,6 +434,8 @@ def scan(
         promptbeacon scan "httpx" -t "python http client" --max-cost 0.05
 
         promptbeacon scan "httpx" -t "python http client" -p openai --estimate
+
+        promptbeacon scan httpx --prompt-file questions.txt --alias python-httpx -r 3
     """
     # Build beacon configuration — from a pinned protocol, or from CLI flags.
     if protocol is not None:
@@ -441,6 +470,9 @@ def scan(
             prompt_count=prompt_count,
             demo=demo,
             infer_category=infer_category,
+            prompts=_custom_prompt_list(custom_prompts, prompt_file),
+            aliases=aliases,
+            stability_runs=stability,
         )
         brand = beacon.brand
 
@@ -450,10 +482,7 @@ def scan(
         if grounded:
             beacon = beacon.with_grounding()
 
-        if stability > 0:
-            beacon = beacon.with_stability(stability)
-
-        run_stability = stability > 0
+        run_stability = beacon.stability_runs is not None
 
     if max_cost is not None:
         beacon = beacon.with_max_cost(max_cost)
@@ -1205,7 +1234,7 @@ def _print_estimate(beacon: Beacon, output_format: OutputFormat, *, stability: b
     """``scan --estimate``: price the scan without sending anything."""
     from promptbeacon.budget import format_usd
 
-    runs = (beacon._stability_runs or 5) if stability else 1
+    runs = (beacon.stability_runs or 5) if stability else 1
     try:
         est = beacon.estimate_cost(runs)
     except Exception as e:
@@ -1617,6 +1646,27 @@ def _project_ref(
     return given[0] if given else None
 
 
+def _custom_prompt_list(
+    prompts: list[str] | None, prompt_file: Path | None
+) -> list[str] | None:
+    """--prompt values plus the lines of --prompt-file (None when neither is given)."""
+    if not prompts and prompt_file is None:
+        return None
+    combined = list(prompts or [])
+    if prompt_file is not None:
+        lines = prompt_file.read_text(encoding="utf-8").splitlines()
+        from_file = [
+            line.strip()
+            for line in lines
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        if not from_file:
+            err_console.print(f"[red]Error:[/red] no prompts in {prompt_file}.")
+            raise typer.Exit(1)
+        combined += from_file
+    return combined
+
+
 def _beacon_from_options(
     brand: str | None,
     *,
@@ -1630,6 +1680,9 @@ def _beacon_from_options(
     grounded: bool = False,
     infer_category: bool = False,
     max_cost: float | None = None,
+    prompts: list[str] | None = None,
+    aliases: list[str] | None = None,
+    stability_runs: int | None = None,
 ) -> Beacon:
     """CLI wrapper around :func:`promptbeacon.builder.configure_beacon`.
 
@@ -1660,6 +1713,9 @@ def _beacon_from_options(
                         grounded=grounded,
                         infer_category=infer_category,
                         max_cost=max_cost,
+                        prompts=prompts,
+                        aliases=aliases,
+                        stability_runs=stability_runs,
                     )
             except ProjectMetadataUnavailable as e:
                 if not demo:
@@ -1692,6 +1748,9 @@ def _beacon_from_options(
             grounded=grounded,
             infer_category=infer_category,
             max_cost=max_cost,
+            prompts=prompts,
+            aliases=aliases,
+            stability_runs=stability_runs,
         )
     except (ProjectMetadataError, ValueError) as e:
         err_console.print(f"[red]Error:[/red] {_esc(e)}")

@@ -435,12 +435,17 @@ beacon = (
 
 #### `with_prompts(prompts: list[str]) -> Beacon`
 
-Use fully custom prompts instead of defaults. Use `{category}` as a placeholder.
+Use fully custom prompts instead of defaults. A prompt with the `{category}` placeholder
+is asked once per category; a prompt without it is asked once, as written. Write other
+literal braces as `{{` and `}}`.
 
 **Parameters:**
-- `prompts` (list[str]): List of prompt templates
+- `prompts` (list[str]): List of prompts or prompt templates
 
 **Returns:** Self for chaining
+
+**Raises:** `ValueError` for an empty list, a blank or duplicate prompt, more than 1,000
+prompts, or a placeholder other than `{category}`.
 
 **Example:**
 ```python

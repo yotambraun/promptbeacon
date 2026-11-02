@@ -35,6 +35,9 @@ def configure_beacon(
     grounded: bool = False,
     infer_category: bool = False,
     max_cost: float | None = None,
+    prompts: Sequence[str] | None = None,
+    aliases: Sequence[str] | None = None,
+    stability_runs: int | None = None,
 ) -> Beacon:
     """Build a Beacon from plain options.
 
@@ -57,13 +60,32 @@ def configure_beacon(
         infer_category: Opt-in single LLM call to name the category (and
             competitors) when none is given. Ignored in demo mode.
         max_cost: Spending cap in US dollars (see :meth:`Beacon.with_max_cost`).
+        prompts: Your own prompts, asked as written; ``{category}`` in a prompt
+            is replaced by each category (see :meth:`Beacon.with_prompts`).
+            Cannot be combined with ``prompt_count``.
+        aliases: Other names that count as the brand (added to a project's own).
+        stability_runs: Repeat the scan this many times (2 or more) and report
+            stability (see :meth:`Beacon.with_stability`); 0 or ``None`` for a
+            single scan. Multiplies the cost.
 
     Raises:
-        ValueError: If neither brand nor project is given, or a provider or
-            model option is invalid.
+        ValueError: If neither brand nor project is given, a provider, model,
+            prompt or alias option is invalid, prompts are combined with a
+            prompt count, or stability_runs is 1 or negative.
         promptbeacon.projects.ProjectMetadataError: If project metadata cannot be
             fetched.
     """
+    if prompts is not None and prompt_count is not None:
+        raise ValueError(
+            "Give either your own prompts or a prompt count, not both: your "
+            "prompts are all asked, as written."
+        )
+    if stability_runs is not None and stability_runs != 0 and stability_runs < 2:
+        raise ValueError(
+            f"stability runs must be at least 2 (got {stability_runs}); use 0 "
+            "for a single scan."
+        )
+
     if project:
         beacon = Beacon.from_project(
             project, infer=infer_category and not categories and not demo
@@ -97,4 +119,24 @@ def configure_beacon(
         beacon = beacon.with_grounding()
     if max_cost is not None:
         beacon = beacon.with_max_cost(max_cost)
+    if prompts is not None:
+        beacon = beacon.with_prompts(list(prompts))
+    if aliases:
+        beacon = beacon.with_aliases(
+            *_clean_aliases([*beacon.config.brand_aliases, *aliases], beacon.brand)
+        )
+    if stability_runs:
+        beacon = beacon.with_stability(stability_runs)
     return beacon
+
+
+def _clean_aliases(aliases: Sequence[str], brand: str) -> list[str]:
+    """Aliases without blanks, the brand itself, or repeats (ignoring case)."""
+    seen = {brand.strip().lower()}
+    cleaned = []
+    for alias in aliases:
+        name = alias.strip()
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            cleaned.append(name)
+    return cleaned

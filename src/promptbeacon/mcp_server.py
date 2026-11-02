@@ -113,6 +113,35 @@ Models = Annotated[
 Prompts = Annotated[
     int | None, Field(description="Prompts per category (default 10).", ge=1)
 ]
+CustomPrompts = Annotated[
+    list[str] | None,
+    Field(
+        description="Your own prompts, asked as written, e.g. the questions your "
+        'users ask ("Which Python library should I use to call a REST API?"). '
+        "{category} in a prompt is replaced by the category; write other braces "
+        "as {{ and }}. Replaces the built-in prompts; cannot be combined with "
+        "prompts (the count).",
+        min_length=1,
+        max_length=1000,
+    ),
+]
+Aliases = Annotated[
+    list[str] | None,
+    Field(
+        description='Other names that count as the brand, e.g. ["python-httpx"]. '
+        "Names match as whole names, case-insensitively."
+    ),
+]
+StabilityRuns = Annotated[
+    int | None,
+    Field(
+        description="Repeat the whole scan this many times (2-20) and report how "
+        "stable the result is (stability score, confidence interval, prompts "
+        "that flip-flop). Multiplies the cost by the number of runs.",
+        ge=2,
+        le=20,
+    ),
+]
 Demo = Annotated[
     bool | None,
     Field(
@@ -244,13 +273,47 @@ async def _run(beacon):
 
     with _stdout_to_stderr(), warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
+        if beacon.stability_runs:
+            return await beacon.scan_stability_async()
         return await beacon.scan_async()
+
+
+STABILITY_MAX_RUNS = 20
+
+
+def _measurement(
+    custom_prompts: list[str] | None,
+    aliases: list[str] | None,
+    stability_runs: int | None,
+) -> dict[str, Any]:
+    """The measurement options as builder arguments, checked like the schema."""
+    if stability_runs is not None and not 2 <= stability_runs <= STABILITY_MAX_RUNS:
+        raise ValueError(
+            f"stability_runs must be between 2 and {STABILITY_MAX_RUNS}, "
+            f"got {stability_runs}."
+        )
+    return {
+        "prompts": custom_prompts,
+        "aliases": aliases,
+        "stability_runs": stability_runs,
+    }
 
 
 def _summary(report, note: str | None) -> dict[str, Any]:
     from promptbeacon.share.summary import report_summary
 
     result = report_summary(report)
+    if report.stability:
+        stability = report.stability
+        result["stability"] = {
+            "runs": stability.runs,
+            "score_per_run": stability.score_per_run,
+            "score_confidence_interval": list(stability.score_confidence_interval),
+            "presence_consistency": stability.overall_presence_consistency,
+            "flip_flop_prompts": [
+                p.prompt for p in stability.prompt_stability if p.flip_flopped
+            ],
+        }
     if report.prompt_strategy == "generic":
         result["warning"] = (
             "No category was given, so prompts were generic and the score says "
@@ -338,12 +401,16 @@ async def estimate(
         bool, Field(description="Price a web-grounded scan (adds search fees).")
     ] = False,
     max_cost: MaxCost = None,
+    custom_prompts: CustomPrompts = None,
+    aliases: Aliases = None,
+    stability_runs: StabilityRuns = None,
 ) -> dict[str, Any]:
     """Price a scan before running it, from LiteLLM's bundled price map.
 
     Returns the expected and upper-bound cost per model, the number of answers
     and requests, models with no known price (counted as $0, e.g. local models),
-    a one-line summary, and within_budget when max_cost is given. With no key
+    a one-line summary, and within_budget when max_cost is given. Pass the same
+    custom_prompts and stability_runs you will scan with. With no key
     configured, scans run in demo mode and the estimate is $0.
 
     Free: sends no requests (a project reads its public metadata).
@@ -360,6 +427,7 @@ async def estimate(
         demo=use_demo,
         grounded=grounded,
         max_cost=max_cost,
+        **_measurement(custom_prompts, aliases, stability_runs),
     )
     with _stdout_to_stderr():
         est = beacon.estimate_cost()
@@ -390,18 +458,24 @@ async def scan(
     max_cost: MaxCost = None,
     save_report: SaveReport = None,
     save_history: SaveHistory = True,
+    custom_prompts: CustomPrompts = None,
+    aliases: Aliases = None,
+    stability_runs: StabilityRuns = None,
 ) -> dict[str, Any]:
     """Measure how often AI assistants mention and recommend a brand.
 
     Returns the visibility score (0-100), share of voice and rank against the
     competitors, presence, a per-brand table, top cited sources, the models that
     answered, the cost, partial and budget, the top recommendations, and
-    measurement_tier (demo, base_model or api_grounded).
+    measurement_tier (demo, base_model or api_grounded). Define the measurement
+    with custom_prompts (your users' questions), aliases and stability_runs;
+    with stability_runs the result adds a stability block.
 
     Cost: with provider keys this sends real requests billed to those keys (one
     per prompt per provider); call estimate first and pass max_cost. Without
     keys it uses keyless demo data, costs nothing, and says so in note.
     """
+    measurement = _measurement(custom_prompts, aliases, stability_runs)
     use_demo, note = _resolve_demo(demo, models)
     beacon = configure_beacon(
         brand,
@@ -413,6 +487,7 @@ async def scan(
         demo=use_demo,
         grounded=grounded,
         max_cost=max_cost,
+        **measurement,
     )
     return await _finish_scan(
         beacon,
@@ -446,6 +521,9 @@ async def project_scan(
     max_cost: MaxCost = None,
     save_report: SaveReport = None,
     save_history: SaveHistory = True,
+    custom_prompts: CustomPrompts = None,
+    aliases: Aliases = None,
+    stability_runs: StabilityRuns = None,
 ) -> dict[str, Any]:
     """Does AI recommend this open-source project or package?
 
@@ -453,9 +531,11 @@ async def project_scan(
     and competitors, then scans. Returns the scan result plus a project object
     with the metadata and the guessed category and competitors, with their
     basis. Show the user the guess; pass category or competitors to correct it.
+    custom_prompts, aliases and stability_runs work as in scan.
 
     Cost: as scan (billed with provider keys, free demo data without).
     """
+    measurement = _measurement(custom_prompts, aliases, stability_runs)
     use_demo, note = _resolve_demo(demo, models)
     beacon = await _build(
         brand=None,
@@ -468,6 +548,7 @@ async def project_scan(
         demo=use_demo,
         infer_category=infer_category,
         max_cost=max_cost,
+        **measurement,
     )
     result = await _finish_scan(
         beacon,
