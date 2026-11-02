@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -32,18 +33,72 @@ DEMO_ARGS = ["httpx", "-t", "python http client", "-c", "requests", "-c", "aioht
 WIDTH = 88
 
 
+def _cli() -> list[str]:
+    """The installed ``promptbeacon`` command, exactly what users run."""
+    script = Path(sys.executable).with_name("promptbeacon")
+    if script.exists():
+        return [str(script)]
+    # Same entry point as the console script, without runpy's re-import warning.
+    return [sys.executable, "-c", "from promptbeacon.cli.main import app; app()"]
+
+
 def _promptbeacon(*args: str) -> str:
-    """Run the installed CLI with colours on and return stderr + stdout."""
-    env = {**os.environ, "FORCE_COLOR": "1", "COLUMNS": str(WIDTH), "TERM": "xterm"}
+    """Run the CLI with colours on and return what a terminal would show.
+
+    stdout and stderr share one unbuffered pipe, so their lines arrive in the
+    order a terminal prints them.
+    """
+    env = {
+        **os.environ,
+        "FORCE_COLOR": "1",
+        "COLUMNS": str(WIDTH),
+        "TERM": "xterm",
+        "PYTHONUNBUFFERED": "1",
+    }
     proc = subprocess.run(
-        [sys.executable, "-m", "promptbeacon.cli.main", *args],
-        capture_output=True,
-        text=True,
+        [*_cli(), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         env=env,
         check=True,
         cwd=ROOT,
     )
-    return proc.stderr + proc.stdout
+    # Decoded by hand: text mode would turn every carriage return into a
+    # newline, which keeps each spinner frame as a line of its own.
+    return _final_screen(proc.stdout.decode("utf-8"))
+
+
+# Cursor controls Rich uses for live displays (spinners): erase line, cursor
+# up, cursor show/hide. Colour codes (ending in "m") are kept.
+_CONTROL = re.compile(r"\x1b\[(\d*)([AK])|\x1b\[\?25[lh]")
+
+
+def _final_screen(stream: str) -> str:
+    """Apply carriage returns and Rich's cursor controls like a terminal.
+
+    A spinner redraws one line many times and erases it when done; replaying
+    those controls keeps only what stays on screen.
+    """
+    lines: list[str] = [""]
+    pos = 0
+    while pos < len(stream):
+        match = _CONTROL.search(stream, pos)
+        end = match.start() if match else len(stream)
+        for i, part in enumerate(stream[pos:end].split("\n")):
+            if i:
+                lines.append("")
+            # A carriage return restarts the line; later text overwrites it.
+            lines[-1] = part.rsplit("\r", 1)[-1] if "\r" in part else lines[-1] + part
+        if not match:
+            break
+        if match.group(2) == "K":  # erase the current line
+            lines[-1] = ""
+        elif match.group(2) == "A":  # cursor up onto the line a spinner used
+            for _ in range(int(match.group(1) or 1)):
+                if len(lines) > 1 and not lines[-1]:
+                    lines.pop()
+        pos = match.end()
+    return "\n".join(lines)
 
 
 def render_cli_demo() -> None:
