@@ -187,6 +187,8 @@ Recommendation Index is built but not yet run.
   citations), the funnel and the AI Recommendation Index. Names with punctuation match
   as written (`C++`, `.NET`, `Node.js`, `scikit-learn`), non-ASCII names work, and a
   hyphenated compound is a different name (`pytest` is not found in "pytest-asyncio").
+  An alias that contains the brand name (`Nike Inc` for `Nike`) no longer counts the
+  same words as two mentions.
 - **Numbers inside sentences were read as ranks.** "We recommend Python 3.12 with
   httpx" gave httpx rank 3, because any digit followed by a period counted as a list
   number. A rank now comes only from a numbered item at the start of a line (Markdown

@@ -94,6 +94,16 @@ class TestMentionsUseWholeNames:
         assert get_mention_positions(text, "uv") == [0, 37]
         assert calculate_mention_prominence("uvicorn only", "uv") == 0.0
 
+    def test_alias_containing_the_brand_is_one_mention(self):
+        result = extract_mentions(
+            "Nike Inc leads. Nike is popular.", "Nike", aliases=["Nike Inc"]
+        )
+        assert result.total_mentions == 2  # not 3: "Nike Inc" is one mention
+
+    def test_overlapping_names_of_different_brands_both_count(self):
+        result = extract_mentions("React Native apps", "React Native", ["React"])
+        assert result.brands_found == ["React Native", "React"]
+
     def test_alias_with_punctuation(self):
         result = extract_mentions("Pick Node.js for this.", "Node", aliases=["Node.js"])
         assert result.brands_found == ["Node"]

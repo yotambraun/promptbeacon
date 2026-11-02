@@ -50,18 +50,31 @@ def extract_mentions(
     names += [(alias, target_brand) for alias in aliases or []]
     names += [(competitor, competitor) for competitor in competitors or []]
 
-    found: list[tuple[int, str, str, re.Match[str]]] = []
-    for name, canonical in names:
-        for match in iter_brand_matches(response, name):
-            found.append((match.start(), canonical, name, match))
-    found.sort(key=lambda item: item[0])
+    candidates: list[tuple[str, str, re.Match[str]]] = [
+        (canonical, name, match)
+        for name, canonical in names
+        for match in iter_brand_matches(response, name)
+    ]
+    # Text order, longest name first at the same place, and one mention per
+    # stretch of text for each brand: "Nike Inc" with the alias "Nike Inc" is
+    # one mention of Nike, not two.
+    candidates.sort(key=lambda c: (c[2].start(), -len(c[2].group(0))))
+    found: list[tuple[str, str, re.Match[str]]] = []
+    for canonical, name, match in candidates:
+        if not any(
+            other == canonical
+            and match.start() < kept.end()
+            and kept.start() < match.end()
+            for other, _, kept in found
+        ):
+            found.append((canonical, name, match))
 
     order: dict[str, int] = {}
-    for _, canonical, _, _ in found:
+    for canonical, _, _ in found:
         order.setdefault(canonical, len(order))
 
     mentions: list[BrandMention] = []
-    for _, canonical, name, match in found:
+    for canonical, name, match in found:
         start, end = match.span()
 
         # Surrounding text, for sentiment and the evidence quote
