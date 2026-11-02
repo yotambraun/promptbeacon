@@ -1175,7 +1175,7 @@ Represents a single brand mention.
 |-----------|------|-------------|
 | `brand_name` | str | Brand mentioned |
 | `sentiment` | "positive" \| "neutral" \| "negative" | Sentiment |
-| `position` | int | Position in response (0-indexed) |
+| `position` | int | Order in which the brand first appears among the tracked brands named in the answer (0 = named first) |
 | `context` | str | Surrounding text |
 | `confidence` | float | Confidence (0.0-1.0) |
 | `is_recommendation` | bool | Explicitly recommended |
@@ -1252,7 +1252,7 @@ Detailed visibility metrics.
 | `visibility_score` | float | Overall score (0-100) |
 | `mention_count` | int | Total mentions |
 | `recommendation_rate` | float | Recommendation rate (0.0-1.0) |
-| `average_position` | float \| None | Average mention position |
+| `average_position` | float \| None | Mean, over answers that name the brand, of its `position` (0.0 = always named first); `None` if never named |
 | `sentiment` | SentimentBreakdown | Sentiment breakdown |
 | `confidence_interval` | tuple[float, float] \| None | 95% CI for score |
 | `score_breakdown` | ScoreBreakdown \| None | Breakdown of the 4 scoring factors |

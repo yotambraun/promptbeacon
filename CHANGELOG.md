@@ -149,6 +149,37 @@ Recommendation Index is built but not yet run.
 - New dependency on Python 3.10 only: `tomli` (for `init`; Python 3.11+ uses `tomllib`).
 
 ### Fixed
+- **Scores for short or common brand names were inflated by substring matches.** A
+  brand was found anywhere in the text, so `uv` counted in every answer that named
+  "uvicorn", `React` in "Preact" and `Ray` in "array". Brands now match only as whole
+  names, through one shared matcher (`promptbeacon.extraction.matching`) used for
+  mentions, ranks, recommendations, citation attribution (including web-grounded
+  citations), the funnel and the AI Recommendation Index. Names with punctuation match
+  as written (`C++`, `.NET`, `Node.js`, `scikit-learn`), non-ASCII names work, and a
+  hyphenated compound is a different name (`pytest` is not found in "pytest-asyncio").
+- **Numbers inside sentences were read as ranks.** "We recommend Python 3.12 with
+  httpx" gave httpx rank 3, because any digit followed by a period counted as a list
+  number. A rank now comes only from a numbered item at the start of a line (Markdown
+  `1. **Name**`, `**1. Name**` and `### 1. Name` included), an ordered bullet or a
+  recommending sentence; recommending sentences no longer stop at the dot in names such
+  as `Node.js`.
+- **`average_position` was not the order of appearance.** Each mention's `position`
+  counted through the brand list (target first), not the text, so the target always
+  looked named first; and an average of 0.0 (always named first) was reported as
+  `None`. `position` is now the order in which the brand first appears among the
+  tracked brands the answer names (0 = first), mentions are returned in text order, and
+  `average_position` is the mean of that order over the answers that name the brand.
+  Smart extraction (`--smart`) orders mentions the same way.
+- The "actively recommended in N responses" insight counted mentions, so it could
+  exceed the number of answers ("in 14 responses" from 10 prompts). It now counts
+  answers ("in 5 of 10 answers").
+
+  **Measured scores change** for brands whose name appears inside other words (short
+  names such as `uv`, `Ray` or `React` most of all): their mention rate, share of voice
+  and score drop to what the answers actually say, and so can a competitor's. Position
+  scores change where an answer had version numbers or decimals at a rank's place.
+  Saved history keeps the old numbers; compare scans made with 1.4.0 with each other.
+  The keyless demo's numbers are unchanged (its answers name brands as whole words).
 - **Scans failed under `-W error` / `filterwarnings = error` on Python 3.12+.**
   `datetime.utcnow()` raised a `DeprecationWarning` inside every provider query, which
   was swallowed and reported as "All provider queries failed. Check API keys and

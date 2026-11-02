@@ -91,6 +91,12 @@
 - [x] `GEMINI_API_KEY` support
 - [x] Fast import (LiteLLM loaded only for live requests)
 - [x] Python 3.14; warnings-as-errors test suite
+- [x] `promptbeacon init` (repository setup: workflow, badge snippet, secrets)
+- [x] Cost cap (`--max-cost`, `with_max_cost`, Action and MCP `max_cost`) and estimates
+- [x] Rank badge, score trend on share cards, crates.io and Hugging Face sources
+- [x] MCP tools for estimate, compare, recommendations, history, funnel; setup for seven
+      AI assistants; `ai-visibility-review` skill
+- [x] Whole-name brand matching; ranks only from list items; appearance-order positions
 
 ---
 
@@ -117,7 +123,7 @@
 - [ ] Provider-specific rate limiting
 - [x] Retries (LiteLLM `num_retries`)
 - [x] Cost tracking (grounded and base scans)
-- [ ] Cost budgeting (stop a scan at a spend limit)
+- [x] Cost budgeting (`--max-cost`, `with_max_cost`; 1.4.0)
 
 ---
 

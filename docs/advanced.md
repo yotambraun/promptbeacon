@@ -547,6 +547,29 @@ async def scan_brand(request: ScanRequest):
 
 ## Custom Scoring
 
+### How mentions and ranks are found
+
+The default extraction reads each answer with fixed rules, so the same answer always
+gives the same numbers:
+
+- **A brand counts only as a whole name**, case-insensitively: `uv` is not found in
+  "uvicorn", `React` not in "Preact", `pytest` not in "pytest-asyncio". Names with
+  punctuation match as written (`C++`, `.NET`, `Node.js`, `scikit-learn`), and aliases
+  from `with_aliases()` count as the brand. A hyphenated use ("uv-managed") is not
+  counted.
+- **A rank comes from a list item**: a line that starts with a number ("1. httpx",
+  "2) requests", "**3. aiohttp**", "### 4. urllib3"), an ordered bullet ("- Best:
+  httpx") or a recommending sentence ("I recommend httpx", rank 1). Numbers inside a
+  sentence, such as "Python 3.12", are never ranks. In a numbered item only the text
+  before the first colon is read, so a brand named in another item's description does
+  not take that item's rank.
+- **`position`** on each mention is the order in which its brand first appears among
+  the tracked brands the answer names (0 = named first);
+  `report.metrics.average_position` averages it over the answers that name the brand.
+
+`with_smart_extraction()` asks a model to read the answers instead (one more request per
+answer) and catches paraphrases these rules miss.
+
 ### Configurable Scoring Weights
 
 PromptBeacon's visibility score is composed of 4 factors. You can customize their weights with `.with_scoring_weights()`:
