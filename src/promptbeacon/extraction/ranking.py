@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from promptbeacon.extraction.matching import find_brand, mentions_brand
+
 RankingType = Literal["numbered", "ordered", "recommended", "mentioned"]
 
 
@@ -30,12 +32,52 @@ class RankingAnalysis(BaseModel):
     brand_positions: dict[str, int] = Field(default_factory=dict)
 
 
+# A numbered list item: the number starts the line, after optional indentation
+# and Markdown emphasis or a heading marker ("1. X", "  2) X", "**3. X**",
+# "### 4. X"), and is followed by whitespace. Numbers inside a sentence
+# ("Python 3.12", "2.5 times") are never ranks. The item's title is the text
+# before the first colon, so a brand named only in the description is not
+# credited with the item's rank.
+_NUMBERED_ITEM = re.compile(
+    r"^[ \t]*(?:#{1,6}[ \t]+)?[*_]{0,2}(\d{1,2})[.)][ \t]+([^:\n]+)", re.MULTILINE
+)
+
+# Bulleted items that state an order ("- Best: X", "* **Second:** Y").
+_ORDERED_BULLETS = [
+    re.compile(
+        rf"^[ \t]*[-•*+][ \t]+[*_]{{0,2}}(?:{words})[*_]{{0,2}}[:\s]+([^\n]+)",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    for words in ("first|#1|top|best", "second|#2|runner-up", "third|#3")
+]
+
+# A sentence that recommends something; the clause runs to the end of the
+# sentence (a period followed by whitespace or the end of the text), so dotted
+# names such as "Node.js" stay whole.
+_RECOMMENDATIONS: list[tuple[re.Pattern[str], RankingType]] = [
+    (
+        re.compile(
+            rf"(?<!\w)(?:{phrases})[:\s]+(.+?)(?=[.!?](?:\s|$)|\n|$)",
+            re.IGNORECASE,
+        ),
+        "recommended",
+    )
+    for phrases in (
+        "recommend|suggest|top pick|best choice",
+        "first choice|my pick|go-to",
+    )
+]
+
+
 def extract_rankings(
     response: str,
     target_brand: str,
     competitors: list[str] | None = None,
 ) -> RankingAnalysis:
     """Extract brand rankings from an LLM response.
+
+    Brands are matched as whole names (see
+    :mod:`promptbeacon.extraction.matching`).
 
     Args:
         response: The LLM response text.
@@ -50,44 +92,31 @@ def extract_rankings(
     brand_positions: dict[str, int] = {}
     has_explicit_ranking = False
 
-    # Look for numbered lists (1. Brand, 2. Brand, etc.)
-    numbered_pattern = r"(\d+)[.\)]\s*([^:\n]+)"
-    numbered_matches = re.findall(numbered_pattern, response)
-
-    if numbered_matches:
-        for position_str, text in numbered_matches:
-            position = int(position_str)
-            for brand in all_brands:
-                if brand.lower() in text.lower():
-                    has_explicit_ranking = True
-                    if (
-                        brand not in brand_positions
-                        or position < brand_positions[brand]
-                    ):
-                        brand_positions[brand] = position
-                        rankings.append(
-                            RankingResult(
-                                brand=brand,
-                                position=position,
-                                total_ranked=len(numbered_matches),
-                                context=text.strip()[:200],
-                                confidence=0.9,
-                                ranking_type="numbered",
-                            )
+    # Numbered list items (1. Brand, 2. Brand, ...)
+    numbered_matches = _NUMBERED_ITEM.findall(response)
+    for position_str, text in numbered_matches:
+        position = int(position_str)
+        for brand in all_brands:
+            if mentions_brand(text, brand):
+                has_explicit_ranking = True
+                if brand not in brand_positions or position < brand_positions[brand]:
+                    brand_positions[brand] = position
+                    rankings.append(
+                        RankingResult(
+                            brand=brand,
+                            position=position,
+                            total_ranked=len(numbered_matches),
+                            context=text.strip()[:200],
+                            confidence=0.9,
+                            ranking_type="numbered",
                         )
+                    )
 
-    # Look for bullet points with order indicators
-    bullet_patterns = [
-        r"[-•*]\s*(first|#1|top|best)[:\s]+([^\n]+)",
-        r"[-•*]\s*(second|#2|runner-up)[:\s]+([^\n]+)",
-        r"[-•*]\s*(third|#3)[:\s]+([^\n]+)",
-    ]
-
-    for idx, pattern in enumerate(bullet_patterns, 1):
-        matches = re.findall(pattern, response, re.IGNORECASE)
-        for _, text in matches:
+    # Bullet points with order indicators
+    for idx, pattern in enumerate(_ORDERED_BULLETS, 1):
+        for text in pattern.findall(response):
             for brand in all_brands:
-                if brand.lower() in text.lower():
+                if mentions_brand(text, brand):
                     has_explicit_ranking = True
                     if brand not in brand_positions:
                         brand_positions[brand] = idx
@@ -101,17 +130,11 @@ def extract_rankings(
                             )
                         )
 
-    # Look for recommendation patterns
-    rec_patterns: list[tuple[str, RankingType]] = [
-        (r"(recommend|suggest|top pick|best choice)[:\s]+([^\n.]+)", "recommended"),
-        (r"(first choice|my pick|go-to)[:\s]+([^\n.]+)", "recommended"),
-    ]
-
-    for rec_pattern, rec_ranking_type in rec_patterns:
-        matches = re.findall(rec_pattern, response, re.IGNORECASE)
-        for _, text in matches:
+    # Recommendation sentences
+    for rec_pattern, rec_ranking_type in _RECOMMENDATIONS:
+        for text in rec_pattern.findall(response):
             for brand in all_brands:
-                if brand.lower() in text.lower() and brand not in brand_positions:
+                if brand not in brand_positions and mentions_brand(text, brand):
                     brand_positions[brand] = 1
                     rankings.append(
                         RankingResult(
@@ -123,13 +146,11 @@ def extract_rankings(
                         )
                     )
 
-    # For brands not found in rankings, record their first mention position
+    # For brands not found in rankings, record their first mention
     for brand in all_brands:
         if brand not in brand_positions:
-            brand_pattern = re.compile(re.escape(brand), re.IGNORECASE)
-            match = brand_pattern.search(response)
+            match = find_brand(response, brand)
             if match:
-                # Calculate relative position based on character position
                 char_pos = match.start()
                 rankings.append(
                     RankingResult(

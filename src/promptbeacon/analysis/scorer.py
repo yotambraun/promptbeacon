@@ -190,15 +190,20 @@ def calculate_metrics(
     recommendations = sum(1 for m in all_mentions if m.is_recommendation)
     recommendation_rate = recommendations / mention_count if mention_count > 0 else 0
 
-    # Average position
-    positions = [m.position for m in all_mentions]
-    average_position = sum(positions) / len(positions) if positions else None
+    # Average position: per answer that names the brand, its order of first
+    # appearance among the tracked brands named (0 = named first).
+    positions = [
+        min(m.position for m in r.mentions if m.brand_name.lower() == brand.lower())
+        for r in results
+        if r.success and _brand_appears(r, brand)
+    ]
+    average_position = round(sum(positions) / len(positions), 2) if positions else None
 
     return VisibilityMetrics(
         visibility_score=visibility_score,
         mention_count=mention_count,
         recommendation_rate=round(recommendation_rate, 3),
-        average_position=round(average_position, 2) if average_position else None,
+        average_position=average_position,
         sentiment=sentiment,
         confidence_interval=None,  # Calculated separately with statistics module
         score_breakdown=breakdown,

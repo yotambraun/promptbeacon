@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from promptbeacon.core.config import Provider
+from promptbeacon.extraction.matching import brand_regex
 
 INDEX_DIR = Path(__file__).resolve().parents[1]
 CATEGORIES_DIR = INDEX_DIR / "categories"
@@ -35,12 +36,13 @@ class Candidate(BaseModel):
         return list(self.match) or [self.name]
 
     def pattern(self) -> re.Pattern[str]:
-        """Whole-word match of any term (not inside a longer word or hyphenation)."""
+        """Whole-name match of any term, with PromptBeacon's brand matcher (not
+        inside a longer word or a hyphenated compound)."""
         alternatives = "|".join(
-            re.escape(t) for t in sorted(self.terms, key=len, reverse=True)
+            brand_regex(t) for t in sorted(self.terms, key=len, reverse=True)
         )
         flags = 0 if self.case_sensitive else re.IGNORECASE
-        return re.compile(rf"(?<![\w-])(?:{alternatives})(?![\w-])", flags)
+        return re.compile(alternatives, flags)
 
 
 class IndexProtocol(BaseModel):

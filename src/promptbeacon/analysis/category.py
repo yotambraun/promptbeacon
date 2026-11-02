@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 import re
 
+from promptbeacon.extraction.matching import mentions_brand
 from promptbeacon.prompts.templates import expand_prompt_templates
 
 # Buyer-intent prompts anchored on a competitor. They need no category, they
@@ -127,7 +128,7 @@ def parse_category(text: str, brand: str) -> str | None:
     line = re.sub(r"\s+", " ", line)
     if not line or len(line.split()) > _MAX_CATEGORY_WORDS or len(line) > 60:
         return None
-    if brand.lower() in line:
+    if mentions_brand(line, brand):
         return None
     if any(ch in line for ch in '{}[]<>|"`'):
         return None

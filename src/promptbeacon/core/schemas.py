@@ -19,7 +19,12 @@ class BrandMention(BaseModel):
         ..., description="Sentiment of the mention"
     )
     position: int = Field(
-        ..., ge=0, description="Position in the response (0-indexed, by mention order)"
+        ...,
+        ge=0,
+        description=(
+            "Order in which this brand first appears among the tracked brands "
+            "named in the response (0 = named first)"
+        ),
     )
     context: str = Field(..., description="Surrounding text context of the mention")
     confidence: float = Field(
@@ -243,7 +248,13 @@ class VisibilityMetrics(BaseModel):
         default=0.0, ge=0.0, le=1.0, description="Rate at which brand is recommended"
     )
     average_position: float | None = Field(
-        default=None, ge=0, description="Average position when mentioned"
+        default=None,
+        ge=0,
+        description=(
+            "Mean, over answers that name the brand, of its order of first "
+            "appearance among the tracked brands named (0 = always named first); "
+            "None when it is never named"
+        ),
     )
     sentiment: SentimentBreakdown = Field(default_factory=SentimentBreakdown)
     confidence_interval: tuple[float, float] | None = Field(

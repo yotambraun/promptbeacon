@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 
+from promptbeacon.extraction.matching import mentions_any
 from promptbeacon.funnel.backends import SearchBackend
 from promptbeacon.funnel.planner import generate_sub_queries, llm_generate_sub_queries
 from promptbeacon.funnel.reranker import lexical_rerank, llm_rerank
@@ -12,8 +13,7 @@ from promptbeacon.funnel.schemas import FunnelReport, RetrievedSource, SubQueryR
 
 
 def _text_has_any(text: str, terms: list[str]) -> bool:
-    low = text.lower()
-    return any(term.lower() in low for term in terms if term)
+    return mentions_any(text, terms)
 
 
 def _build_report(

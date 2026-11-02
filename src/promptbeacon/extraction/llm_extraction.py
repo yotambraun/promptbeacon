@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 
 from promptbeacon.core.schemas import BrandMention
+from promptbeacon.extraction.matching import find_brand, first_brand_offset
 from promptbeacon.extraction.mentions import MentionExtractionResult
 
 # LLM extraction is far more reliable than a regex match, so mentions it returns
@@ -85,9 +86,8 @@ def parse_llm_extraction(
     tracked_lower = {b.lower(): b for b in ([target_brand] + (competitors or []))}
     tracked_lower.update({a.lower(): target_brand for a in (aliases or [])})
 
-    mentions: list[BrandMention] = []
-    brands_found: set[str] = set()
-    position = 0
+    # (canonical brand, name as reported, sentiment, recommended)
+    items: list[tuple[str, str, str, bool]] = []
     for item in data.get("mentions", []):
         if not isinstance(item, dict):
             continue
@@ -100,24 +100,38 @@ def parse_llm_extraction(
         sentiment = str(item.get("sentiment", "neutral")).lower()
         if sentiment not in _VALID_SENTIMENTS:
             sentiment = "neutral"
-
-        mentions.append(
-            BrandMention(
-                brand_name=canonical,
-                sentiment=sentiment,  # type: ignore[arg-type]
-                position=position,
-                context=_context_for(response_text, raw_brand),
-                confidence=_LLM_CONFIDENCE,
-                is_recommendation=bool(item.get("recommended", False)),
-            )
+        items.append(
+            (canonical, raw_brand, sentiment, bool(item.get("recommended", False)))
         )
-        brands_found.add(canonical)
-        position += 1
+
+    # Position: order of first appearance in the text among the brands found.
+    # A brand the model reports but the text never names verbatim (a
+    # paraphrase) goes after the named ones, in the model's order.
+    first_seen: dict[str, tuple[float, int]] = {}
+    for index, (canonical, raw_brand, _, _) in enumerate(items):
+        offset = first_brand_offset(response_text, raw_brand)
+        seen = (float("inf") if offset is None else float(offset), index)
+        if canonical not in first_seen or seen < first_seen[canonical]:
+            first_seen[canonical] = seen
+    ordered = sorted(first_seen, key=lambda brand: first_seen[brand])
+    order = {brand: rank for rank, brand in enumerate(ordered)}
+
+    mentions = [
+        BrandMention(
+            brand_name=canonical,
+            sentiment=sentiment,  # type: ignore[arg-type]
+            position=order[canonical],
+            context=_context_for(response_text, raw_brand),
+            confidence=_LLM_CONFIDENCE,
+            is_recommendation=recommended,
+        )
+        for canonical, raw_brand, sentiment, recommended in items
+    ]
 
     return MentionExtractionResult(
         mentions=mentions,
         total_mentions=len(mentions),
-        brands_found=list(brands_found),
+        brands_found=ordered,
     )
 
 
@@ -125,11 +139,11 @@ def _context_for(response_text: str, brand: str, window: int = 100) -> str:
     """Find a context snippet around the brand's first occurrence, if present."""
     if not brand:
         return ""
-    idx = response_text.lower().find(brand.lower())
-    if idx == -1:
+    match = find_brand(response_text, brand)
+    if match is None:
         return ""
-    start = max(0, idx - window)
-    end = min(len(response_text), idx + len(brand) + window)
+    start = max(0, match.start() - window)
+    end = min(len(response_text), match.end() + window)
     snippet = response_text[start:end].strip()
     if start > 0:
         snippet = "..." + snippet

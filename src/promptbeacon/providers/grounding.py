@@ -32,6 +32,7 @@ from promptbeacon.core.config import (
 )
 from promptbeacon.core.schemas import Citation
 from promptbeacon.extraction.citations import _extract_domain
+from promptbeacon.extraction.matching import mentions_brand
 from promptbeacon.providers.litellm_client import load_litellm, to_native_model
 
 logger = logging.getLogger(__name__)
@@ -362,12 +363,10 @@ def associate_brands(citations: list[Citation], brands: list[str]) -> list[Citat
     tracked brand appears in that snippet, attribute the source to it — this is
     what drives ``cites_target`` in source attribution.
     """
-    lowered = [(b, b.lower()) for b in brands]
     for citation in citations:
-        ctx = citation.context.lower()
-        for original, low in lowered:
-            if low and low in ctx:
-                citation.brand_associated = original
+        for brand in brands:
+            if brand and mentions_brand(citation.context, brand):
+                citation.brand_associated = brand
                 break
     return citations
 

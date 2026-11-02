@@ -6,6 +6,8 @@ import re
 
 from pydantic import BaseModel, Field
 
+from promptbeacon.extraction.matching import iter_brand_matches
+
 
 class Citation(BaseModel):
     """A single citation found in an LLM response."""
@@ -74,7 +76,7 @@ def _find_nearest_brand(
     best_distance = max_distance + 1
 
     for brand in brands:
-        for match in re.finditer(re.escape(brand), text, re.IGNORECASE):
+        for match in iter_brand_matches(text, brand):
             distance = min(
                 abs(match.start() - position),
                 abs(match.end() - position),
