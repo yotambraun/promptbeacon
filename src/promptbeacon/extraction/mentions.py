@@ -293,6 +293,10 @@ _ANTI_BEFORE = (
     "stay away from",
     "steer clear of",
     "not suggest",
+    "don't suggest",
+    "dont suggest",
+    "wouldn't suggest",
+    "wouldnt suggest",
     "never recommend",
     "stop recommending",
 )

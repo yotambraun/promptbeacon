@@ -8,6 +8,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from promptbeacon.extraction.matching import find_brand, mentions_brand
+from promptbeacon.extraction.mentions import is_brand_anti_recommended
+
+# The end of the previous sentence: a sentence-ending mark followed by
+# whitespace, or a line break.
+_SENTENCE_BREAK = re.compile(r"[.!?](?=\s)|\n")
 
 RankingType = Literal["numbered", "ordered", "recommended", "mentioned"]
 
@@ -130,11 +135,19 @@ def extract_rankings(
                             )
                         )
 
-    # Recommendation sentences
+    # Recommendation sentences. A brand the same sentence warns against
+    # ("I recommend against X", "I don't recommend X") is not ranked.
     for rec_pattern, rec_ranking_type in _RECOMMENDATIONS:
-        for text in rec_pattern.findall(response):
+        for match in rec_pattern.finditer(response):
+            text = match.group(1)
+            breaks = list(_SENTENCE_BREAK.finditer(response, 0, match.start()))
+            sentence = response[breaks[-1].end() if breaks else 0 : match.end()]
             for brand in all_brands:
-                if brand not in brand_positions and mentions_brand(text, brand):
+                if (
+                    brand not in brand_positions
+                    and mentions_brand(text, brand)
+                    and not is_brand_anti_recommended(sentence, brand)
+                ):
                     brand_positions[brand] = 1
                     rankings.append(
                         RankingResult(

@@ -207,6 +207,9 @@ Recommendation Index is built but not yet run.
 - The "actively recommended in N responses" insight counted mentions, so it could
   exceed the number of answers ("in 14 responses" from 10 prompts). It now counts
   answers ("in 5 of 10 answers").
+- A warning counted as a top recommendation: "I would recommend against X" or "I
+  don't recommend X" gave X rank 1. A brand the same sentence warns against is no
+  longer ranked, and "don't / wouldn't suggest" now count as warnings too.
 
   **Measured scores change** for brands whose name appears inside other words (short
   names such as `uv`, `Ray` or `React` most of all): their mention rate, share of voice

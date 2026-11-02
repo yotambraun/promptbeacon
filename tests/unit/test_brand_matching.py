@@ -197,6 +197,24 @@ class TestRanksComeFromListItems:
         analysis = extract_rankings(text, "Deno", ["Node.js"])
         assert analysis.brand_positions == {"Node.js": 1}
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "I would recommend against httpx for this. Use requests.",
+            "I don't recommend httpx here; requests is simpler.",
+            "We wouldn't suggest httpx for scripts.",
+        ],
+    )
+    def test_warnings_are_not_recommendations(self, text):
+        analysis = extract_rankings(text, "httpx", ["requests"])
+        assert "httpx" not in analysis.brand_positions
+        assert analysis.top_brand != "httpx"
+
+    def test_a_warning_does_not_hide_a_recommendation_in_the_same_sentence(self):
+        text = "I recommend requests and advise against httpx."
+        analysis = extract_rankings(text, "httpx", ["requests"])
+        assert analysis.brand_positions == {"requests": 1}
+
     def test_ordered_bullets_are_anchored(self):
         text = "- **Best:** httpx\n- second: requests\nthe state-of-the-art best: uv"
         analysis = extract_rankings(text, "httpx", ["requests", "uv"])
