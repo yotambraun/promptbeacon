@@ -77,10 +77,22 @@ def generate_explanations(
     # Explain recommendation patterns
     recommendations = [m for m in brand_mentions if m.is_recommendation]
     if recommendations:
+        answered = [r for r in results if r.success]
+        recommending = sum(
+            1
+            for r in answered
+            if any(
+                m.is_recommendation and m.brand_name.lower() == brand.lower()
+                for m in r.mentions
+            )
+        )
         explanations.append(
             Explanation(
                 category="recommendations",
-                message=f"{brand} is actively recommended in {len(recommendations)} responses",
+                message=(
+                    f"{brand} is actively recommended in {recommending} of "
+                    f"{len(answered)} answers"
+                ),
                 evidence=[m.context[:100] for m in recommendations[:2]],
                 impact="high",
             )

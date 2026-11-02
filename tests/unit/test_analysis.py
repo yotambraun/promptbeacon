@@ -216,3 +216,25 @@ class TestExplainer:
         assert len(recommendations) > 0
         # Low visibility should generate high priority recommendations
         assert any(r.priority == "high" for r in recommendations)
+
+
+def test_recommendation_insight_counts_answers_not_mentions():
+    from promptbeacon.analysis.explainer import generate_explanations
+    from promptbeacon.core.schemas import ProviderResult
+    from promptbeacon.extraction.mentions import extract_mentions
+
+    text = "I recommend Nike. Try Nike. Go with Nike."
+    extraction = extract_mentions(text, "Nike")
+    results = [
+        ProviderResult(
+            provider="openai",
+            model="m",
+            prompt=f"p{i}",
+            response=text if i == 0 else "Adidas only.",
+            mentions=extraction.mentions if i == 0 else [],
+            latency_ms=1.0,
+        )
+        for i in range(2)
+    ]
+    messages = [e.message for e in generate_explanations(results, "Nike", 50.0)]
+    assert "Nike is actively recommended in 1 of 2 answers" in messages
