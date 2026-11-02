@@ -292,6 +292,7 @@ promptbeacon scan httpx -t "python http client" --max-cost 0.05   # cap what a s
 promptbeacon badge httpx -t "python http client" --demo      # README badge
 promptbeacon card httpx -t "python http client" --demo --png card.png
 promptbeacon ci --report report.json --min-sov 0.3           # summary + gate, any CI
+promptbeacon ci --report report.json --baseline main.json --max-drop 5   # gate on a drop
 promptbeacon answers --report report.json --missing httpx     # the answers behind it
 # also: sources, funnel, dashboard, compare, history, providers, mcp
 ```

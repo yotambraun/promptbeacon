@@ -49,7 +49,11 @@ If the CLI is not available, or for the **pr** workflow, do it by hand:
 5. For the badge, show both options: the committed SVG
    (`![AI visibility](.promptbeacon/badge.svg)`) or shields.io via
    `https://img.shields.io/endpoint?url=<url-encoded raw URL of badge.json>`.
-6. Suggest `max-cost` (e.g. `"0.10"`) so one run cannot spend more than that,
+6. For the **pr** workflow, suggest gating on a drop as well as a floor:
+   `baseline` (a JSON report of the main branch, committed or downloaded as
+   an artifact) with `max-drop` (e.g. `"5"` points), keeping the same
+   `models` and category as the baseline so the two are comparable.
+7. Suggest `max-cost` (e.g. `"0.10"`) so one run cannot spend more than that,
    `trend-path: .promptbeacon/trend.json` for a score sparkline on the card,
    and, with two or more competitors, `rank-badge-path` for an
    "AI rank: #2 of 4" badge.

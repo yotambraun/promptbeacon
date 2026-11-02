@@ -7,6 +7,8 @@ systems.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from promptbeacon.core.schemas import Report
 from promptbeacon.reporting.formats import describe_budget, describe_cost
 
@@ -38,7 +40,106 @@ def _md(text: str) -> str:
     return out.replace("\n", " ")
 
 
-def ci_outputs(report: Report, passed: bool | None = None) -> dict[str, str]:
+@dataclass(frozen=True)
+class MetricChange:
+    """One metric of a report against the same metric of a baseline report.
+
+    ``baseline`` and ``current`` are on a 0-100 scale (share of voice and
+    presence as percentages), so ``change`` is in points.
+    """
+
+    metric: str
+    label: str
+    baseline: float
+    current: float
+    percent: bool = False
+
+    @property
+    def change(self) -> float:
+        return self.current - self.baseline
+
+    def _fmt(self, value: float) -> str:
+        return f"{value:.0f}%" if self.percent else f"{value:.1f}"
+
+    def describe(self) -> str:
+        """E.g. "visibility score dropped 11.5 points (70.0 → 58.5)"."""
+        change = round(self.change, 1)
+        if change == 0:
+            return f"{self.label} unchanged ({self._fmt(self.current)})"
+        verb = "rose" if change > 0 else "dropped"
+        return (
+            f"{self.label} {verb} {abs(change):.1f} points "
+            f"({self._fmt(self.baseline)} → {self._fmt(self.current)})"
+        )
+
+
+def baseline_changes(report: Report, baseline: Report) -> list[MetricChange]:
+    """Score, share of voice, presence and (when both have it) stability,
+    against a baseline report of the same brand."""
+    changes = [
+        MetricChange(
+            "score", "visibility score", baseline.visibility_score,
+            report.visibility_score,
+        )
+    ]  # fmt: skip
+    sov, base_sov = report.share_of_voice, baseline.share_of_voice
+    if sov and base_sov:
+        changes.append(
+            MetricChange(
+                "share_of_voice", "share of voice", base_sov.target_share * 100,
+                sov.target_share * 100, percent=True,
+            )
+        )  # fmt: skip
+        changes.append(
+            MetricChange(
+                "presence", "presence", base_sov.target_presence_rate * 100,
+                sov.target_presence_rate * 100, percent=True,
+            )
+        )  # fmt: skip
+    if report.stability and baseline.stability:
+        changes.append(
+            MetricChange(
+                "stability", "stability score", baseline.stability.stability_score,
+                report.stability.stability_score,
+            )
+        )  # fmt: skip
+    return changes
+
+
+def comparability_notes(report: Report, baseline: Report) -> list[str]:
+    """Why two reports of the same brand may not be directly comparable."""
+
+    def models(r: Report) -> list[str]:
+        return sorted({f"{x.provider}/{x.model}" for x in r.provider_results})
+
+    notes = []
+    if report.measurement_tier != baseline.measurement_tier:
+        notes.append(
+            f"measurement differs ({baseline.measurement_tier} → "
+            f"{report.measurement_tier})"
+        )
+    if sorted(report.categories) != sorted(baseline.categories):
+        notes.append(
+            f"categories differ ({', '.join(baseline.categories) or 'none'} → "
+            f"{', '.join(report.categories) or 'none'})"
+        )
+    if models(report) != models(baseline):
+        notes.append(
+            f"models differ ({', '.join(models(baseline))} → "
+            f"{', '.join(models(report))})"
+        )
+    prompts = {r.prompt for r in report.provider_results}
+    if prompts != {r.prompt for r in baseline.provider_results}:
+        notes.append("the prompts differ")
+    return notes
+
+
+def ci_outputs(
+    report: Report,
+    passed: bool | None = None,
+    *,
+    baseline: list[MetricChange] | None = None,
+) -> dict[str, str]:
     """Key/value outputs for ``$GITHUB_OUTPUT`` (all values are strings)."""
     sov = report.share_of_voice
     outputs = {
@@ -56,6 +157,9 @@ def ci_outputs(report: Report, passed: bool | None = None) -> dict[str, str]:
     }
     if passed is not None:
         outputs["passed"] = "true" if passed else "false"
+    if baseline is not None:
+        score = next((c for c in baseline if c.metric == "score"), None)
+        outputs["score-change"] = f"{score.change:.1f}" if score else ""
     # One line per output: a newline could inject extra keys into $GITHUB_OUTPUT.
     return {k: " ".join(v.split()) for k, v in outputs.items()}
 
@@ -67,6 +171,8 @@ def summary_markdown(
     thresholds: dict[str, float] | None = None,
     marker: bool = False,
     max_rows: int = 10,
+    baseline: list[MetricChange] | None = None,
+    baseline_notes: list[str] | None = None,
 ) -> str:
     """A compact Markdown report for job summaries and PR comments."""
     lines: list[str] = []
@@ -94,6 +200,18 @@ def summary_markdown(
         parts.append(f"stability {report.stability.stability_score:.0f}/100")
     lines.append(" · ".join(parts))
     lines.append("")
+
+    if baseline:
+        described = " · ".join(_md(c.describe()) for c in baseline)
+        lines.append(f"**Change vs baseline:** {described}")
+        lines.append("")
+        if baseline_notes:
+            lines.append(
+                "> Not directly comparable with the baseline: "
+                + _md("; ".join(baseline_notes))
+                + "."
+            )
+            lines.append("")
 
     if sov and sov.aggregate:
         lines.append("| Brand | Answers mentioning it | Share of voice |")

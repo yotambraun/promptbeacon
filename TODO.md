@@ -97,6 +97,9 @@
 - [x] MCP tools for estimate, compare, recommendations, history, funnel; setup for seven
       AI assistants; `ai-visibility-review` skill
 - [x] Whole-name brand matching; ranks only from list items; appearance-order positions
+- [x] Per-answer evidence (`promptbeacon answers`, MCP `answers`)
+- [x] Custom prompts, aliases and stability runs from the CLI and MCP
+- [x] Regression gate against a baseline report (`ci --baseline --max-drop`, Action inputs)
 
 ---
 

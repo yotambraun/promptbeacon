@@ -2194,6 +2194,24 @@ def ci(
             min=0.000001,
         ),
     ] = None,
+    baseline_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--baseline",
+            help="An earlier report of the same brand (e.g. from the main branch) "
+            "to compare with: the summary shows each change",
+        ),
+    ] = None,
+    max_drop: Annotated[
+        float | None,
+        typer.Option(
+            "--max-drop",
+            help="Fail if the visibility score, share of voice, presence or "
+            "stability fell more than this many points below --baseline (share "
+            "of voice and presence in percentage points)",
+            min=0,
+        ),
+    ] = None,
     comment_file: Annotated[
         Path | None,
         typer.Option(
@@ -2213,12 +2231,42 @@ def ci(
         promptbeacon ci --report report.json --min-score 50 --min-sov 0.3
 
         promptbeacon ci --report report.json --max-cost 0.10
+
+        promptbeacon ci --report report.json --baseline main.json --max-drop 5
     """
     import os
 
-    from promptbeacon.share.summary import ci_outputs, summary_markdown
+    from promptbeacon.share.summary import (
+        baseline_changes,
+        ci_outputs,
+        comparability_notes,
+        summary_markdown,
+    )
 
+    if max_drop is not None and baseline_path is None:
+        err_console.print(
+            "[red]Error:[/red] --max-drop compares with an earlier report: pass it "
+            "with --baseline REPORT."
+        )
+        raise typer.Exit(1)
     report = _load_report_file(report_path)
+    changes = None
+    notes: list[str] = []
+    if baseline_path is not None:
+        baseline = _load_report_file(baseline_path)
+        if baseline.brand.lower() != report.brand.lower():
+            err_console.print(
+                f"[red]Error:[/red] the baseline is a report for "
+                f"{_esc(baseline.brand)!r}, this report is for {_esc(report.brand)!r}."
+            )
+            raise typer.Exit(1)
+        changes = baseline_changes(report, baseline)
+        notes = comparability_notes(report, baseline)
+        if notes:
+            err_console.print(
+                "[yellow]The baseline is not directly comparable: "
+                f"{_esc('; '.join(notes))}.[/yellow]"
+            )
 
     thresholds = {
         name: value
@@ -2229,6 +2277,7 @@ def ci(
             ("min stability", min_stability),
             ("max rank", max_rank),
             ("max cost", max_cost),
+            ("max drop", max_drop),
         )
         if value is not None
     }
@@ -2249,15 +2298,27 @@ def ci(
         and report.total_cost_usd > max_cost
     ):
         failures.append(f"cost ${report.total_cost_usd:.4f} > ${max_cost:g}")
+    if max_drop is not None and changes:
+        failures += [
+            f"{change.describe()}, more than the allowed {max_drop:g}"
+            for change in changes
+            if -round(change.change, 1) > max_drop
+        ]
     passed = not failures
 
     output_file = os.environ.get("GITHUB_OUTPUT")
     if output_file:
         with open(output_file, "a", encoding="utf-8") as fh:
-            for key, value in ci_outputs(report, passed).items():
+            for key, value in ci_outputs(report, passed, baseline=changes).items():
                 fh.write(f"{key}={value}\n")
 
-    summary = summary_markdown(report, failures=failures, thresholds=thresholds)
+    summary = summary_markdown(
+        report,
+        failures=failures,
+        thresholds=thresholds,
+        baseline=changes,
+        baseline_notes=notes,
+    )
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_file:
         with open(summary_file, "a", encoding="utf-8") as fh:
@@ -2269,7 +2330,12 @@ def ci(
         comment_file.parent.mkdir(parents=True, exist_ok=True)
         comment_file.write_text(
             summary_markdown(
-                report, failures=failures, thresholds=thresholds, marker=True
+                report,
+                failures=failures,
+                thresholds=thresholds,
+                marker=True,
+                baseline=changes,
+                baseline_notes=notes,
             ),
             encoding="utf-8",
         )

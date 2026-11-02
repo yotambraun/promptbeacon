@@ -493,6 +493,7 @@ before the command exits, so a failing check still reports its numbers.
 ```bash
 promptbeacon scan "Nike" -t "running shoes" -c "Adidas" -f json --no-save > report.json
 promptbeacon ci --report report.json --min-score 50 --min-sov 0.2 --comment-file comment.md
+promptbeacon ci --report report.json --baseline main-report.json --max-drop 5
 ```
 
 | Option | Description |
@@ -500,11 +501,13 @@ promptbeacon ci --report report.json --min-score 50 --min-sov 0.2 --comment-file
 | `--report PATH` | Report from `scan -f json` (required) |
 | `--min-score`, `--min-sov`, `--min-presence`, `--min-stability`, `--max-rank` | Thresholds; exit 1 if any is missed |
 | `--max-cost USD` | Exit 1 if the report's estimated cost is above this. A report that its own `--max-cost` cut short is flagged `PARTIAL` in the summary either way |
+| `--baseline PATH` | An earlier report of the same brand to compare with (e.g. from the main branch). The summary shows the change in score, share of voice, presence and stability, and says when the two were measured differently (tier, categories, models or prompts). A report for another brand is an error |
+| `--max-drop POINTS` | Exit 1 if any of those fell more than this many points below `--baseline` (share of voice and presence in percentage points). Needs `--baseline` |
 | `--comment-file PATH` | Write a Markdown PR-comment body that starts with a hidden marker, for a sticky comment |
 
 On GitHub Actions it appends step outputs to `$GITHUB_OUTPUT` (`score`,
 `share-of-voice`, `rank`, `presence`, `stability`, `tier`, `category`, `cost-usd`,
-`partial`, `passed`) and a Markdown summary to `$GITHUB_STEP_SUMMARY`. Elsewhere it prints the
+`partial`, `passed`, and `score-change` with `--baseline`) and a Markdown summary to `$GITHUB_STEP_SUMMARY`. Elsewhere it prints the
 summary to stdout. See [CI & examples](examples.md).
 
 ---

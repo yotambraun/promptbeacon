@@ -50,6 +50,14 @@ Recommendation Index is built but not yet run.
   block in the result). Cost estimates and `max_cost` count the custom prompts and the
   runs. `configure_beacon` has the same options (`prompts`, `aliases`,
   `stability_runs`).
+- **Regression gate against a baseline:** `promptbeacon ci --baseline main.json
+  --max-drop 5` (Action inputs `baseline` and `max-drop`) fails when the visibility
+  score, share of voice, presence or stability fell more than 5 points below an earlier
+  report, and says which one and by how much ("visibility score dropped 8.0 points
+  (71.0 → 63.0), more than the allowed 5"). With `--baseline` alone the summary shows
+  every change without gating. It warns when the two reports were measured differently
+  (tier, categories, models or prompts) and refuses a baseline for another brand. New
+  output `score-change`.
 - **`ai-visibility-review` skill** in the plugin: a full review that checks the keys,
   prices the scan and asks before spending, scans once, then compares, reads the
   answers behind the numbers, checks sources, history and significance, and ends with

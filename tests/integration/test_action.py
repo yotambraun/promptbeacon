@@ -222,3 +222,28 @@ def test_action_rank_badge_without_competitors_only_warns(tmp_path):
     )  # fmt: skip
     assert result["exit"] == 0
     assert not (tmp_path / ".pb/rank.svg").exists()
+
+
+def test_action_baseline_gate_fails_on_a_drop(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    first = run_action(
+        tmp_path / "a",
+        {"brand": "httpx", "category": "python http client", "demo": "true"},
+    )
+    baseline = json.loads(Path(first["outputs"]["report-path"]).read_text("utf-8"))
+    baseline["visibility_score"] = min(100.0, baseline["visibility_score"] + 20)
+    baseline_file = tmp_path / "baseline.json"
+    baseline_file.write_text(json.dumps(baseline), encoding="utf-8")
+
+    result = run_action(
+        tmp_path / "b",
+        {"brand": "httpx", "category": "python http client", "demo": "true",
+         "baseline": str(baseline_file), "max-drop": "5"},
+    )  # fmt: skip
+    assert result["exit"] != 0
+    out = result["outputs"]
+    assert out["passed"] == "false"
+    assert float(out["score-change"]) < -5
+    assert "Change vs baseline" in result["summary"]
+    assert "visibility score dropped" in result["summary"]

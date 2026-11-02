@@ -86,6 +86,8 @@ comment up to date, and applies your thresholds last.
 | `min-share-of-voice` | `0` | Fail below this share of voice, 0-1 (0 = no gate) |
 | `stability` | `0` | Repeat the scan N times (2 or more) and report stability; 0 is off |
 | `min-stability` | `0` | Fail below this stability score (needs `stability`) |
+| `baseline` | | Path to an earlier JSON report of the same brand, e.g. one committed from the main branch, to compare with; the summary shows each change |
+| `max-drop` | | Fail if the visibility score, share of voice, presence or stability fell more than this many points below `baseline` (share of voice and presence in percentage points). Needs `baseline`. Empty = no gate |
 | `demo` | `false` | Keyless demo mode, for smoke tests |
 | `grounded` | `false` | Web-grounded scan (provider web search) |
 | `max-cost` | | Spending cap in US dollars, e.g. `"0.05"`. The scan is estimated first and does not start above the cap; it stops issuing requests once the cap is reached, and the summary and the `partial` output say so. Empty = no cap |
@@ -112,14 +114,44 @@ on spaces; use one item per line for multi-word names.
 | `stability` | Stability score, when `stability` > 0 |
 | `tier` | `demo`, `base_model` or `api_grounded` |
 | `passed` | `true` if every threshold passed |
+| `score-change` | Visibility score change in points against `baseline`, when it is set |
 | `partial` | `true` if `max-cost` stopped the scan before every answer was collected |
 | `report-path` | Path to the full JSON report |
 
 ### Job summary
 
 Every run appends a short Markdown report to the job summary: score, share of voice and
-rank, a brand table, the thresholds and whether they passed, and how the scan was
-measured (tier, models, prompts, estimated cost).
+rank, the change against `baseline` when one is given, a brand table, the thresholds and
+whether they passed, and how the scan was measured (tier, models, prompts, estimated
+cost).
+
+### Gate on a drop, not only a floor
+
+An absolute threshold such as `min-score: 40` misses a fall from 70 to 45. Keep a
+baseline report (for example, scan on the main branch and commit the JSON, or download
+it as an artifact of the last main run) and gate pull requests on the change:
+
+```yaml
+- uses: yotambraun/promptbeacon@v1
+  with:
+    brand: "httpx"
+    category: "python http client"
+    competitors: |
+      requests
+      aiohttp
+    models: "openai=gpt-6-luna"
+    baseline: ".promptbeacon/baseline.json"
+    max-drop: "5"
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+The check fails when the visibility score, share of voice, presence or stability fell
+more than 5 points below the baseline, and names each one: "visibility score dropped
+8.0 points (71.0 → 63.0), more than the allowed 5". Answers vary between runs, so set
+`max-drop` above the run-to-run noise (`stability` shows how large it is), and keep the
+models, category and prompts the same: when they differ from the baseline's, the
+summary says the two are not directly comparable. A different brand is an error.
 
 ### Sticky PR comment
 

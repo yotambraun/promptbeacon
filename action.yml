@@ -53,6 +53,14 @@ inputs:
     description: "Fail if stability score is below this (0-100; needs stability > 0)"
     required: false
     default: "0"
+  baseline:
+    description: "Path to an earlier JSON report of the same brand (e.g. one committed from the main branch) to compare with; the summary shows each change"
+    required: false
+    default: ""
+  max-drop:
+    description: "Fail if the visibility score, share of voice, presence or stability fell more than this many points below the baseline (share of voice and presence in percentage points). Needs baseline. Empty = no gate"
+    required: false
+    default: ""
   demo:
     description: "Run keyless demo mode (no API keys) — for smoke tests"
     required: false
@@ -120,6 +128,9 @@ outputs:
   passed:
     description: "'true' if every threshold passed"
     value: ${{ steps.check.outputs.passed }}
+  score-change:
+    description: "Visibility score change in points against the baseline, when baseline is set"
+    value: ${{ steps.check.outputs.score-change }}
   partial:
     description: "'true' if max-cost stopped the scan before every answer was collected"
     value: ${{ steps.check.outputs.partial }}
@@ -196,8 +207,12 @@ runs:
         PB_MIN_SOV: ${{ inputs.min-share-of-voice }}
         PB_STABILITY: ${{ inputs.stability }}
         PB_MIN_STABILITY: ${{ inputs.min-stability }}
+        PB_BASELINE: ${{ inputs.baseline }}
+        PB_MAX_DROP: ${{ inputs.max-drop }}
       run: |
         args=(ci --report "$PB_REPORT" --comment-file "$RUNNER_TEMP/promptbeacon-comment.md")
+        if [ -n "$PB_BASELINE" ]; then args+=(--baseline "$PB_BASELINE"); fi
+        if [ -n "$PB_MAX_DROP" ]; then args+=(--max-drop "$PB_MAX_DROP"); fi
         if [ "$PB_MIN_SCORE" != "0" ]; then args+=(--min-score "$PB_MIN_SCORE"); fi
         if [ "$PB_MIN_SOV" != "0" ]; then args+=(--min-sov "$PB_MIN_SOV"); fi
         if [ "${PB_STABILITY:-0}" -gt 0 ] && [ "$PB_MIN_STABILITY" != "0" ]; then
