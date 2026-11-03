@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/promptbeacon/"><img src="https://badge.fury.io/py/promptbeacon.svg" alt="PyPI version"></a>
+  <a href="https://pepy.tech/project/promptbeacon"><img src="https://static.pepy.tech/badge/promptbeacon" alt="Downloads"></a>
   <a href="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml"><img src="https://github.com/yotambraun/promptbeacon/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10%E2%80%933.14-blue.svg" alt="Python 3.10-3.14"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
