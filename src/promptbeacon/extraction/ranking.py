@@ -162,9 +162,9 @@ def extract_rankings(
     # For brands not found in rankings, record their first mention
     for brand in all_brands:
         if brand not in brand_positions:
-            match = find_brand(response, brand)
-            if match:
-                char_pos = match.start()
+            found = find_brand(response, brand)
+            if found:
+                char_pos = found.start()
                 rankings.append(
                     RankingResult(
                         brand=brand,

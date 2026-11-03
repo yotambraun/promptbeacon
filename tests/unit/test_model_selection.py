@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from types import SimpleNamespace
 from typing import Any
 
@@ -292,8 +293,10 @@ def test_cli_rejects_malformed_model_option():
 
 def test_cli_help_documents_models():
     result = runner.invoke(app, ["scan", "--help"])
-    assert "--model" in result.output
-    assert "ollama" in result.output
+    # GitHub Actions forces colour, and Rich styles the two dashes of an option apart
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "--model" in plain
+    assert "ollama" in plain
 
 
 def test_cli_providers_lists_models_and_litellm(monkeypatch):
